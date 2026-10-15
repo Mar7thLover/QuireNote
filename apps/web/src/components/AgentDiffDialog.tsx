@@ -23,8 +23,11 @@ export function AgentDiffDialog() {
       const nb = pending!.notebookId;
       invalidateNotebook(nb);
       close();
-      const created = res.applied.find((a) => a.op === "create_note" || a.op === "create_table");
-      if (created) useWorkspace.getState().open({ kind: "note", id: created.id });
+      // 新建的笔记在编辑器中打开；Agent 生成的表格是 Studio 数据表格
+      const note = res.applied.find((a) => a.op === "create_note");
+      const table = res.applied.find((a) => a.op === "create_table");
+      if (note) useWorkspace.getState().open({ kind: "note", id: note.id });
+      else if (table) useWorkspace.getState().open({ kind: "artifact", id: table.id });
       toast.success(t("agent.applied", { count: res.applied.length }), {
         duration: 8000,
         action: {

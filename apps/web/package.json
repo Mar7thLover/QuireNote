@@ -11,6 +11,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capgo/capacitor-share-target": "^8.0.61",
     "@dagrejs/dagre": "^3.1.1",
     "@folio/core": "workspace:*",
     "@folio/render": "workspace:*",

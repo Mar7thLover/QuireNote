@@ -65,6 +65,16 @@ if (want("editor")) {
   await shot("editor-bubble");
 }
 
+if (want("agent")) {
+  await page.keyboard.press("Control+K");
+  await page.keyboard.type("把这几条笔记合并成一份对比表");
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Enter");
+  await page.getByText("AI 改动预览").waitFor({ timeout: 30000 });
+  await shot("agent-diff");
+  await page.keyboard.press("Escape");
+}
+
 if (want("palette")) {
   await page.keyboard.press("Control+K");
   await page.keyboard.type("把这几条笔记合并成一份对比表");

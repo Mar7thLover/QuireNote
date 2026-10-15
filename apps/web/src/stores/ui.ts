@@ -7,7 +7,7 @@ interface UiState {
   paletteSeed: string;
   focusMode: boolean;
   addSourceOpen: boolean;
-  addSourceTab: "upload" | "url" | "paste" | "search";
+  addSourceTab: "upload" | "url" | "paste" | "record" | "search";
   shortcutsOpen: boolean;
   newNotebookOpen: boolean;
   /** 待确认的 Agent 改动。 */

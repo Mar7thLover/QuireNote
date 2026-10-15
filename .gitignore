@@ -16,3 +16,9 @@ apps/mobile/ios/App/Pods/
 data-e2e/
 data-dev/
 .claude/settings.local.json
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/src/main/assets/public/
+apps/mobile/android/capacitor-cordova-android-plugins/
+apps/mobile/ios/App/App/public/
+apps/mobile/ios/DerivedData/

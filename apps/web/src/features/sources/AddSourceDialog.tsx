@@ -12,8 +12,8 @@ import {
   toast,
 } from "@folio/ui";
 import { useMutation } from "@tanstack/react-query";
-import { ClipboardPaste, FileUp, Globe, Link2, UploadCloud } from "lucide-react";
-import { useRef, useState } from "react";
+import { ClipboardPaste, FileUp, Globe, Link2, Mic, Square, UploadCloud } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk, upsertInList } from "@/lib/query";
@@ -59,6 +59,10 @@ export function AddSourceDialog({ notebookId }: { notebookId: string }) {
               <ClipboardPaste />
               {t("sources.paste")}
             </TabsTrigger>
+            <TabsTrigger value="record" className="flex-1">
+              <Mic />
+              录音
+            </TabsTrigger>
             <TabsTrigger value="search" className="flex-1">
               <Globe />
               {t("sources.webSearch")}
@@ -69,6 +73,9 @@ export function AddSourceDialog({ notebookId }: { notebookId: string }) {
           </TabsContent>
           <TabsContent value="url">
             <UrlTab notebookId={notebookId} onDone={close} />
+          </TabsContent>
+          <TabsContent value="record">
+            <RecordTab notebookId={notebookId} onDone={close} />
           </TabsContent>
           <TabsContent value="paste">
             <PasteTab notebookId={notebookId} onDone={close} />
@@ -210,5 +217,85 @@ function PasteTab({ notebookId, onDone }: { notebookId: string; onDone: () => vo
         </Button>
       </div>
     </form>
+  );
+}
+
+/** 录音：浏览器 / 原生 WebView 的 MediaRecorder，上传后由服务端转写为文本资料。 */
+function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => void }) {
+  const [state, setState] = useState<"idle" | "recording" | "uploading">("idle");
+  const [seconds, setSeconds] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    if (state !== "recording") return;
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [state]);
+  useEffect(
+    () => () =>
+      recRef.current?.stream.getTracks().forEach((t) => {
+        t.stop();
+      }),
+    [],
+  );
+
+  const start = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunks.current = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
+      rec.onstop = async () => {
+        for (const t of stream.getTracks()) t.stop();
+        setState("uploading");
+        const type = rec.mimeType || "audio/webm";
+        const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+        const file = new File(chunks.current, `录音 ${new Date().toLocaleString("zh-CN")}.${ext}`, { type });
+        try {
+          await uploadFiles(notebookId, [file]);
+          onDone();
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setState("idle");
+        }
+      };
+      recRef.current = rec;
+      rec.start(1000);
+      setSeconds(0);
+      setState("recording");
+    } catch (e) {
+      setError(`无法使用麦克风：${(e as Error).message}`);
+    }
+  };
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  return (
+    <div className="flex h-48 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-surface-sunken/50">
+      <button
+        type="button"
+        onClick={() => (state === "recording" ? recRef.current?.stop() : start())}
+        disabled={state === "uploading"}
+        className={cn(
+          "grid size-16 place-items-center rounded-full shadow-md transition-transform active:scale-95 focus-ring",
+          state === "recording" ? "bg-danger text-white" : "bg-accent text-accent-fg",
+        )}
+        aria-label={state === "recording" ? "停止录音" : "开始录音"}
+      >
+        {state === "recording" ? <Square className="size-6 fill-current" /> : <Mic className="size-7" />}
+      </button>
+      <p className="font-mono text-sm tabular-nums text-fg-muted">
+        {state === "uploading"
+          ? "上传中…"
+          : state === "recording"
+            ? `● ${mm}:${ss}`
+            : "点击开始录音，结束后自动转写为资料"}
+      </p>
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
+    </div>
   );
 }

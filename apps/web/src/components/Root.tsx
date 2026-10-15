@@ -2,6 +2,8 @@ import { Toaster, TooltipProvider } from "@folio/ui";
 import { onlineManager, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { initNative } from "@/features/mobile/native";
+import { ServerOnboarding, ShareInbox } from "@/features/mobile/ShareInbox";
 import { syncRenderSettings } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -22,6 +24,11 @@ export function Root({ children }: { children: ReactNode }) {
   useEffect(() => subscribeServerEvents(), []);
   useEffect(() => {
     syncRenderSettings();
+    let dispose: (() => void) | undefined;
+    initNative().then((d) => {
+      dispose = d;
+    });
+    return () => dispose?.();
   }, []);
 
   useHotkeys({
@@ -41,6 +48,8 @@ export function Root({ children }: { children: ReactNode }) {
       <ShortcutsDialog />
       <AgentDiffDialog />
       <NewNotebookDialog />
+      <ShareInbox />
+      <ServerOnboarding />
       <Toaster
         theme={resolvedMode(mode)}
         position="bottom-right"
