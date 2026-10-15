@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@folio/web", "dev"],
+      "port": 5173,
+      "env": { "FOLIO_API_TARGET": "http://localhost:8790" }
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@folio/server", "start"],
+      "port": 8790,
+      "env": { "PORT": "8790", "FOLIO_DATA_DIR": "data-dev" }
+    }
+  ]
+}
