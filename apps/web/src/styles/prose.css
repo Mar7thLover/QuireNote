@@ -1,0 +1,257 @@
+/* 长文排版：阅读器、编辑器、AI 回答、生成物共用 */
+.prose {
+  --prose-size: 15px;
+  font-size: var(--prose-size);
+  line-height: 1.75;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+.prose-serif {
+  font-family: var(--font-serif);
+  --prose-size: 16.5px;
+  line-height: 1.8;
+}
+.prose-sm {
+  --prose-size: 14px;
+  line-height: 1.7;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
+}
+.prose p {
+  margin: 0.6em 0;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-sans);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--fg);
+}
+.prose h1 {
+  font-size: 1.75em;
+  margin: 1.2em 0 0.5em;
+  letter-spacing: -0.02em;
+}
+.prose h2 {
+  font-size: 1.32em;
+  margin: 1.4em 0 0.45em;
+}
+.prose h3 {
+  font-size: 1.12em;
+  margin: 1.2em 0 0.4em;
+}
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  text-underline-offset: 3px;
+}
+.prose strong {
+  font-weight: 650;
+}
+.prose ul,
+.prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+.prose ul {
+  list-style: disc;
+}
+.prose ol {
+  list-style: decimal;
+}
+.prose li {
+  margin: 0.2em 0;
+}
+.prose li::marker {
+  color: var(--fg-subtle);
+}
+.prose blockquote {
+  margin: 0.9em 0;
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  color: var(--fg-muted);
+}
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.12em 0.36em;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+}
+.prose pre {
+  margin: 0.9em 0;
+  padding: 0.9em 1em;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-size: 0.86em;
+  line-height: 1.6;
+}
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+.prose hr {
+  margin: 1.6em 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.prose table {
+  width: 100%;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  font-family: var(--font-sans);
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--border);
+  padding: 0.45em 0.7em;
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  background: var(--surface-sunken);
+  font-weight: 600;
+}
+.prose img {
+  border-radius: var(--radius-md);
+  max-width: 100%;
+}
+.prose mark {
+  background: var(--hl-yellow);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* 引用编号徽标 */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 0.3em;
+  margin: 0 0.1em;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.68em;
+  font-weight: 650;
+  line-height: 1;
+  vertical-align: 0.28em;
+  color: var(--accent-soft-fg);
+  background: var(--accent-soft);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast),
+    transform var(--dur-fast);
+  user-select: none;
+}
+.cite:hover {
+  background: var(--accent);
+  color: var(--accent-fg);
+  transform: translateY(-1px);
+}
+.cite[data-invalid] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Tiptap 编辑器 */
+.tiptap {
+  outline: none;
+  min-height: 100%;
+}
+.tiptap p.is-empty::before,
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--fg-subtle);
+}
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-start;
+}
+.tiptap ul[data-type="taskList"] li > label {
+  margin-top: 0.3em;
+}
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--fg-subtle);
+  text-decoration: line-through;
+}
+.tiptap .selectedCell {
+  background: var(--accent-soft);
+}
+.tiptap .callout {
+  display: flex;
+  gap: 0.6em;
+  margin: 0.8em 0;
+  padding: 0.75em 1em;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+.tiptap .ProseMirror-gapcursor:after {
+  border-top-color: var(--fg);
+}
+.tiptap ::selection {
+  background: var(--hl-ai);
+}
+
+/* 资料阅读器中的高亮 */
+.hl {
+  border-radius: 2px;
+  cursor: pointer;
+  transition: filter var(--dur-fast);
+}
+.hl:hover {
+  filter: saturate(1.4);
+}
+.hl-yellow {
+  background: var(--hl-yellow);
+}
+.hl-green {
+  background: var(--hl-green);
+}
+.hl-blue {
+  background: var(--hl-blue);
+}
+.hl-pink {
+  background: var(--hl-pink);
+}
+.hl-purple {
+  background: var(--hl-purple);
+}
+.hl-ai {
+  background: linear-gradient(transparent 55%, var(--hl-ai) 55%);
+}
+.hl-jump {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
+  animation: jump-flash 1.6s var(--ease-out);
+}
+@keyframes jump-flash {
+  0% {
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  100% {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}

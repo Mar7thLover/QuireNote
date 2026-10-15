@@ -1,0 +1,37 @@
+/* 可定制背景：渐变 / 图片 / 动态极光，铺在应用底层 */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--app-bg-opacity, 0.6);
+}
+[data-bg="gradient"] .app-bg {
+  background: var(--app-bg-image);
+}
+[data-bg="image"] .app-bg {
+  background: var(--app-bg-image) center / cover no-repeat;
+}
+[data-bg="aurora"] .app-bg {
+  background:
+    radial-gradient(40% 50% at 20% 20%, oklch(0.75 0.12 var(--accent-h) / 0.45), transparent 70%),
+    radial-gradient(35% 45% at 80% 30%, oklch(0.78 0.11 calc(var(--accent-h) + 60) / 0.4), transparent 70%),
+    radial-gradient(45% 50% at 50% 90%, oklch(0.8 0.1 calc(var(--accent-h) - 70) / 0.35), transparent 70%);
+  background-size: 200% 200%;
+  animation: aurora 28s ease-in-out infinite alternate;
+  filter: blur(20px);
+}
+[data-theme="dark"][data-bg="aurora"] .app-bg {
+  opacity: calc(var(--app-bg-opacity, 0.6) * 0.6);
+}
+@keyframes aurora {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 30% 100%;
+  }
+}

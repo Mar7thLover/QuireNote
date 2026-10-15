@@ -1,0 +1,57 @@
+import {
+  AudioLines,
+  BookOpen,
+  ChartPie,
+  Clapperboard,
+  FileCode,
+  FileText,
+  FileType,
+  Globe,
+  GraduationCap,
+  Image,
+  Layers,
+  ListChecks,
+  type LucideIcon,
+  MessageCircleQuestion,
+  Milestone,
+  MonitorPlay,
+  Network,
+  Newspaper,
+  Podcast,
+  Presentation,
+  Search,
+  Table,
+  Type,
+  Video,
+} from "lucide-react";
+
+const MAP: Record<string, LucideIcon> = {
+  "file-text": FileText,
+  globe: Globe,
+  type: Type,
+  "file-code": FileCode,
+  "file-type": FileType,
+  "book-open": BookOpen,
+  image: Image,
+  "audio-lines": AudioLines,
+  video: Video,
+  youtube: MonitorPlay,
+  search: Search,
+  newspaper: Newspaper,
+  "graduation-cap": GraduationCap,
+  "message-circle-question": MessageCircleQuestion,
+  milestone: Milestone,
+  network: Network,
+  layers: Layers,
+  "list-checks": ListChecks,
+  table: Table,
+  "chart-pie": ChartPie,
+  presentation: Presentation,
+  podcast: Podcast,
+  clapperboard: Clapperboard,
+};
+
+export function Icon({ name, className }: { name: string; className?: string }) {
+  const C = MAP[name] ?? FileText;
+  return <C className={className} />;
+}

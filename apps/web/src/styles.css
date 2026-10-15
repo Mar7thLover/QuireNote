@@ -1,0 +1,11 @@
+@import "tailwindcss";
+@import "@folio/ui/styles.css";
+@import "dockview/dist/styles/dockview.css";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource-variable/jetbrains-mono";
+@import "./styles/dock.css";
+@import "./styles/prose.css";
+@import "./styles/background.css";
+
+@source "../../../packages/ui/src";
