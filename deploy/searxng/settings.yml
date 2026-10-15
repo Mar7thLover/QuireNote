@@ -1,0 +1,9 @@
+# SearXNG 最小配置：开启 JSON 输出供 Folio 调用
+use_default_settings: true
+server:
+  secret_key: "change-me"
+  limiter: false
+search:
+  formats:
+    - html
+    - json

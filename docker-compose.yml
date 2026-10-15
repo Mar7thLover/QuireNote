@@ -1,0 +1,24 @@
+services:
+  folio:
+    build: .
+    image: folio:latest
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - folio-data:/data
+
+  # 可选：自托管搜索后端。启用后在「设置 → 模型与服务」添加 SearXNG，地址填 http://searxng:8080
+  # searxng:
+  #   image: searxng/searxng:latest
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./deploy/searxng:/etc/searxng
+  #   environment:
+  #     - SEARXNG_BASE_URL=http://localhost:8080/
+
+volumes:
+  folio-data:

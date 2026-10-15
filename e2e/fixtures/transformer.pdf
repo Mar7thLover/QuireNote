@@ -1,0 +1,63 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Length 261 >>
+stream
+BT
+/F1 20 Tf
+72 720 Td
+24 TL
+(The Transformer Architecture) Tj T*
+/F1 12 Tf
+() Tj T*
+(In 2017 researchers introduced the Transformer,) Tj T*
+(a model built entirely on self-attention.) Tj T*
+(It removed recurrence and allowed highly parallel training.) Tj T*
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Contents 2 0 R /Resources << /Font << /F1 1 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 247 >>
+stream
+BT
+/F1 20 Tf
+72 720 Td
+24 TL
+(Scaling Laws) Tj T*
+/F1 12 Tf
+() Tj T*
+(Around 2020 researchers observed that loss falls) Tj T*
+(as a power law of parameters, data and compute.) Tj T*
+(This observation motivated very large language models.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 1 0 R >> >> >>
+endobj
+6 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+7 0 obj
+<< /Type /Catalog /Pages 6 0 R >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000000391 00000 n 
+0000000517 00000 n 
+0000000815 00000 n 
+0000000941 00000 n 
+0000001004 00000 n 
+trailer
+<< /Size 8 /Root 7 0 R >>
+startxref
+1053
+%%EOF

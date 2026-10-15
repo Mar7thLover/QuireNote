@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+.turbo
+data
+data-dev
+data-e2e
+e2e/.screens
+playwright-report
+test-results
+.env
+apps/mobile/android
+apps/mobile/ios
