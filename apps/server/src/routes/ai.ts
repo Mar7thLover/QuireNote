@@ -1,0 +1,201 @@
+import { LOCAL_PROVIDER_ID, listCatalog, listModels, testConnection, transformStream } from "@folio/ai";
+import { AgentProposal, Capability, ModelAssignment, ProviderInput } from "@folio/core";
+import type { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
+import { z } from "zod";
+import { validateCitations } from "../citations";
+import type { AppContext } from "../context";
+import { ApiError, badRequest, errorMessageOf } from "../errors";
+import { applyProposal, proposeCommand, undoProposal } from "../services/agent";
+import { gatherPassages } from "../services/passages";
+import {
+  createProvider,
+  deleteProvider,
+  effectiveAssignments,
+  publicProvider,
+  updateProvider,
+  validateAssignment,
+} from "../services/providers";
+import { searchWeb } from "../services/research";
+import { must, readJson } from "./util";
+
+const TransformInput = z.object({
+  notebookId: z.string(),
+  action: z.enum(["explain", "rewrite", "expand", "translate", "summarize", "find_source", "quiz", "custom"]),
+  text: z.string().min(1),
+  instruction: z.string().optional(),
+  targetLang: z.string().optional(),
+  /** 补充：限定参考资料。 */
+  sourceIds: z.array(z.string()).optional(),
+});
+
+/** 需要参考资料的动作。 */
+const NEEDS_SOURCES = new Set(["explain", "expand", "find_source", "quiz", "custom"]);
+
+export function aiRoutes(api: Hono, ctx: AppContext): void {
+  const { store } = ctx;
+
+  // ───── 就地 AI ─────
+  api.post("/ai/transform", async (c) => {
+    const input = await readJson(c, TransformInput);
+    must(await store.notebooks.get(input.notebookId), "Notebook");
+    const chat = await ctx.models.chat();
+    const { passages, citable } = NEEDS_SOURCES.has(input.action)
+      ? await gatherPassages(ctx, input.notebookId, {
+          query: `${input.instruction ?? ""} ${input.text}`.slice(0, 2000),
+          sourceIds: input.sourceIds ?? null,
+          k: 6,
+          fill: false,
+        })
+      : { passages: [], citable: [] };
+    const abort = new AbortController();
+    return streamSSE(c, async (stream) => {
+      stream.onAbort(() => abort.abort());
+      const emit = async (event: string, data: unknown) => {
+        if (!stream.aborted && !stream.closed) await stream.writeSSE({ event, data: JSON.stringify(data) });
+      };
+      let text = "";
+      try {
+        for await (const d of transformStream(chat, { ...input, passages })) {
+          if (abort.signal.aborted) break;
+          text += d;
+          await emit("delta", { text: d });
+        }
+        const { text: cleaned, citations } = validateCitations(text, citable);
+        await emit("citations", citations);
+        await emit("done", { text: cleaned, model: `${chat.provider.id}:${chat.model}` });
+      } catch (err) {
+        await emit("error", { message: errorMessageOf(err) });
+      }
+    });
+  });
+
+  api.post("/ai/command", async (c) => {
+    const input = await readJson(
+      c,
+      z.object({
+        notebookId: z.string(),
+        instruction: z.string().min(1),
+        noteIds: z.array(z.string()).optional(),
+        selection: z.string().optional(),
+      }),
+    );
+    must(await store.notebooks.get(input.notebookId), "Notebook");
+    return c.json(await proposeCommand(ctx, input));
+  });
+
+  api.post("/ai/apply", async (c) => {
+    const input = await readJson(c, z.object({ notebookId: z.string(), proposal: AgentProposal }));
+    return c.json(await applyProposal(ctx, input.notebookId, input.proposal));
+  });
+
+  api.post("/ai/undo", async (c) => {
+    const { undoToken } = await readJson(c, z.object({ undoToken: z.string() }));
+    return c.json(await undoProposal(ctx, undoToken));
+  });
+
+  // ───── 搜索与研究 ─────
+  api.post("/search/web", async (c) => {
+    const input = await readJson(
+      c,
+      z.object({ query: z.string().min(1), providerId: z.string().optional() }),
+    );
+    return c.json({ results: await searchWeb(ctx, input.query, input.providerId) });
+  });
+
+  api.post("/notebooks/:nb/research", async (c) => {
+    const nb = c.req.param("nb");
+    must(await store.notebooks.get(nb), "Notebook");
+    const input = await readJson(
+      c,
+      z.object({ question: z.string().min(1), rounds: z.number().int().min(1).max(5).optional() }),
+    );
+    // 提前检查是否配置了搜索，避免任务排队后才失败。
+    await ctx.models.require("search", "深度研究");
+    const job = await ctx.jobs.enqueue(
+      "research",
+      { notebookId: nb, question: input.question, rounds: input.rounds ?? 2 },
+      { notebookId: nb, message: `深度研究：${input.question.slice(0, 40)}` },
+    );
+    return c.json(job, 202);
+  });
+
+  // ───── Providers ─────
+  api.get("/providers/catalog", (c) => c.json(listCatalog()));
+
+  api.get("/providers", async (c) => c.json((await store.providers.list()).map(publicProvider)));
+
+  api.post("/providers", async (c) => {
+    const input = await readJson(c, ProviderInput);
+    return c.json(publicProvider(await createProvider(ctx, input)), 201);
+  });
+
+  api.patch("/providers/:id", async (c) => {
+    if (c.req.param("id") === LOCAL_PROVIDER_ID) throw badRequest("内置 local provider 不可修改");
+    const patch = await readJson(
+      c,
+      z.object({
+        name: z.string().optional(),
+        baseUrl: z.string().nullable().optional(),
+        apiKey: z.string().nullable().optional(),
+        enabled: z.boolean().optional(),
+      }),
+    );
+    return c.json(publicProvider(await updateProvider(ctx, c.req.param("id"), patch)));
+  });
+
+  api.delete("/providers/:id", async (c) => {
+    if (c.req.param("id") === LOCAL_PROVIDER_ID) throw badRequest("内置 local provider 不可删除");
+    must((await deleteProvider(ctx, c.req.param("id"))) || null, "Provider");
+    return c.json({ ok: true });
+  });
+
+  api.post("/providers/:id/test", async (c) => {
+    const id = c.req.param("id");
+    if (id !== LOCAL_PROVIDER_ID) must(await store.providers.get(id), "Provider");
+    let rt: Awaited<ReturnType<typeof ctx.models.runtime>>;
+    try {
+      rt = await ctx.models.runtime(id);
+    } catch (err) {
+      return c.json({ ok: false, latencyMs: 0, error: errorMessageOf(err) });
+    }
+    return c.json(await testConnection(rt));
+  });
+
+  api.get("/providers/:id/models", async (c) => {
+    const id = c.req.param("id");
+    if (id !== LOCAL_PROVIDER_ID) must(await store.providers.get(id), "Provider");
+    try {
+      return c.json(await listModels(await ctx.models.runtime(id)));
+    } catch (err) {
+      throw new ApiError(502, "list_models_failed", errorMessageOf(err));
+    }
+  });
+
+  // ───── 模型分配 ─────
+  api.get("/models/assignments", async (c) => c.json(await effectiveAssignments(ctx)));
+
+  api.put("/models/assignments", async (c) => {
+    const a = await readJson(c, ModelAssignment);
+    await validateAssignment(ctx, a);
+    const before = await ctx.models.embeddingKey();
+    await store.assignments.set(a);
+    if (a.capability === "embedding" && (await ctx.models.embeddingKey()) !== before) {
+      // 换了 Embedding 模型：所有 Notebook 重建索引（期间检索退回关键词）。
+      await ctx.jobs.enqueue("reindex", { clear: true }, { message: "更换 Embedding 模型，重建索引" });
+    }
+    return c.json(await effectiveAssignments(ctx));
+  });
+
+  /** 补充：清除某能力的分配（chat / embedding 回到 local）。 */
+  api.delete("/models/assignments/:capability", async (c) => {
+    const cap = Capability.safeParse(c.req.param("capability"));
+    if (!cap.success) throw badRequest("未知能力");
+    const before = await ctx.models.embeddingKey();
+    await store.assignments.delete(cap.data);
+    if (cap.data === "embedding" && (await ctx.models.embeddingKey()) !== before) {
+      await ctx.jobs.enqueue("reindex", { clear: true }, { message: "更换 Embedding 模型，重建索引" });
+    }
+    return c.json(await effectiveAssignments(ctx));
+  });
+}

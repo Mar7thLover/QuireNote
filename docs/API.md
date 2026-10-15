@@ -1,0 +1,255 @@
+# Folio HTTP API 契约
+
+前后端共享的接口约定。类型名均指 `@folio/core` 中的 zod schema。
+
+- 基础路径 `/api`，JSON 请求/响应；上传用 `multipart/form-data`。
+- 错误统一为 `{ "error": { "code": string, "message": string } }`，配合 4xx/5xx 状态码。
+- 时间均为 ISO 字符串。id 由服务端生成（`newId(prefix)`）。
+- 流式接口用 SSE（`text/event-stream`），每个事件为 `event: <name>\ndata: <json>\n\n`。
+
+## Notebook
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notebooks` | `Notebook[]`，带 `stats` |
+| POST | `/notebooks` | body `NotebookInput` → `Notebook` |
+| GET / PATCH / DELETE | `/notebooks/:nb` | PATCH body 为 `NotebookInput` 的部分字段 + `pinned` |
+| GET | `/notebooks/:nb/export` | 整本导出 zip（Markdown + 原始文件 + `notebook.json`） |
+| POST | `/import` | multipart `file`（导出的 zip）→ `Notebook` |
+
+## 资料 Sources
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notebooks/:nb/sources` | `Source[]` |
+| POST | `/notebooks/:nb/sources` | multipart `file`（pdf/docx/md/txt/epub/图片/音视频），或 JSON：`{kind:"url",url}` / `{kind:"text"\|"markdown",title,text}` / `{kind:"youtube",url}` / `{kind:"search",title,url,text}` → `Source`（`status: pending`，后台任务解析） |
+| GET / PATCH / DELETE | `/sources/:id` | PATCH `{title?, selected?, props?}` |
+| GET | `/sources/:id/content` | `SourceContent`（全文 + 页偏移 + 高亮） |
+| GET | `/sources/:id/file` | 原始文件 |
+| GET | `/sources/:id/chunks` | `Chunk[]` |
+| POST | `/sources/:id/highlights` | `{start,end,color,note?}` → highlight |
+| DELETE | `/sources/:id/highlights/:hid` | |
+| POST | `/sources/:id/auto-highlight` | AI 自动标注重点 → `Job` |
+
+## 检索
+
+`POST /notebooks/:nb/retrieve` body `{query, sourceIds?, k?}` →
+`{ results: { chunk: Chunk, sourceTitle: string, score: number, vectorRank: number|null, keywordRank: number|null }[] }`
+混合检索：向量（sqlite-vec）+ 关键词（FTS5 trigram），RRF 融合。
+
+## 对话
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET / POST | `/notebooks/:nb/conversations` | POST `{title?}` |
+| PATCH / DELETE | `/conversations/:id` | PATCH `{title?, activeLeafId?}` |
+| GET | `/conversations/:id/messages` | 全部消息（树，按 createdAt） |
+| POST | `/conversations/:id/messages` | SSE，见下 |
+
+POST body：`{ content?: string, parentId: string|null, sourceIds?: string[], regenerateOf?: string }`
+
+- 普通发送 / 编辑消息：传 `content` + `parentId`（编辑 = 以原消息的 parent 为父节点新建分支）。
+- 重新生成：传 `regenerateOf: <assistantMessageId>`，生成该消息的兄弟节点。
+
+SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` → 多个 `delta` `{text}` →
+`citations` `Citation[]`（服务端已校验编号真实存在，未知编号被剔除）→ `done`（最终 `Message`）；出错时 `error` `{message}`。
+
+## 笔记
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET / POST | `/notebooks/:nb/notes` | POST body `NoteInput` |
+| GET / PATCH / DELETE | `/notes/:id` | PATCH body 为 `NoteInput` 的部分字段 |
+
+## Studio 生成物
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET / POST | `/notebooks/:nb/artifacts` | POST `{kind, sourceIds?, instructions?, title?}` → `Artifact`（generating，后台任务） |
+| GET / PATCH / DELETE | `/artifacts/:id` | PATCH `{title?, data?}`（用户手动编辑） |
+| POST | `/artifacts/:id/refine` | `{instruction, selection?}` AI 改写其中一部分 → `Artifact` |
+
+## 复习（FSRS）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notebooks/:nb/review/due` | 到期卡片 `ReviewCard[]` |
+| GET | `/notebooks/:nb/review/stats` | `{total, due, learned, retention}` |
+| POST | `/notebooks/:nb/review/cards` | `{cards:[{front,back,elementId?,artifactId?}]}` → `ReviewCard[]` |
+| POST | `/review/:cardId` | `{rating: 1-4}` → `ReviewCard`（同步更新关联元素 mastery） |
+
+## 元素
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET / POST | `/notebooks/:nb/elements` | |
+| PATCH / DELETE | `/elements/:id` | |
+| POST | `/notebooks/:nb/elements/extract` | `{sourceIds?, noteIds?, conversationId?}` → `Job` |
+| POST | `/notebooks/:nb/elements/merge` | `{ids, intoId}` → `Element` |
+| POST | `/elements/:id/enrich` | 补充定义 → `Element` |
+| POST | `/notebooks/:nb/elements/cards` | `{ids}` 批量生成复习卡 → `ReviewCard[]` |
+
+## 数据库视图
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET / POST | `/notebooks/:nb/views` | `DbView` |
+| PATCH / DELETE | `/views/:id` | |
+| GET / POST | `/notebooks/:nb/properties` | `PropertyDef` |
+| PATCH / DELETE | `/properties/:id` | |
+
+## 就地 AI
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/ai/transform` | `{notebookId, action, text, instruction?, targetLang?}`，action ∈ explain/rewrite/expand/translate/summarize/find_source/quiz/custom；SSE `delta`/`citations`/`done` |
+| POST | `/ai/command` | `{notebookId, instruction, noteIds?, selection?}` → `AgentProposal`（不落库） |
+| POST | `/ai/apply` | `{notebookId, proposal}` → `{applied: {op, id}[], undoToken}` |
+| POST | `/ai/undo` | `{undoToken}` → `{ok}` |
+
+## 联网搜索与深度研究
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/search/web` | `{query, providerId?}` → `{results:{title,url,snippet,content?}[]}` |
+| POST | `/notebooks/:nb/research` | `{question, rounds?}` → `Job`；完成后生成 `search` 类资料与一份报告 |
+
+## 模型与 Provider
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/providers/catalog` | 各 provider 类型的能力、默认 baseUrl、示例模型、说明 |
+| GET / POST | `/providers` | `ProviderConfig[]` / body `ProviderInput`。**永不返回明文 Key** |
+| PATCH / DELETE | `/providers/:id` | |
+| POST | `/providers/:id/test` | `{ok, latencyMs, error?, models?}` |
+| GET | `/providers/:id/models` | `string[]` |
+| GET / PUT | `/models/assignments` | `ModelAssignment[]` / body `ModelAssignment` |
+
+内置 `local` provider（id 固定为 `local`）：无需 Key 的哈希 n-gram Embedding + 抽取式回答，用于离线演示和端到端测试。
+
+## 任务、设置、数据管理
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/jobs?notebookId=` | `Job[]` |
+| GET | `/events` | SSE：`job`（`Job`）、`source`（`Source`）、`artifact`（`Artifact`）变更推送 |
+| GET / PUT | `/settings/:key` | 任意 JSON（theme / templates / rules / layouts / locale） |
+| GET | `/admin/stats` | `{dbBytes, filesBytes, notebooks, sources, chunks, embedded, notes, artifacts, elements, pendingJobs, embeddingModel}` |
+| POST | `/admin/reindex` | `{notebookId?}` 重建 Embedding → `Job` |
+| GET | `/admin/backup` | 全量备份 zip |
+| POST | `/admin/restore` | multipart `file` |
+| GET | `/files/:name` | 生成的音频/图片/视频 |
+| GET | `/health` | `{ok, version}` |
+
+---
+
+## 补充约定（服务端实现时补全，只做补充，不改变上文语义）
+
+### 通用
+
+- 状态码：创建类 POST 返回 `201`；排入后台任务的 POST（新建资料、新建生成物、`auto-highlight`、`extract`、`research`、`reindex`、`render`）返回 `202`。前端按 `res.ok` 判断即可。
+- 删除类接口统一返回 `{ "ok": true }`；对象不存在时 `404 not_found`。
+- 请求体校验失败：`400`，`error.code = "validation_error"`，`message` 列出字段路径；非法 JSON 为 `invalid_json`。
+- 需要模型但未配置时：`400`，`error.code = "model_not_configured"`，`message` 说明去哪里配置。
+- CORS：只允许 `http(s)://localhost`、`127.0.0.1`、`[::1]`（任意端口）以及 `capacitor://localhost`、`ionic://localhost`。
+- SSE 中的 `data` 一律是 JSON。
+
+### 资料
+
+- `POST /notebooks/:nb/sources`：
+  - multipart 每次一个 `file`，可带 `title` 字段；按扩展名 / MIME 判断类型（pdf / docx / md / txt / epub / png·jpg·webp·gif / mp3·wav·m4a·ogg·flac / mp4·mov·webm·mkv），其他类型 `400 unsupported_type`。
+  - JSON `{kind:"url"}` 若是 YouTube 链接会自动转为 `youtube` 类型。`text` / `markdown` / `search` 的文本也会保存为原始文件（`hasFile: true`）。
+  - 解析失败时资料 `status: "error"`，`error` 为可读原因（例如 "无法获取该视频的字幕…"、"图片 OCR 需要支持视觉的对话模型…"、"音视频转写需要…语音转写（STT）模型…"）。
+- 补充：`POST /sources/:id/reprocess` → `Job`，重新解析（失败重试 / 换模型后重建）。
+- `GET /sources/:id/file`：带 `Content-Security-Policy: sandbox`，抓取的网页 HTML 不会在 API 源下执行脚本。URL 资料保存的是抓取到的页面（`page.html` / `.pdf` / `.txt`）。
+- `SourceContent.pageOffsets`：PDF 每页起始偏移，页与页之间以一个空行（`\n\n`）分隔；非分页资料为 `[0]`。`Chunk.page` 从 1 开始，非分页资料为 `null`。分块不跨页，`chunk.text === content.text.slice(chunk.start, chunk.end)`。
+- `POST /sources/:id/highlights` 返回与 `SourceContent.highlights[]` 相同的结构 `{id,start,end,color,note,by:"user"}`；`auto-highlight` 会替换上一次的 AI 标注（`by:"ai"`），保留用户高亮。
+
+### 检索
+
+- 响应可能带 `warning: string`（例如向量检索失败、已退回纯关键词）。
+- 关键词检索：FTS5 trigram；少于 3 个字符的词（如"图灵"、"AI"）退化为子串匹配。`vectorRank` / `keywordRank` 从 1 开始，按资料范围过滤后的名次计算。
+- 未传 `sourceIds` 时检索笔记本内全部 `ready` 资料；对话默认只用已勾选（`selected`）的资料。
+
+### 对话
+
+- `GET /conversations/:id` 补充：返回单个 `Conversation`。新建时 `title` 默认为 `"新对话"`，第一次提问后自动改为问题前 40 字。
+- `PATCH /conversations/:id` 的 `activeLeafId` 必须是该对话中的消息，否则 `400`。
+- `POST /conversations/:id/messages`：参数错误（空内容、parentId 不属于该对话、`regenerateOf` 不是助手消息）在开始 SSE **之前**以普通 JSON 错误返回。
+  - 重新生成时不发 `user` 事件，直接从 `start` 开始；其余事件顺序不变。
+  - `delta` 是模型原始输出；`done` 中的 `content` 是校验后的最终文本（不存在的编号已从文本中删除，例如 `[1, 7]` → `[1]`、`[7]` → 删除）。前端应以 `done` 为准。
+  - `Citation.quote/start/end` 指向资料全文中与该结论最匹配的**一句话**（不是整个分块），可直接用于跳转高亮；`page` 为该分块所在页。
+  - 出错时：`error` 事件 `{message, messageId?}`，对应助手消息 `status: "error"`、保留已生成的部分内容。
+  - `Message.model` 形如 `"<providerId>:<model>"`，例如 `"local:extractive"`。
+
+### Studio 生成物
+
+- `POST /notebooks/:nb/artifacts`：未传 `sourceIds` 时使用已勾选且就绪的资料；没有可用资料时 `400`（`image` 除外）。未传 `title` 时生成完成后自动命名为 `"<类型名>：<主题>"`；`instructions` 保存在 `props.instructions`。
+- 数据形态：`report / briefing / study_guide / faq / infographic` → `{kind:"markdown"}`；其余与 `kind` 同名。`PATCH` 的 `data.kind` 必须与之匹配，否则 `400`。
+- 音频概览：先生成双人脚本（`script`），再逐句 TTS（A/B 两个音色）并拼接（mp3 直接拼帧；wav / PCM 合并并在句间插 0.35s 静音）。**未配置 TTS 时**：`status: "ready"`、`audioUrl: null`，`error` 字段给出提示（脚本可编辑，配置 TTS 后调用 `render` 合成）。音色可用设置 `PUT /settings/ttsVoices` `{A?, B?}` 覆盖。
+- 视频概览：生成幻灯片（`notes` 为旁白）；检测到 ffmpeg（PATH 或 `FFMPEG_PATH`）才合成 mp4（每页纯色背景 + 文字，有 TTS 时配旁白）。没有 ffmpeg 时 `status: "error"`，`error` 说明原因，`data.slides` 仍保留。
+- 配图：根据资料生成英文提示词，再调用 `image` 能力的模型；未配置时 `status: "error"`。
+- 媒体中、合成完成前 `status` 保持 `generating`（`data` 已写入，可提前展示脚本 / 幻灯片）。
+- `POST /artifacts/:id/refine`：同步返回修改后的 `Artifact`。`selection` 可以是 Markdown 片段、思维导图节点标签或幻灯片标题；音频脚本修改后 `audioUrl` 置空，需要 `render` 重新合成。
+- 补充：`POST /artifacts/:id/render` → `Job`，按当前 `data` 重新合成媒体（仅 audio / video / image）。
+
+### 复习（FSRS）
+
+- 卡片 `state`：0 新卡 / 1 学习中 / 2 复习 / 3 重学（ts-fsrs）。`due` 到期即出现在 `/review/due`（新卡立即到期）。
+- `stats.learned` = 处于复习态（state 2）的卡片数；`retention` = 复习态卡片评分中非 Again（rating > 1）的比例，没有复习态记录时用全部记录，没有记录时为 0。
+- 元素 `mastery` = 其所有卡片掌握度的平均值；单卡掌握度 = `stability / (stability + 7)`，新卡为 0，重学态减半。
+- 补充：`GET /notebooks/:nb/review/cards` → 全部 `ReviewCard[]`；`DELETE /review/:cardId` 删除卡片。
+
+### 元素
+
+- 抽取任务：`sourceIds / noteIds / conversationId` 都不传时，从已勾选资料中抽取。与已有元素同名（含别名，忽略大小写与引号）时合并出处而不新建。每个 `ref.quote` 为原文摘录，`sourceId/chunkId` 或 `noteId` 或 `messageId` 指明出处。
+- `merge`：被合并元素的名字与别名进入 `aliases`，出处、关系合并；指向它们的关系与复习卡改指向 `intoId`；被合并元素删除。
+- `enrich`：同步返回更新后的 `Element`（`definition`、`aliases`，以及与已有元素的 `relations`，label 为 `"相关"`）。
+- `cards`：每个元素一张卡（正面 `"名称（类型）"`，背面为定义或第一条出处）；已有卡片的元素跳过，因此可能返回空数组。
+- `DELETE /elements/:id` 会同时移除其他元素指向它的关系，并解除复习卡的关联。
+
+### 就地 AI
+
+- `/ai/transform` 补充参数 `sourceIds?: string[]`（限定参考资料）。`explain / expand / find_source / quiz / custom` 会检索资料并可引用 `[n]`；`rewrite / translate / summarize` 只处理文本本身。
+  - `done` 事件：`{ text, model }`，`text` 为剔除无效编号后的最终文本；`citations` 事件与对话相同。
+- `/ai/command`：返回的 `AgentProposal.ops` 只引用请求中 `noteIds` 里的笔记；`add_mindmap_node` 的 `artifactId / parentId` 来自本笔记本已有的思维导图。
+- `/ai/apply`：先整体校验（引用的笔记 / 节点不存在 → `400 bad_proposal`，不做部分应用）。各操作返回的 `id`：`create_note` / `update_note` / `delete_note` → 笔记 id；`create_table` → 新建的 `table` 生成物 id；`add_mindmap_node` → 新节点 id；`create_element` → 元素 id。`update_note` 会把 `doc` 置为 `null`（由前端从 markdown 重建）。
+- `/ai/undo`：每个 `undoToken` 只能使用一次；之后 `404`。
+
+### 联网搜索与研究
+
+- `/search/web` 未传 `providerId` 时使用 `search` 能力的分配；都没有时 `400 model_not_configured`。
+- `/notebooks/:nb/research`：未配置搜索时直接 `400`（不排队）。任务每轮先由对话模型提出查询（第 1 轮即原问题），收集结果；只有摘要的结果会再抓取正文；每条结果成为一个 `search` 资料（`url` 为原链接）；最后创建一个 `report` 生成物（标题 `"研究报告：<问题>"`，任务完成消息中包含其 id，生成过程见 `artifact` 事件）。`rounds` 取值 1–5，默认 2。
+
+### 模型与 Provider
+
+- `GET /providers/catalog` 元素：`{kind, label, capabilities, defaultBaseUrl, baseUrlRequired, requiresKey, models: {<capability>: string[]}（第一个为默认）, voices?: {A, B, options}, notes, docsUrl}`。包含 `kind: "local"` 一项。
+- 内置 `local` provider 不出现在 `GET /providers` 中（`ProviderKind` 不含 `local`），但可以用 id `local` 调用 `/providers/local/test`、`/providers/local/models`，并用于模型分配（chat → `extractive`，embedding → `hash-384`）。`PATCH/DELETE /providers/local` 返回 `400`。
+- `PATCH /providers/:id`：`{name?, baseUrl?, apiKey?, enabled?}`；`apiKey: ""` 或 `null` 表示清除 Key。`openai-compatible` 必须有 `baseUrl`。
+- `POST /providers/:id/test` 永远返回 200：`{ok, latencyMs, error?, models?}`；错误信息不包含 Key。fal 没有免费探测接口，只检查是否填写了 Key；Edge TTS 暂不支持（返回 `ok:false` 及说明）。
+- `GET /models/assignments` 返回**生效中**的分配（未设置的 chat / embedding 显示默认 local）。`PUT` 校验 provider 存在且支持该能力，返回更新后的完整列表。更换 Embedding 模型会自动排入全库 `reindex` 任务（期间检索退回关键词）。
+- 补充：`DELETE /models/assignments/:capability` 清除分配（chat / embedding 回到 local），返回完整列表。删除 provider 时，引用它的分配一并清除。
+- 启动时可从环境变量引导 provider（Docker 部署）：`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、`TAVILY_API_KEY`、`BRAVE_API_KEY`，以及对应的 `*_FILE`（文件路径，读取内容并 trim）。该类型尚无 provider 时才创建；chat 仍为 local 时改为 Anthropic `claude-sonnet-5-5`（没有 Anthropic Key 时依次用 OpenAI / Gemini 的默认模型）；search 未分配时用 Tavily / Brave。日志只输出 keyHint。
+
+### 任务与事件
+
+- `Job.type`：`ingest`、`reindex`、`artifact`、`artifact_media`、`extract_elements`、`auto_highlight`、`research`。`refId` 指向相关对象（资料 / 生成物 id）。服务重启后未完成的任务会重新排队。
+- `GET /jobs` 按创建时间倒序，最多 200 条。补充：`GET /jobs/:id`。
+- `GET /events`：连接后先发 `ready` `{ok, version}`；之后推送 `job` / `source` / `artifact`；空闲时每 15 秒发送 SSE 注释行（`: ping`）保活。
+
+### 设置与数据管理
+
+- `GET /settings/:key` 未设置时返回 `null`；`key` 只允许 `[a-zA-Z0-9_.-]{1,64}`。`PUT` 返回保存的值。
+- `GET /admin/stats` 中 `embedded` 为当前 Embedding 模型已生成向量的分块数，`embeddingModel` 形如 `"local:hash-384"`。
+- `POST /admin/reindex` 清除范围内的旧向量后用当前模型重建。
+- `GET /admin/backup`：zip 内含 `backup.json`、`folio.db`（SQLite 快照，含向量与全文索引）、`files/**`。**不含** `secret.key`：在另一台机器恢复时需要相同的 `FOLIO_SECRET` / `secret.key`，否则需重新填写 provider Key。
+- `POST /admin/restore`：有后台任务运行时 `409 busy`；成功返回 `{ok: true, files: number}`。
+
+### Notebook 导出 / 导入
+
+- `GET /notebooks/:nb/export` → `<标题>.folio.zip`：`notebook.json`（`format: "folio-notebook", version: 1`，含资料全文、分块、笔记、生成物、元素、复习卡与记录、视图、属性、对话与消息）、`markdown/notes|sources|artifacts/*.md`、`files/sources/<id>/*`（原始文件）、`files/media/*`（生成的媒体）、`README.md`。
+- `POST /import`：所有 id 重新生成（引用随之更新），返回新的 `Notebook`（带 `stats`）；向量不随包导出，导入后自动排入该笔记本的 `reindex` 任务。
+
+### 文件
+
+- `GET /files/:name` 支持 `Range`（`206 Partial Content`），音视频可拖动进度。

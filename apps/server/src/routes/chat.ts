@@ -1,0 +1,95 @@
+import { type Conversation, newId, nowIso } from "@folio/core";
+import type { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
+import { z } from "zod";
+import type { AppContext } from "../context";
+import { errorMessageOf } from "../errors";
+import {
+  assertLeafInConversation,
+  DEFAULT_CONVERSATION_TITLE,
+  deleteConversation,
+  prepareSend,
+  runChat,
+} from "../services/chat";
+import { must, readJson } from "./util";
+
+const SendInput = z.object({
+  content: z.string().optional(),
+  parentId: z.string().nullable().default(null),
+  sourceIds: z.array(z.string()).optional(),
+  regenerateOf: z.string().optional(),
+});
+
+export function chatRoutes(api: Hono, ctx: AppContext): void {
+  const { store } = ctx;
+
+  api.get("/notebooks/:nb/conversations", async (c) => {
+    must(await store.notebooks.get(c.req.param("nb")), "Notebook");
+    const list = await store.conversations.list({ notebookId: c.req.param("nb") });
+    return c.json(list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+  });
+
+  api.post("/notebooks/:nb/conversations", async (c) => {
+    const nb = c.req.param("nb");
+    must(await store.notebooks.get(nb), "Notebook");
+    const input = await readJson(c, z.object({ title: z.string().optional() }));
+    const ts = nowIso();
+    const conv: Conversation = {
+      id: newId("conv"),
+      ownerId: store.ownerId,
+      notebookId: nb,
+      title: input.title?.trim() || DEFAULT_CONVERSATION_TITLE,
+      activeLeafId: null,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await store.conversations.insert(conv);
+    return c.json(conv, 201);
+  });
+
+  api.get("/conversations/:id", async (c) =>
+    c.json(must(await store.conversations.get(c.req.param("id")), "对话")),
+  );
+
+  api.patch("/conversations/:id", async (c) => {
+    const id = c.req.param("id");
+    must(await store.conversations.get(id), "对话");
+    const patch = await readJson(
+      c,
+      z.object({ title: z.string().min(1).optional(), activeLeafId: z.string().nullable().optional() }),
+    );
+    if (patch.activeLeafId !== undefined)
+      assertLeafInConversation(await store.messages.list({ refId: id }), patch.activeLeafId);
+    return c.json(must(await store.conversations.update(id, patch), "对话"));
+  });
+
+  api.delete("/conversations/:id", async (c) => {
+    must(await store.conversations.get(c.req.param("id")), "对话");
+    await deleteConversation(ctx, c.req.param("id"));
+    return c.json({ ok: true });
+  });
+
+  api.get("/conversations/:id/messages", async (c) => {
+    must(await store.conversations.get(c.req.param("id")), "对话");
+    return c.json(await store.messages.list({ refId: c.req.param("id") }));
+  });
+
+  api.post("/conversations/:id/messages", async (c) => {
+    const input = await readJson(c, SendInput);
+    // 先校验（404 / 400 以普通 JSON 返回），再开始 SSE。
+    const prepared = await prepareSend(ctx, c.req.param("id"), input);
+    const abort = new AbortController();
+    return streamSSE(c, async (stream) => {
+      stream.onAbort(() => abort.abort());
+      const emit = async (event: string, data: unknown) => {
+        if (stream.aborted || stream.closed) return;
+        await stream.writeSSE({ event, data: JSON.stringify(data) });
+      };
+      try {
+        await runChat(ctx, prepared, input, emit, abort.signal);
+      } catch (err) {
+        await emit("error", { message: errorMessageOf(err) });
+      }
+    });
+  });
+}

@@ -1,0 +1,48 @@
+/** 组装服务：配置 → 上下文 → 任务处理函数 → 引导 provider → 种子数据 → 恢复任务。main.ts 与集成测试共用。 */
+import { mkdirSync } from "node:fs";
+import type { Hono } from "hono";
+import { createApp } from "./app";
+import { resetDataDir, type ServerConfig } from "./config";
+import { type AppContext, type ContextOptions, createContext } from "./context";
+import { registerJobHandlers } from "./handlers";
+import { seedIfEmpty } from "./seed";
+import { bootstrapProvidersFromEnv } from "./services/providers";
+
+export interface BootOptions extends ContextOptions {
+  /** 用于引导 provider 的环境变量；不传则不引导（测试默认不读真实环境）。 */
+  env?: NodeJS.ProcessEnv;
+  log?: (msg: string) => void;
+}
+
+export interface Server {
+  ctx: AppContext;
+  app: Hono;
+  close(): Promise<void>;
+}
+
+export async function boot(config: ServerConfig, opts: BootOptions = {}): Promise<Server> {
+  const log = opts.log ?? (() => {});
+  if (config.resetData) {
+    resetDataDir(config.dataDir);
+    log(`[folio] 已清空数据目录 ${config.dataDir}`);
+  }
+  mkdirSync(config.dataDir, { recursive: true });
+  const ctx = createContext(config, opts);
+  registerJobHandlers(ctx);
+  if (opts.env) await bootstrapProvidersFromEnv(ctx, opts.env, (m) => log(`[folio] ${m}`));
+  if (config.seed) {
+    const seeded = await seedIfEmpty(ctx);
+    if (seeded) log(`[folio] 已创建示例 Notebook ${seeded}`);
+  }
+  const resumed = await ctx.jobs.resume();
+  if (resumed) log(`[folio] 恢复了 ${resumed} 个未完成的任务`);
+  const app = createApp(ctx, { log, webDist: opts.env?.FOLIO_WEB_DIST });
+  return {
+    ctx,
+    app,
+    async close() {
+      ctx.jobs.stop();
+      await ctx.store.close();
+    },
+  };
+}

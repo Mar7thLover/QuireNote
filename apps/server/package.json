@@ -1,0 +1,33 @@
+{
+  "name": "@folio/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@folio/ai": "workspace:*",
+    "@folio/core": "workspace:*",
+    "@folio/render": "workspace:*",
+    "@hono/node-server": "^2.1.5",
+    "@hono/zod-validator": "^0.9.1",
+    "@mozilla/readability": "^0.6.0",
+    "better-sqlite3": "^13.0.3",
+    "fflate": "^0.8.3",
+    "hono": "^4.13.13",
+    "linkedom": "^0.18.13",
+    "mammoth": "^1.13.0",
+    "sqlite-vec": "^0.1.9",
+    "ts-fsrs": "^5.4.2",
+    "unpdf": "^1.8.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "tsx": "^4.23.15"
+  }
+}
