@@ -114,8 +114,8 @@ test.describe("阅读器：高亮与编辑资料", () => {
     const marks = page.locator("mark[data-hid]");
     await expect(marks).toHaveCount(2);
 
-    // 高亮列表入口带文字和数量
-    await expect(page.getByRole("button", { name: "高亮 2" })).toBeVisible();
+    // 高亮列表入口带文字，不显示数量（数字会打断阅读）
+    await expect(page.getByRole("button", { name: "高亮", exact: true })).toBeVisible();
 
     // 选中已高亮的文字：工具栏标出当前颜色，并有「取消高亮」
     const selectMark = (text: string) =>
@@ -133,7 +133,6 @@ test.describe("阅读器：高亮与编辑资料", () => {
       "true",
     );
     await page.getByRole("button", { name: "取消高亮" }).click();
-    await expect(page.getByText("已取消高亮")).toBeVisible();
     await expect(marks).toHaveCount(1);
 
     // 点击高亮也弹出同一个工具栏：改成绿色，仍然只有一条

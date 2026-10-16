@@ -16,7 +16,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ExternalLink, FileQuestion, Highlighter, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PanelShell } from "@/components/Panel";
-import i18n, { useTranslation } from "@/i18n";
+import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
@@ -137,7 +137,7 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
               aria-pressed={showSide}
             >
               <Highlighter />
-              {t("reader.highlightsCount", { count: content.data?.highlights.length ?? 0 })}
+              {t("reader.highlights_short")}
             </Button>
           </Tooltip>
         </>
@@ -375,12 +375,7 @@ function Paragraph({
               {s.text}
             </span>
           ) : s.cls.length ? (
-            <mark
-              key={i}
-              className={cn("hl bg-transparent text-inherit", s.cls)}
-              data-hid={s.ids[0]}
-              title={s.ids.length ? i18n.t("reader.highlightHint") : undefined}
-            >
+            <mark key={i} className={cn("hl bg-transparent text-inherit", s.cls)} data-hid={s.ids[0]}>
               {s.text}
             </mark>
           ) : (

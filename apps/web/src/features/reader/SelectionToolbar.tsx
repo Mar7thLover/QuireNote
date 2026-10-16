@@ -129,7 +129,6 @@ export function SelectionToolbar({
     onDone();
     try {
       for (const id of ids) await api.sources.removeHighlight(sourceId, id);
-      toast.success(t("reader.removed"));
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -180,7 +179,7 @@ export function SelectionToolbar({
     <div
       ref={boxRef}
       data-toolbar
-      className="absolute z-20 w-max -translate-x-1/2 animate-pop"
+      className="absolute z-20 w-max -translate-x-1/2"
       style={{ left: place.left, top, maxWidth: place.maxWidth }}
       onMouseDown={(e) => {
         // 保留选区（文本框除外，否则无法输入批注）。
@@ -258,7 +257,7 @@ export function SelectionToolbar({
       </div>
       {annotating ? (
         <form
-          className="mt-1.5 w-80 rounded-lg border border-border bg-surface-raised p-2 shadow-lg animate-pop"
+          className="mt-1.5 w-80 rounded-lg border border-border bg-surface-raised p-2 shadow-lg"
           onSubmit={(e) => {
             e.preventDefault();
             void highlight(activeColor ?? "yellow", note.trim());
@@ -283,7 +282,7 @@ export function SelectionToolbar({
         </form>
       ) : null}
       {explain ? (
-        <div className="mt-1.5 w-[26rem] max-w-[80vw] rounded-lg border border-border bg-surface-raised shadow-lg animate-pop">
+        <div className="mt-1.5 w-[26rem] max-w-[80vw] rounded-lg border border-border bg-surface-raised shadow-lg">
           <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs font-medium text-fg-subtle">
             <span className="flex items-center gap-1.5">
               <Lightbulb className="size-3.5 text-accent" />

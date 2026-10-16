@@ -219,10 +219,6 @@
 .hl {
   border-radius: 2px;
   cursor: pointer;
-  transition: filter var(--dur-fast);
-}
-.hl:hover {
-  filter: saturate(1.4);
 }
 .hl-yellow {
   background: var(--hl-yellow);
