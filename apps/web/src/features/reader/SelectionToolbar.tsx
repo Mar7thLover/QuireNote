@@ -7,7 +7,7 @@ import { useTranslation } from "@/i18n";
 import { transform, useChatDraft } from "@/lib/ai";
 import { useWorkspace } from "@/stores/workspace";
 
-const COLORS = ["yellow", "green", "blue", "pink", "purple"] as const;
+export const HIGHLIGHT_COLORS = ["yellow", "green", "blue", "pink", "purple"] as const;
 
 export function SelectionToolbar({
   notebookId,
@@ -93,7 +93,7 @@ export function SelectionToolbar({
           {t("reader.explain")}
         </Button>
         <Separator vertical className="mx-0.5" />
-        {COLORS.map((c) => (
+        {HIGHLIGHT_COLORS.map((c) => (
           <Tooltip key={c} content={t("reader.highlight")}>
             <button
               type="button"

@@ -20,6 +20,7 @@ import { safeName } from "../files";
 import { sourceFileDir } from "../ingest/pipeline";
 import type { Highlight, NotebookRecord, ReviewCardRecord, ReviewLog, SourceText } from "../store/types";
 import { withStats } from "./notebooks";
+import { originalTextPath } from "./source-edit";
 import { MEDIA_DIR } from "./studio";
 
 export interface NotebookExport {
@@ -124,6 +125,9 @@ export async function exportNotebook(
       const bytes = await ctx.files.get(path);
       if (bytes) zip[`files/${path}`] = bytes;
     }
+    // 编辑过的资料：带上编辑前的原文，导入后仍可恢复。
+    const original = await ctx.files.get(originalTextPath(s.id));
+    if (original) zip[`files/${originalTextPath(s.id)}`] = original;
   }
   for (const name of mediaNames(data.artifacts)) {
     const bytes = await ctx.files.get(`${MEDIA_DIR}/${name}`);
@@ -219,7 +223,8 @@ export async function importNotebook(
   for (const [path, bytes] of Object.entries(files)) {
     if (!path.startsWith("files/") || path.endsWith("/")) continue;
     const rel = path.slice("files/".length);
-    if (!rel.startsWith("sources/") && !rel.startsWith(`${MEDIA_DIR}/`)) continue;
+    if (!rel.startsWith("sources/") && !rel.startsWith("source-edits/") && !rel.startsWith(`${MEDIA_DIR}/`))
+      continue;
     await ctx.files.put(idRe ? rel.replace(idRe, (m) => map.get(m) ?? m) : rel, bytes);
   }
   // 原来的向量不随导出，导入后按当前 Embedding 模型重建。

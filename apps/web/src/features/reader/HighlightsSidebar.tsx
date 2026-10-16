@@ -64,7 +64,7 @@ export function HighlightsSidebar({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100"
+                className="absolute top-1 right-1 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
                 onClick={() => remove(h.id)}
                 aria-label={t("common.delete")}
               >

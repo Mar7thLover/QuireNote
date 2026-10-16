@@ -13,15 +13,17 @@ import {
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ExternalLink, FileQuestion, PanelRight, Sparkles } from "lucide-react";
+import { ExternalLink, FileQuestion, PanelRight, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PanelShell } from "@/components/Panel";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
+import { HighlightMenu } from "./HighlightMenu";
 import { HighlightsSidebar } from "./HighlightsSidebar";
 import { SelectionToolbar } from "./SelectionToolbar";
+import { applyEditResult, SourceEditor } from "./SourceEditor";
 import { type Para, paragraphize, segmentParagraph, selectionOffsets } from "./text";
 
 type Mode = "parsed" | "original" | "split";
@@ -36,7 +38,14 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
   });
   const [mode, setMode] = useState<Mode>("parsed");
   const [showSide, setShowSide] = useState(false);
+  const [editing, setEditing] = useState(false);
   const s = source.data;
+  const ready = s?.status === "ready" && !!content.data;
+  const revert = useMutation({
+    mutationFn: () => api.sources.revertContent(sourceId),
+    onSuccess: (r) => applyEditResult(r, t("reader.reverted")),
+    onError: (e: Error) => toast.error(e.message),
+  });
   const dockApi = useWorkspace((x) => x.api);
   useEffect(() => {
     if (s) dockApi?.getPanel(`reader:${s.id}`)?.api.setTitle(s.title);
@@ -55,6 +64,7 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
           <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
             <span className="truncate text-[13px] font-semibold">{s?.title ?? "…"}</span>
             {s ? <Badge>{SOURCE_KIND_META[s.kind].label}</Badge> : null}
+            {s?.props.edited ? <Badge tone="accent">{t("reader.edited")}</Badge> : null}
             {s?.url ? (
               <a
                 href={s.url}
@@ -67,7 +77,7 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
               </a>
             ) : null}
           </div>
-          {hasOriginal ? (
+          {hasOriginal && !editing ? (
             <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
               <TabsList className="h-7">
                 <TabsTrigger value="parsed" className="h-6 px-2 text-xs">
@@ -82,6 +92,32 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
               </TabsList>
             </Tabs>
           ) : null}
+          {s?.props.edited && !editing ? (
+            <Tooltip content={t("reader.revert")}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={!ready}
+                loading={revert.isPending}
+                onClick={() => confirm(t("reader.revertConfirm")) && revert.mutate()}
+                aria-label={t("reader.revert")}
+              >
+                {revert.isPending ? null : <RotateCcw />}
+              </Button>
+            </Tooltip>
+          ) : null}
+          <Tooltip content={ready ? t("reader.edit") : t("reader.busy")}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!ready || editing}
+              className={cn(editing && "bg-surface-hover text-fg")}
+              onClick={() => setEditing(true)}
+            >
+              <Pencil />
+              {t("reader.edit")}
+            </Button>
+          </Tooltip>
           <Tooltip content={t("reader.autoHighlight")}>
             <Button
               variant="ghost"
@@ -122,6 +158,8 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
             title={t(`sources.status_${s.status}`)}
             description={s.error ?? undefined}
           />
+        ) : editing ? (
+          <SourceEditor source={s} text={content.data!.text} onClose={() => setEditing(false)} />
         ) : (
           <>
             {mode !== "original" ? (
@@ -196,6 +234,8 @@ function ParsedText({
   const [sel, setSel] = useState<{ start: number; end: number; text: string; x: number; y: number } | null>(
     null,
   );
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const menuHighlight = menu ? content.highlights.find((h) => h.id === menu.id) : undefined;
 
   const v = useVirtualizer({
     count: paras.length,
@@ -223,8 +263,20 @@ function ParsedText({
     const r = selectionOffsets(container);
     if (!r || !container) {
       setSel(null);
+      // 没有选中文字时点到高亮：打开高亮菜单（改颜色、批注、删除）。
+      const mark = (e.target as HTMLElement).closest<HTMLElement>("mark[data-hid]");
+      if (mark?.dataset.hid && container) {
+        const box = container.getBoundingClientRect();
+        const rect = mark.getBoundingClientRect();
+        setMenu({
+          id: mark.dataset.hid,
+          x: e.clientX - box.left,
+          y: rect.bottom - box.top + container.scrollTop,
+        });
+      } else setMenu(null);
       return;
     }
+    setMenu(null);
     const box = container.getBoundingClientRect();
     setSel({
       ...r,
@@ -268,6 +320,16 @@ function ParsedText({
           );
         })}
       </div>
+      {menu && menuHighlight ? (
+        <HighlightMenu
+          key={menu.id}
+          sourceId={sourceId}
+          highlight={menuHighlight}
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+        />
+      ) : null}
       {sel ? (
         <SelectionToolbar
           notebookId={notebookId}

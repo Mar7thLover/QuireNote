@@ -79,6 +79,12 @@ const patch = <T>(p: string, b: unknown) => request<T>("PATCH", p, b);
 const put = <T>(p: string, b: unknown) => request<T>("PUT", p, b);
 const del = <T = { ok: boolean }>(p: string) => request<T>("DELETE", p);
 
+export interface SourceEditResult {
+  source: Source;
+  job: Job | null;
+  highlights: { kept: number; removed: number };
+}
+
 export interface RetrieveResult {
   chunk: Chunk;
   sourceTitle: string;
@@ -166,6 +172,11 @@ export const api = {
     addHighlight: (id: string, h: { start: number; end: number; color: string; note?: string }) =>
       post<SourceContent["highlights"][number]>(`/sources/${id}/highlights`, h),
     removeHighlight: (id: string, hid: string) => del(`/sources/${id}/highlights/${hid}`),
+    updateHighlight: (id: string, hid: string, changes: { color?: string; note?: string }) =>
+      patch<SourceContent["highlights"][number]>(`/sources/${id}/highlights/${hid}`, changes),
+    /** 编辑全文；返回高亮的保留 / 移除数量，后台重建索引。 */
+    editContent: (id: string, text: string) => put<SourceEditResult>(`/sources/${id}/content`, { text }),
+    revertContent: (id: string) => post<SourceEditResult>(`/sources/${id}/content/revert`),
     autoHighlight: (id: string) => post<Job>(`/sources/${id}/auto-highlight`),
   },
 

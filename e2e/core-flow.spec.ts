@@ -83,6 +83,58 @@ test.describe("引导与布局", () => {
   });
 });
 
+test.describe("阅读器：高亮与编辑资料", () => {
+  test("点击高亮可删除；编辑资料后高亮跟着文字走，可恢复原文", async ({ page, request }) => {
+    // 新建一份文本资料（API 直接创建，避免依赖拖拽选区）。
+    const nb = await (await request.post("/api/notebooks", { data: { title: "E2E 编辑资料" } })).json();
+    const src = await (
+      await request.post(`/api/notebooks/${nb.id}/sources`, {
+        data: {
+          kind: "markdown",
+          title: "学习方式",
+          text: "# 学习方式\n\n监督学习使用标签。\n\n强化学习依靠奖励。",
+        },
+      })
+    ).json();
+    await expect
+      .poll(async () => (await (await request.get(`/api/sources/${src.id}`)).json()).status)
+      .toBe("ready");
+    const text: string = (await (await request.get(`/api/sources/${src.id}/content`)).json()).text;
+    for (const q of ["监督学习使用标签", "强化学习依靠奖励"]) {
+      const start = text.indexOf(q);
+      await request.post(`/api/sources/${src.id}/highlights`, { data: { start, end: start + q.length } });
+    }
+
+    await page.goto(`/n/${nb.id}`);
+    await page.getByText("学习方式", { exact: true }).first().dblclick();
+    const marks = page.locator("mark[data-hid]");
+    await expect(marks).toHaveCount(2);
+
+    // 点击高亮 → 菜单 → 删除
+    await marks.filter({ hasText: "强化学习依靠奖励" }).click();
+    await page.getByRole("button", { name: "删除高亮" }).click();
+    await expect(marks).toHaveCount(1);
+
+    // 编辑：开头加一段，Ctrl+S 保存
+    await page.getByRole("button", { name: "编辑内容" }).click();
+    const editor = page.getByRole("textbox", { name: "编辑内容" });
+    await editor.press("Control+Home");
+    await editor.pressSequentially("导读一句。\n\n");
+    await editor.press("Control+s");
+    await expect(page.getByText("已编辑")).toBeVisible();
+    await expect(page.getByText("导读一句。")).toBeVisible({ timeout: 20_000 });
+    await expect(marks.filter({ hasText: "监督学习使用标签" })).toHaveCount(1);
+
+    // 恢复原文
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "恢复原文" }).click();
+    await expect(page.getByText("导读一句。")).toHaveCount(0, { timeout: 20_000 });
+    await expect(page.getByText("已编辑")).toHaveCount(0);
+    await expect(marks.filter({ hasText: "监督学习使用标签" })).toHaveCount(1);
+    await request.delete(`/api/notebooks/${nb.id}`);
+  });
+});
+
 test.describe("移动端 @mobile", () => {
   test("底部导航切换面板", async ({ page }) => {
     await page.goto("/");

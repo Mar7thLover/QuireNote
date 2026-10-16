@@ -11,6 +11,7 @@ import { type Chunk, newId, nowIso, type Source } from "@quirenote/core";
 import { chunkText } from "../chunking";
 import type { AppContext } from "../context";
 import { ApiError, errorMessageOf } from "../errors";
+import { originalTextPath, remapHighlights } from "../services/source-edit";
 import {
   decodeUtf8,
   fetchUrl,
@@ -175,10 +176,21 @@ export async function processSource(
   try {
     await progress(0.05, "解析中");
     let doc: ParsedDoc;
-    const existing = opts.reuseContent ? await store.contents.get(sourceId) : null;
+    const previous = await store.contents.get(sourceId);
+    const existing = opts.reuseContent ? previous : null;
     if (existing) doc = { text: existing.text, pageOffsets: existing.pageOffsets, pageCount: src.pageCount };
     else doc = await parseSource(ctx, src);
     if (!doc.text.trim()) throw new ApiError(400, "empty_text", "未能从资料中提取到文本");
+    if (!existing && previous) {
+      // 重新解析：高亮跟着文本走；手动编辑过的内容被解析结果取代，不再保留编辑前的原文。
+      await remapHighlights(ctx, sourceId, previous.text, doc.text);
+      await ctx.files.delete(originalTextPath(sourceId));
+      if (src.props.edited) {
+        const props = { ...src.props };
+        delete props.edited;
+        await store.sources.update(sourceId, { props });
+      }
+    }
 
     await store.contents.put({
       sourceId,
@@ -249,5 +261,6 @@ export async function deleteSourceCascade(ctx: AppContext, sourceId: string): Pr
   await ctx.store.contents.delete(sourceId);
   await ctx.store.highlights.deleteWhere({ refId: sourceId });
   await ctx.files.deletePrefix(sourceFileDir(sourceId));
+  await ctx.files.delete(originalTextPath(sourceId));
   await ctx.store.sources.delete(sourceId);
 }

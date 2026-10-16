@@ -17,6 +17,7 @@ import { deleteSourceCascade, sourceFile } from "../ingest/pipeline";
 import { retrieve } from "../retrieval";
 import { createNotebook, deleteNotebook, withStats } from "../services/notebooks";
 import { exportNotebook, importNotebook } from "../services/portability";
+import { editSourceText, revertSourceText } from "../services/source-edit";
 import { createFileSource, createJsonSource } from "../services/sources";
 import { download, must, readJson, readUpload } from "./util";
 
@@ -187,6 +188,35 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
     };
     await store.highlights.insert(h);
     return c.json({ id: h.id, start: h.start, end: h.end, color: h.color, note: h.note, by: h.by }, 201);
+  });
+
+  /** 编辑全文：高亮随文本移动，原文被删改的高亮会被删除；之后后台重建索引。 */
+  api.put("/sources/:id/content", async (c) => {
+    const { text } = await readJson(c, z.object({ text: z.string().max(5_000_000) }));
+    return c.json(await editSourceText(ctx, c.req.param("id"), text));
+  });
+
+  /** 恢复到第一次编辑前的原文。 */
+  api.post("/sources/:id/content/revert", async (c) =>
+    c.json(await revertSourceText(ctx, c.req.param("id"))),
+  );
+
+  api.patch("/sources/:id/highlights/:hid", async (c) => {
+    const h = must(await store.highlights.get(c.req.param("hid")), "高亮");
+    if (h.sourceId !== c.req.param("id")) throw badRequest("高亮不属于该资料");
+    const patch = await readJson(
+      c,
+      z.object({ color: z.string().min(1).optional(), note: z.string().optional() }),
+    );
+    const next = (await store.highlights.update(h.id, patch))!;
+    return c.json({
+      id: next.id,
+      start: next.start,
+      end: next.end,
+      color: next.color,
+      note: next.note,
+      by: next.by,
+    });
   });
 
   api.delete("/sources/:id/highlights/:hid", async (c) => {
