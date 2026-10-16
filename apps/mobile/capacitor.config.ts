@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// 移动端壳：打包 apps/web 的构建产物，连接用户自托管的 Quirenote 服务器（在应用内首次启动时填写地址）
+// 移动端壳：打包 apps/web 的构建产物，连接用户自托管的 QuireNote 服务器（在应用内首次启动时填写地址）
 const config: CapacitorConfig = {
   appId: "app.quirenote.notebook",
-  appName: "Quirenote",
+  appName: "QuireNote",
   webDir: "../web/dist",
   server: { androidScheme: "https" },
   plugins: {

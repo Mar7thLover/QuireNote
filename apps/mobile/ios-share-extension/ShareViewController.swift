@@ -1,4 +1,4 @@
-// Quirenote iOS 分享扩展：把系统分享菜单里的链接、文本、文件写入 App Group，再唤起主应用。
+// QuireNote iOS 分享扩展：把系统分享菜单里的链接、文本、文件写入 App Group，再唤起主应用。
 // 接入步骤见 docs/mobile.md（需要在 Xcode 中新建 Share Extension target，并把本文件替换进去）。
 import UIKit
 import UniformTypeIdentifiers

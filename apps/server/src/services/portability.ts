@@ -103,7 +103,7 @@ export async function exportNotebook(
   };
   const zip: Zippable = { "notebook.json": strToU8(JSON.stringify(data, null, 2)) };
   zip["README.md"] = strToU8(
-    `# ${notebook.title}\n\n${notebook.description}\n\n由 Quirenote 导出于 ${data.exportedAt}。\n\n- notebook.json：完整元数据（可用 POST /api/import 导入）\n- markdown/：笔记、资料全文与文本类生成物的 Markdown\n- files/：原始资料文件与生成的媒体\n`,
+    `# ${notebook.title}\n\n${notebook.description}\n\n由 QuireNote 导出于 ${data.exportedAt}。\n\n- notebook.json：完整元数据（可用 POST /api/import 导入）\n- markdown/：笔记、资料全文与文本类生成物的 Markdown\n- files/：原始资料文件与生成的媒体\n`,
   );
   data.notes.forEach((n, i) => {
     zip[`markdown/notes/${slug(n.title, i)}.md`] = strToU8(`# ${n.title}\n\n${n.markdown}\n`);
@@ -186,7 +186,7 @@ export async function importNotebook(
   } catch {
     throw badRequest("notebook.json 不是合法 JSON");
   }
-  if (parsed.format !== "quirenote-notebook") throw badRequest("不是 Quirenote 导出的 Notebook");
+  if (parsed.format !== "quirenote-notebook") throw badRequest("不是 QuireNote 导出的 Notebook");
   const { text, map } = remapIds(raw, collectIds(parsed));
   const data = JSON.parse(text) as NotebookExport;
   const { store } = ctx;
@@ -264,7 +264,7 @@ export async function restoreAll(
   }
   const meta = files["backup.json"];
   const db = files["quirenote.db"];
-  if (!meta || !db) throw badRequest("不是 Quirenote 全量备份（缺少 backup.json 或 quirenote.db）");
+  if (!meta || !db) throw badRequest("不是 QuireNote 全量备份（缺少 backup.json 或 quirenote.db）");
   try {
     if ((JSON.parse(strFromU8(meta)) as { format?: string }).format !== "quirenote-backup") throw new Error();
   } catch {

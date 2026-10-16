@@ -52,7 +52,7 @@ export interface EditorChange {
   markdown: string;
 }
 
-export function QuirenoteEditor({
+export function QuireNoteEditor({
   notebookId,
   initialDoc,
   initialMarkdown,

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Quirenote 一体化镜像：构建前端静态文件，由 Node 服务端同时提供 API 与页面。
+# QuireNote 一体化镜像：构建前端静态文件，由 Node 服务端同时提供 API 与页面。
 
 FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH

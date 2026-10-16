@@ -2,7 +2,7 @@ import type { Messages } from "./zh";
 
 // English copy: translated from zh.ts. The structure must match zh (enforced by the type checker).
 export const en: Messages = {
-  app: { name: "Quirenote", tagline: "Your AI research notebook" },
+  app: { name: "QuireNote", tagline: "Your AI research notebook" },
   common: {
     cancel: "Cancel",
     confirm: "Confirm",
@@ -28,7 +28,7 @@ export const en: Messages = {
     none: "None",
     untitled: "Untitled",
     offline: "Offline mode: you can browse and edit, and changes sync automatically once you reconnect",
-    serverDown: "Can't connect to the Quirenote server",
+    serverDown: "Can't connect to the QuireNote server",
     justNow: "Just now",
     settings: "Settings",
     import: "Import",

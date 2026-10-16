@@ -119,11 +119,11 @@ export function SettingsSection({
 
 function About() {
   return (
-    <SettingsSection title="关于 Quirenote" description="前端优先、多模型、可自托管的 AI Notebook。">
+    <SettingsSection title="关于 QuireNote" description="前端优先、多模型、可自托管的 AI Notebook。">
       <div className="space-y-2 text-[13.5px] leading-relaxed text-fg-muted">
         <p>数据保存在你自己的服务器上；API Key 在服务端加密存储，任何接口都不回传明文。</p>
         <p>
-          Quirenote = quire（书帖）+ note。源代码与文档见仓库 README。按 <kbd>Ctrl</kbd>+<kbd>/</kbd>{" "}
+          QuireNote = quire（书帖）+ note。源代码与文档见仓库 README。按 <kbd>Ctrl</kbd>+<kbd>/</kbd>{" "}
           查看全部快捷键。
         </p>
       </div>

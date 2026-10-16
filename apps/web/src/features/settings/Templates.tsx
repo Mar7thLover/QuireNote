@@ -1,4 +1,4 @@
-import { type CardTemplate, newId, type QuirenoteTheme } from "@quirenote/core";
+import { type CardTemplate, newId, type QuireNoteTheme } from "@quirenote/core";
 import {
   builtinRules,
   builtinTemplates,
@@ -32,7 +32,7 @@ export function TemplateSettings() {
 
   const doExport = () => {
     const text = exportTheme({
-      name: "我的 Quirenote 主题",
+      name: "我的 QuireNote 主题",
       author: "",
       theme: {
         mode: theme.mode,
@@ -63,7 +63,7 @@ export function TemplateSettings() {
       toast.error(`导入失败：${res.error}`);
       return;
     }
-    const th = res.theme as QuirenoteTheme;
+    const th = res.theme as QuireNoteTheme;
     setTemplates([...templates, ...th.templates]);
     setRules([...rules, ...th.rules]);
     if (th.theme) theme.set(th.theme);

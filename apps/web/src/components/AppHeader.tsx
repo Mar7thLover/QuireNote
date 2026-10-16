@@ -12,7 +12,7 @@ export function Logo({ className }: { className?: string }) {
     <Link
       to="/"
       className={cn("flex items-center gap-2 rounded-md focus-ring", className)}
-      aria-label="Quirenote"
+      aria-label="QuireNote"
     >
       <svg viewBox="0 0 32 32" className="size-6" aria-hidden>
         <defs>
@@ -25,7 +25,7 @@ export function Logo({ className }: { className?: string }) {
         <circle cx="15.5" cy="15" r="6.6" fill="none" stroke="#fff" strokeWidth="3.2" />
         <path d="M19.6 19.4l3.9 3.9" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
       </svg>
-      <span className="text-[15px] font-semibold tracking-tight">Quirenote</span>
+      <span className="text-[15px] font-semibold tracking-tight">QuireNote</span>
     </Link>
   );
 }

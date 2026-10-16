@@ -1,6 +1,6 @@
 # 移动端（Capacitor）
 
-移动端是 `apps/web` 构建产物的原生壳，界面在窄屏下自动切换为「底部导航 + 推入式详情页」。数据仍然保存在自托管的 Quirenote 服务器上：首次打开会要求填写服务器地址（例如 `https://quirenote.example.com`），之后可在「设置 → 数据管理 → 服务器地址」修改。
+移动端是 `apps/web` 构建产物的原生壳，界面在窄屏下自动切换为「底部导航 + 推入式详情页」。数据仍然保存在自托管的 QuireNote 服务器上：首次打开会要求填写服务器地址（例如 `https://quirenote.example.com`），之后可在「设置 → 数据管理 → 服务器地址」修改。
 
 服务端的 CORS 已放行 `https://localhost`（Android）和 `capacitor://localhost`（iOS）。
 
@@ -8,7 +8,7 @@
 
 | 能力 | 实现 |
 | --- | --- |
-| 分享菜单「发送到 Quirenote」 | `@capgo/capacitor-share-target`。Android 已在 `AndroidManifest.xml` 声明文本、PDF、EPUB、DOCX、图片、音视频的 SEND / SEND_MULTIPLE；iOS 需要分享扩展（见下文） |
+| 分享菜单「发送到 QuireNote」 | `@capgo/capacitor-share-target`。Android 已在 `AndroidManifest.xml` 声明文本、PDF、EPUB、DOCX、图片、音视频的 SEND / SEND_MULTIPLE；iOS 需要分享扩展（见下文） |
 | 文件选择 | WebView 原生 `<input type="file">` |
 | 录音 | WebView 中的 MediaRecorder，已声明 Android `RECORD_AUDIO` 和 iOS `NSMicrophoneUsageDescription` |
 | 返回键 | `@capacitor/app` 监听 Android 返回键 |

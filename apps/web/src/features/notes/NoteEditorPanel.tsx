@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
-import { type EditorChange, QuirenoteEditor } from "../editor/QuirenoteEditor";
+import { type EditorChange, QuireNoteEditor } from "../editor/QuireNoteEditor";
 
 export function NoteEditorPanel({ notebookId, noteId }: { notebookId: string; noteId: string }) {
   const note = useQuery({ queryKey: qk.note(noteId), queryFn: () => api.notes.get(noteId) });
@@ -132,7 +132,7 @@ function NoteEditor({ notebookId, note }: { notebookId: string; note: Note }) {
               schedule({ tags });
             }}
           />
-          <QuirenoteEditor
+          <QuireNoteEditor
             notebookId={notebookId}
             initialDoc={note.doc}
             initialMarkdown={note.markdown}

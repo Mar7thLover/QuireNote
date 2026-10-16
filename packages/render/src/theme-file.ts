@@ -1,4 +1,4 @@
-import { type CardTemplate, QuirenoteTheme, type RenderRule, type ThemeSettings } from "@quirenote/core";
+import { type CardTemplate, QuireNoteTheme, type RenderRule, type ThemeSettings } from "@quirenote/core";
 import { analyzePattern } from "./analyze";
 import { BUILTIN_TEMPLATE_PREFIX, builtinTemplates } from "./builtin/templates";
 import { hasHtmlParser, type SanitizeOptions, sanitizeCss, sanitizeHtml, serializeHtml } from "./sanitize";
@@ -25,7 +25,7 @@ export function exportTheme({
   templates = [],
   rules = [],
 }: ExportThemeInput): string {
-  const file = QuirenoteTheme.parse({
+  const file = QuireNoteTheme.parse({
     format: "quirenote-theme",
     version: 1,
     name,
@@ -58,7 +58,7 @@ export interface ImportThemeOptions extends SanitizeOptions {
 export type ImportThemeResult =
   | {
       ok: true;
-      theme: QuirenoteTheme;
+      theme: QuireNoteTheme;
       warnings: string[];
       /** 旧 id → 新 id。 */
       renamed: { templates: Record<string, string>; rules: Record<string, string> };
@@ -97,7 +97,7 @@ export function importTheme(text: string, options: ImportThemeOptions = {}): Imp
   } catch (e) {
     return fail(`不是合法的 JSON：${e instanceof Error ? e.message : String(e)}`);
   }
-  const parsed = QuirenoteTheme.safeParse(json);
+  const parsed = QuireNoteTheme.safeParse(json);
   if (!parsed.success) {
     const issues = parsed.error.issues.map(
       (i) => `${i.path.length > 0 ? i.path.join(".") : "(根)"}：${i.message}`,

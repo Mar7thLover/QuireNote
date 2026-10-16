@@ -472,7 +472,7 @@ export const ThemeSettings = z.object({
 export type ThemeSettings = z.infer<typeof ThemeSettings>;
 
 /** .quirenote-theme 文件内容。 */
-export const QuirenoteTheme = z.object({
+export const QuireNoteTheme = z.object({
   format: z.literal("quirenote-theme"),
   version: z.literal(1),
   name: z.string(),
@@ -481,7 +481,7 @@ export const QuirenoteTheme = z.object({
   templates: z.array(CardTemplate).default([]),
   rules: z.array(RenderRule).default([]),
 });
-export type QuirenoteTheme = z.infer<typeof QuirenoteTheme>;
+export type QuireNoteTheme = z.infer<typeof QuireNoteTheme>;
 
 // ───────────── Agent diff ─────────────
 /** Agent 提出的一组改动；用户确认后才落库。 */

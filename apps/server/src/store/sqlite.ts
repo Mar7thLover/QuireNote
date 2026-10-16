@@ -760,12 +760,12 @@ export class SqliteStore implements Store {
   }
 
   async restore(bytes: Uint8Array): Promise<void> {
-    // 先校验快照可以打开，并且是 Quirenote 的库。
+    // 先校验快照可以打开，并且是 QuireNote 的库。
     const probe = new Database(inMemoryImage(bytes));
     try {
       probe.prepare("SELECT COUNT(*) FROM notebooks").get();
     } catch {
-      throw new Error("快照不是有效的 Quirenote 数据库");
+      throw new Error("快照不是有效的 QuireNote 数据库");
     } finally {
       probe.close();
     }

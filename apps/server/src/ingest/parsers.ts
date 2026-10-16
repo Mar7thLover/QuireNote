@@ -225,7 +225,7 @@ function resolvePath(dir: string, href: string): string {
 }
 
 const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36 Quirenote/0.1";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36 QuireNote/0.1";
 
 async function fetchWithTimeout(
   fetchImpl: typeof fetch,

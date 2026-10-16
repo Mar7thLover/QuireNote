@@ -42,13 +42,13 @@ describe(".quirenote-theme 往返", () => {
   it("导出再导入得到相同内容且没有警告", () => {
     const text = exportTheme({
       name: "清晨",
-      author: "Quirenote",
+      author: "QuireNote",
       theme: { accent: "#0a7", radius: 8 },
       templates: [myTemplate, termTemplate],
       rules: [myRule],
     });
     const json = JSON.parse(text);
-    expect(json).toMatchObject({ format: "quirenote-theme", version: 1, name: "清晨", author: "Quirenote" });
+    expect(json).toMatchObject({ format: "quirenote-theme", version: 1, name: "清晨", author: "QuireNote" });
     expect(json.templates).toHaveLength(1); // 内置模板不导出
 
     const res = mustImport(text);

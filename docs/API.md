@@ -1,4 +1,4 @@
-# Quirenote HTTP API 契约
+# QuireNote HTTP API 契约
 
 前后端共享的接口约定。类型名均指 `@quirenote/core` 中的 zod schema。
 

@@ -1,5 +1,5 @@
 export const zh = {
-  app: { name: "Quirenote", tagline: "你的 AI 研究笔记本" },
+  app: { name: "QuireNote", tagline: "你的 AI 研究笔记本" },
   common: {
     cancel: "取消",
     confirm: "确认",
@@ -25,7 +25,7 @@ export const zh = {
     none: "无",
     untitled: "未命名",
     offline: "离线模式：可浏览和编辑，恢复连接后自动同步",
-    serverDown: "无法连接到 Quirenote 服务器",
+    serverDown: "无法连接到 QuireNote 服务器",
     justNow: "刚刚",
     settings: "设置",
     import: "导入",
