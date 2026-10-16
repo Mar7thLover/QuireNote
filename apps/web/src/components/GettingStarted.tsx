@@ -1,7 +1,7 @@
 import type { Notebook } from "@quirenote/core";
-import { Button, cn } from "@quirenote/ui";
+import { Button } from "@quirenote/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Check, X } from "lucide-react";
+import { Check, FilePlus2, MessageSquareQuote, PlugZap, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "@/i18n";
 import { useAssignments } from "@/lib/models";
@@ -25,7 +25,7 @@ export function markAsked(): void {
   } catch {}
 }
 
-/** 首页的上手引导：连接模型 → 导入资料 → 提问。全部完成或用户关闭后不再显示。 */
+/** 首页「开始使用」：连接模型 → 导入资料 → 提问，三张卡片。全部完成或关闭后不再显示。 */
 export function GettingStarted({ notebooks }: { notebooks: Notebook[] }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -38,11 +38,12 @@ export function GettingStarted({ notebooks }: { notebooks: Notebook[] }) {
   const asked = readFlag(ASKED_KEY);
   const steps = [
     {
+      icon: PlugZap,
       done: hasModel,
       title: t("onboarding.step1"),
       desc: t("onboarding.step1Desc"),
       action: (
-        <Button size="sm" variant={hasModel ? "ghost" : "primary"} asChild>
+        <Button size="sm" asChild>
           <Link to="/settings/$section" params={{ section: "models" }}>
             {t("onboarding.step1Action")}
           </Link>
@@ -50,27 +51,24 @@ export function GettingStarted({ notebooks }: { notebooks: Notebook[] }) {
       ),
     },
     {
+      icon: FilePlus2,
       done: !!withSources,
       title: t("onboarding.step2"),
       desc: t("onboarding.step2Desc"),
       action: (
-        <Button
-          size="sm"
-          variant={hasModel && !withSources ? "primary" : "ghost"}
-          onClick={() => useUi.getState().set({ newNotebookOpen: true })}
-        >
+        <Button size="sm" onClick={() => useUi.getState().set({ newNotebookOpen: true })}>
           {t("onboarding.step2Action")}
         </Button>
       ),
     },
     {
+      icon: MessageSquareQuote,
       done: asked,
       title: t("onboarding.step3"),
       desc: t("onboarding.step3Desc"),
       action: withSources ? (
         <Button
           size="sm"
-          variant={hasModel && !asked ? "primary" : "ghost"}
           onClick={() => navigate({ to: "/n/$notebookId", params: { notebookId: withSources.id } })}
         >
           {t("onboarding.step3Action")}
@@ -81,48 +79,40 @@ export function GettingStarted({ notebooks }: { notebooks: Notebook[] }) {
   if (steps.every((s) => s.done)) return null;
 
   return (
-    <section
-      aria-label={t("onboarding.title")}
-      className="relative mt-8 rounded-2xl border border-accent/30 bg-accent-soft/40 p-5 sm:p-6"
-    >
-      <button
-        type="button"
-        onClick={() => {
-          try {
-            localStorage.setItem(DISMISS_KEY, "1");
-          } catch {}
-          setDismissed(true);
-        }}
-        className="absolute top-3 right-3 flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-fg-subtle hover:bg-surface-hover hover:text-fg focus-ring"
-      >
-        <X className="size-3.5" />
-        {t("onboarding.dismiss")}
-      </button>
-      <h2 className="text-[17px] font-semibold tracking-tight">{t("onboarding.title")}</h2>
-      <p className="mt-1 text-[13.5px] text-fg-muted">{t("onboarding.desc")}</p>
-      <ol className="mt-4 grid gap-3 md:grid-cols-3">
-        {steps.map((s, i) => (
-          <li
-            key={s.title}
-            className={cn(
-              "flex flex-col gap-2 rounded-xl border bg-surface p-4",
-              s.done ? "border-border opacity-75" : "border-border-strong",
-            )}
-          >
+    <section aria-label={t("onboarding.title")} className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-[17px] font-semibold">{t("onboarding.title")}</h2>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              localStorage.setItem(DISMISS_KEY, "1");
+            } catch {}
+            setDismissed(true);
+          }}
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[13px] text-fg-subtle hover:bg-surface-hover hover:text-fg focus-ring"
+        >
+          <X className="size-3.5" />
+          {t("onboarding.dismiss")}
+        </button>
+      </div>
+      <ol className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {steps.map((s) => (
+          <li key={s.title} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
             <div className="flex items-center gap-2.5">
-              <span
-                className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold",
-                  s.done ? "bg-success text-white" : "bg-accent text-accent-fg",
-                )}
-              >
-                {s.done ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
-              </span>
-              <span className="text-[14px] font-medium">{s.title}</span>
-              {s.done ? <span className="ml-auto text-xs text-success">{t("onboarding.done")}</span> : null}
+              <s.icon className="size-[18px] shrink-0 text-fg-muted" strokeWidth={1.6} />
+              <span className="text-[15px] font-medium">{s.title}</span>
             </div>
-            <p className="flex-1 text-[12.5px] leading-relaxed text-fg-muted">{s.desc}</p>
-            {s.done ? null : <div>{s.action}</div>}
+            <p className="flex-1 text-[13.5px] leading-relaxed text-fg-subtle">{s.desc}</p>
+            {s.done ? (
+              <span className="inline-flex h-7 items-center gap-1.5 text-[13px] text-success">
+                <Check className="size-4" strokeWidth={2} />
+                {t("onboarding.done")}
+              </span>
+            ) : (
+              <div>{s.action}</div>
+            )}
           </li>
         ))}
       </ol>

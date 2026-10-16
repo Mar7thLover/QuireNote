@@ -12,19 +12,16 @@ export function PanelShell({
   className?: string;
 }) {
   return (
-    <div className={cn("flex h-full min-h-0 flex-col bg-surface text-fg", className)}>
+    <div className={cn("flex h-full min-h-0 flex-col bg-bg text-fg", className)}>
       {toolbar ? (
-        <div className="flex h-11 shrink-0 items-center gap-1 border-b border-border/70 px-2.5">
-          {toolbar}
-        </div>
+        <div className="flex h-11 shrink-0 items-center gap-1 border-b border-border px-3">{toolbar}</div>
       ) : null}
       <div className="relative min-h-0 flex-1">{children}</div>
     </div>
   );
 }
 
-/** 面板名已显示在标签页上，工具栏里只放计数等辅助信息。 */
-export function PanelTitle({ count }: { children?: ReactNode; count?: number }) {
-  if (count === undefined) return null;
-  return <span className="px-1 text-xs tabular-nums text-fg-subtle">{count} 项</span>;
+/** 面板名已显示在标签页上；工具栏不再显示条目计数（数字会分散注意力）。 */
+export function PanelTitle(_: { children?: ReactNode; count?: number }) {
+  return null;
 }

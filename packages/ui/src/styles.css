@@ -1,7 +1,7 @@
 /*
  * QuireNote 设计 tokens。
- * - 颜色全部用 OKLCH，浅色为暖纸色调，深色为墨蓝色调，两套同等精细。
- * - 主色由 --accent-h（色相）和 --accent-c（彩度）决定，用户可在外观设置里调。
+ * - 浅色：暖象牙底 + 暖灰阶 + 纯白内容面；深色：暖炭灰。边框取墨色低透明度，几乎不用阴影。
+ * - 主按钮用墨色（--ink）；点缀色由 --accent-h / --accent-c 决定（默认陶土橙），只用在少数地方。
  * - 圆角、密度由 --radius / --density 决定。
  * 使用方：在应用 CSS 中 `@import "tailwindcss"; @import "@quirenote/ui/styles.css";`
  */
@@ -9,61 +9,65 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --accent-h: 272;
-  --accent-c: 0.19;
+  /* 默认点缀色：陶土橙。用户在外观设置里可换。 */
+  --accent-h: 40;
+  --accent-c: 0.13;
   --radius: 10px;
   --density: 1;
 
-  --font-sans: "Inter Variable", "PingFang SC", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif;
-  --font-serif: "Source Serif 4 Variable", "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif;
+  --font-sans: system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", "Noto Sans SC", sans-serif;
+  --font-serif: "Source Serif 4 Variable", "Noto Serif SC", "Songti SC", Georgia, serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
 
-  --bg: oklch(0.982 0.004 85);
-  --bg-subtle: oklch(0.962 0.005 85);
-  --surface: oklch(0.997 0.002 85);
-  --surface-raised: oklch(1 0 0);
-  --surface-sunken: oklch(0.948 0.006 85);
-  --surface-hover: oklch(0.94 0.006 85);
-  --border: oklch(0.905 0.006 85);
-  --border-strong: oklch(0.83 0.008 85);
-  --fg: oklch(0.23 0.014 272);
-  --fg-muted: oklch(0.46 0.014 272);
-  --fg-subtle: oklch(0.62 0.01 272);
+  /* 暖象牙底 + 暖灰阶；内容面是纯白，边框取墨色低透明度。 */
+  --bg: #faf9f5;
+  --bg-subtle: #f5f4ed;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f0eee6;
+  --surface-hover: rgb(115 114 108 / 0.1);
+  --border: rgb(31 30 29 / 0.13);
+  --border-strong: rgb(31 30 29 / 0.26);
+  --fg: #141413;
+  --fg-muted: #4d4c48;
+  --fg-subtle: #73726c;
+  /* 主按钮：墨色底、象牙字（点缀色只用在少数地方）。 */
+  --ink: #141413;
+  --ink-hover: #30302e;
+  --ink-fg: #faf9f5;
 
-  --accent: oklch(0.53 var(--accent-c) var(--accent-h));
-  --accent-hover: oklch(0.48 var(--accent-c) var(--accent-h));
-  --accent-fg: oklch(0.99 0.005 var(--accent-h));
-  --accent-soft: oklch(0.955 calc(var(--accent-c) * 0.2) var(--accent-h));
-  --accent-soft-hover: oklch(0.925 calc(var(--accent-c) * 0.3) var(--accent-h));
-  --accent-soft-fg: oklch(0.44 calc(var(--accent-c) * 0.9) var(--accent-h));
-  --ring: oklch(0.6 var(--accent-c) var(--accent-h) / 0.45);
+  --accent: oklch(0.6 var(--accent-c) var(--accent-h));
+  --accent-hover: oklch(0.55 var(--accent-c) var(--accent-h));
+  --accent-fg: #ffffff;
+  --accent-soft: oklch(0.95 calc(var(--accent-c) * 0.25) var(--accent-h));
+  --accent-soft-hover: oklch(0.92 calc(var(--accent-c) * 0.35) var(--accent-h));
+  --accent-soft-fg: oklch(0.45 var(--accent-c) var(--accent-h));
+  --ring: oklch(0.6 var(--accent-c) var(--accent-h) / 0.4);
 
-  --danger: oklch(0.57 0.2 25);
-  --danger-soft: oklch(0.95 0.03 25);
-  --success: oklch(0.58 0.13 155);
-  --success-soft: oklch(0.95 0.035 155);
-  --warning: oklch(0.7 0.15 70);
-  --warning-soft: oklch(0.96 0.04 85);
+  --danger: #b0412b;
+  --danger-soft: #f6e4de;
+  --success: #3f6b35;
+  --success-soft: #e3eddc;
+  --warning: #8a6418;
+  --warning-soft: #f5ecd5;
 
-  /* 高亮笔 */
-  --hl-yellow: oklch(0.93 0.12 95 / 0.65);
-  --hl-green: oklch(0.9 0.1 150 / 0.55);
-  --hl-blue: oklch(0.88 0.08 240 / 0.55);
-  --hl-pink: oklch(0.88 0.09 350 / 0.55);
-  --hl-purple: oklch(0.86 0.09 300 / 0.55);
-  --hl-ai: oklch(0.9 0.08 var(--accent-h) / 0.5);
+  /* 高亮笔：低饱和、半透明，叠在文字下面不刺眼 */
+  --hl-yellow: rgb(240 205 100 / 0.42);
+  --hl-green: rgb(150 190 120 / 0.36);
+  --hl-blue: rgb(130 172 220 / 0.36);
+  --hl-pink: rgb(224 150 160 / 0.34);
+  --hl-purple: rgb(170 150 220 / 0.34);
+  --hl-ai: oklch(0.75 var(--accent-c) var(--accent-h) / 0.3);
 
-  --shadow-sm: 0 1px 2px oklch(0.3 0.02 272 / 0.06);
-  --shadow-md: 0 1px 2px oklch(0.3 0.02 272 / 0.05), 0 4px 12px -2px oklch(0.3 0.02 272 / 0.08);
-  --shadow-lg:
-    0 2px 4px oklch(0.3 0.02 272 / 0.04), 0 12px 32px -6px oklch(0.3 0.02 272 / 0.16),
-    0 0 0 1px oklch(0.3 0.02 272 / 0.05);
+  --shadow-sm: 0 0 0 0.5px rgb(31 30 29 / 0.12);
+  --shadow-md: 0 0 0 0.5px rgb(31 30 29 / 0.14), 0 2px 8px rgb(31 30 29 / 0.05);
+  --shadow-lg: 0 0 0 0.5px rgb(31 30 29 / 0.16), 0 10px 28px rgb(31 30 29 / 0.09);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  --dur-fast: 120ms;
-  --dur: 180ms;
-  --dur-slow: 280ms;
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 100ms;
+  --dur: 150ms;
+  --dur-slow: 220ms;
 
   --row: calc(2rem * var(--density));
   --gutter: calc(0.75rem * var(--density));
@@ -72,44 +76,46 @@
 }
 
 [data-theme="dark"] {
-  --bg: oklch(0.185 0.01 272);
-  --bg-subtle: oklch(0.205 0.011 272);
-  --surface: oklch(0.222 0.012 272);
-  --surface-raised: oklch(0.255 0.013 272);
-  --surface-sunken: oklch(0.17 0.009 272);
-  --surface-hover: oklch(0.275 0.013 272);
-  --border: oklch(0.3 0.012 272);
-  --border-strong: oklch(0.38 0.014 272);
-  --fg: oklch(0.94 0.006 272);
-  --fg-muted: oklch(0.74 0.012 272);
-  --fg-subtle: oklch(0.57 0.012 272);
+  --bg: #262624;
+  --bg-subtle: #1f1e1d;
+  --surface: #30302e;
+  --surface-raised: #3a3a37;
+  --surface-sunken: #1f1e1d;
+  --surface-hover: rgb(250 249 245 / 0.07);
+  --border: rgb(250 249 245 / 0.1);
+  --border-strong: rgb(250 249 245 / 0.2);
+  --fg: #ecebe4;
+  --fg-muted: #c2c0b6;
+  --fg-subtle: #9c9a92;
+  --ink: #ecebe4;
+  --ink-hover: #ffffff;
+  --ink-fg: #1f1e1d;
 
-  --accent: oklch(0.7 calc(var(--accent-c) * 0.8) var(--accent-h));
-  --accent-hover: oklch(0.76 calc(var(--accent-c) * 0.75) var(--accent-h));
-  --accent-fg: oklch(0.17 0.03 var(--accent-h));
-  --accent-soft: oklch(0.3 calc(var(--accent-c) * 0.35) var(--accent-h));
-  --accent-soft-hover: oklch(0.34 calc(var(--accent-c) * 0.4) var(--accent-h));
-  --accent-soft-fg: oklch(0.86 calc(var(--accent-c) * 0.5) var(--accent-h));
-  --ring: oklch(0.72 var(--accent-c) var(--accent-h) / 0.5);
+  --accent: oklch(0.7 var(--accent-c) var(--accent-h));
+  --accent-hover: oklch(0.75 var(--accent-c) var(--accent-h));
+  --accent-fg: #1f1e1d;
+  --accent-soft: oklch(0.32 calc(var(--accent-c) * 0.4) var(--accent-h));
+  --accent-soft-hover: oklch(0.36 calc(var(--accent-c) * 0.45) var(--accent-h));
+  --accent-soft-fg: oklch(0.85 calc(var(--accent-c) * 0.6) var(--accent-h));
+  --ring: oklch(0.72 var(--accent-c) var(--accent-h) / 0.45);
 
-  --danger: oklch(0.68 0.17 25);
-  --danger-soft: oklch(0.3 0.06 25);
-  --success: oklch(0.72 0.13 155);
-  --success-soft: oklch(0.3 0.05 155);
-  --warning: oklch(0.8 0.13 80);
-  --warning-soft: oklch(0.32 0.05 80);
+  --danger: #e58f78;
+  --danger-soft: #4a2c25;
+  --success: #9cc48c;
+  --success-soft: #2c3a28;
+  --warning: #e0b768;
+  --warning-soft: #3f3422;
 
-  --hl-yellow: oklch(0.6 0.12 95 / 0.38);
-  --hl-green: oklch(0.6 0.11 150 / 0.36);
-  --hl-blue: oklch(0.6 0.1 240 / 0.4);
-  --hl-pink: oklch(0.6 0.12 350 / 0.38);
-  --hl-purple: oklch(0.6 0.12 300 / 0.4);
-  --hl-ai: oklch(0.6 0.12 var(--accent-h) / 0.35);
+  --hl-yellow: rgb(220 180 70 / 0.3);
+  --hl-green: rgb(130 180 110 / 0.28);
+  --hl-blue: rgb(110 160 220 / 0.3);
+  --hl-pink: rgb(220 130 145 / 0.28);
+  --hl-purple: rgb(160 140 220 / 0.3);
+  --hl-ai: oklch(0.65 var(--accent-c) var(--accent-h) / 0.3);
 
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
-  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 14px -2px oklch(0 0 0 / 0.35);
-  --shadow-lg:
-    0 2px 6px oklch(0 0 0 / 0.3), 0 16px 40px -8px oklch(0 0 0 / 0.55), 0 0 0 1px oklch(1 0 0 / 0.06);
+  --shadow-sm: 0 0 0 0.5px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 0 0 0.5px rgb(250 249 245 / 0.08), 0 2px 10px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 0 0 0.5px rgb(250 249 245 / 0.1), 0 12px 32px rgb(0 0 0 / 0.45);
 
   color-scheme: dark;
 }
@@ -146,6 +152,9 @@
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-ink-fg: var(--ink-fg);
 
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
@@ -179,7 +188,6 @@
     background: var(--bg);
     color: var(--fg);
     font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

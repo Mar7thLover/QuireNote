@@ -9,7 +9,7 @@
 .prose-serif {
   font-family: var(--font-serif);
   --prose-size: 16.5px;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 .prose-sm {
   --prose-size: 14px;
@@ -28,16 +28,14 @@
 .prose h2,
 .prose h3,
 .prose h4 {
-  font-family: var(--font-sans);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.35;
   color: var(--fg);
 }
 .prose h1 {
-  font-size: 1.75em;
+  font-size: 1.7em;
   margin: 1.2em 0 0.5em;
-  letter-spacing: -0.02em;
 }
 .prose h2 {
   font-size: 1.32em;
@@ -48,13 +46,16 @@
   margin: 1.2em 0 0.4em;
 }
 .prose a {
-  color: var(--accent);
+  color: inherit;
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  text-decoration-color: var(--border-strong);
   text-underline-offset: 3px;
 }
+.prose a:hover {
+  text-decoration-color: var(--fg);
+}
 .prose strong {
-  font-weight: 650;
+  font-weight: 600;
 }
 .prose ul,
 .prose ol {
@@ -76,7 +77,7 @@
 .prose blockquote {
   margin: 0.9em 0;
   padding: 0.1em 0 0.1em 1em;
-  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-left: 2px solid var(--border-strong);
   color: var(--fg-muted);
 }
 .prose code {
@@ -134,36 +135,28 @@
   padding: 0 1px;
 }
 
-/* 引用编号徽标 */
+/* 引用编号：安静的上标数字（点缀色），悬停加底色，不跳动 */
 .cite {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.35em;
-  height: 1.35em;
-  padding: 0 0.3em;
-  margin: 0 0.1em;
-  border-radius: 999px;
+  display: inline-block;
+  min-width: 1.1em;
+  padding: 0 0.2em;
+  margin: 0 0.05em;
+  border-radius: 4px;
   font-family: var(--font-sans);
-  font-size: 0.68em;
-  font-weight: 650;
-  line-height: 1;
-  vertical-align: 0.28em;
+  font-size: 0.7em;
+  font-weight: 500;
+  line-height: 1.4;
+  vertical-align: 0.42em;
+  text-align: center;
   color: var(--accent-soft-fg);
-  background: var(--accent-soft);
+  background: transparent;
   cursor: pointer;
-  transition:
-    background-color var(--dur-fast),
-    transform var(--dur-fast);
   user-select: none;
 }
 .cite:hover {
-  background: var(--accent);
-  color: var(--accent-fg);
-  transform: translateY(-1px);
+  background: var(--accent-soft);
 }
 .cite[data-invalid] {
-  background: var(--danger-soft);
   color: var(--danger);
 }
 

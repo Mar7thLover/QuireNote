@@ -54,21 +54,27 @@ test.describe("核心流程", () => {
 });
 
 test.describe("引导与布局", () => {
-  test("首页有上手引导，设置入口带文字", async ({ page }) => {
+  test("首页有上手引导、概览卡片，侧栏里有带文字的设置", async ({ page }) => {
     await page.goto("/");
     const guide = page.getByRole("region", { name: "开始使用 QuireNote" });
     await expect(guide).toBeVisible();
     // E2E 已配置假模型、示例 Notebook 自带资料：前两步完成，第三步待做。
     await expect(guide.getByText("已完成")).toHaveCount(2);
-    await expect(page.getByRole("link", { name: "设置" })).toBeVisible();
+    // 概览卡片显示当前对话模型（E2E 接的是假模型）。
+    await expect(page.getByText("fake-chat", { exact: true })).toBeVisible();
+    // 设置在侧栏里是可展开的分组，展开后列出各分区。
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "设置" }).click();
+    await sidebar.getByRole("link", { name: "模型与服务" }).click();
+    await expect(page).toHaveURL(/\/settings\/models/);
   });
 
   test("工作区侧栏带名称、可收起，且没有多余的滚动条", async ({ page }) => {
     await page.goto("/");
     await page.getByText("人工智能简史").first().click();
-    const sidebar = page.getByRole("navigation", { name: "面板" });
+    const sidebar = page.locator("aside");
     await expect(sidebar.getByRole("button", { name: "资料" })).toContainText("资料");
-    await expect(sidebar.getByRole("link", { name: "设置" })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "设置" })).toBeVisible();
     await expect(page.locator(".dv-groupview").first()).toBeVisible();
     // dockview 的视图不应比容器大（以前主题 padding 会让整个工作区出现横竖滚动条）。
     const overflow = await page.evaluate(() =>
@@ -170,7 +176,7 @@ test.describe("阅读器：高亮与编辑资料", () => {
 test.describe("移动端 @mobile", () => {
   test("底部导航切换面板", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("人工智能简史").first().click();
+    await page.getByRole("main").getByText("人工智能简史").first().click();
     await expect(page.getByRole("navigation")).toBeVisible();
     await page.getByRole("button", { name: "资料", exact: true }).click();
     await expect(page.getByText("深度学习革命笔记")).toBeVisible();

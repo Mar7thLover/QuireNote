@@ -102,7 +102,7 @@ export function NewNotebookDialog() {
                   onClick={() => setIcon(e)}
                   className={cn(
                     "grid size-8 place-items-center rounded-md text-lg transition-colors hover:bg-surface-hover focus-ring",
-                    icon === e && "bg-accent-soft ring-1 ring-accent/40",
+                    icon === e && "bg-surface-hover ring-1 ring-border-strong",
                   )}
                   aria-label={e}
                   aria-pressed={icon === e}
@@ -120,7 +120,7 @@ export function NewNotebookDialog() {
                   type="button"
                   onClick={() => setColor(c)}
                   className={cn(
-                    "size-6 rounded-full ring-offset-2 ring-offset-surface-raised transition-transform hover:scale-110 focus-ring",
+                    "size-6 rounded-full ring-offset-2 ring-offset-surface-raised focus-ring",
                     color === c && "ring-2 ring-fg/60",
                   )}
                   style={{ background: tagColor(c) }}

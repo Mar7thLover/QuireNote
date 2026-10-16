@@ -6,27 +6,29 @@ import { cn } from "./cn";
 // ───────────── Button ─────────────
 export const buttonVariants = cva(
   [
-    "inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap font-medium",
-    "transition-[background-color,color,box-shadow,transform,opacity] duration-150 ease-out",
-    "focus-ring disabled:pointer-events-none disabled:opacity-45 active:scale-[0.97]",
+    "inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap",
+    "transition-[background-color,color,border-color,opacity] duration-100 ease-out",
+    "focus-ring disabled:pointer-events-none disabled:opacity-45",
     "[&_svg]:size-4 [&_svg]:shrink-0",
   ],
   {
     variants: {
       variant: {
-        primary: "bg-accent text-accent-fg shadow-sm hover:bg-accent-hover",
-        secondary:
-          "border border-border bg-surface text-fg shadow-sm hover:bg-surface-hover hover:border-border-strong",
+        /** 墨色主按钮：一屏通常只有一个。 */
+        primary: "bg-ink text-ink-fg hover:bg-ink-hover",
+        /** 点缀色：只给少数需要提示的动作（如发送）。 */
+        accent: "bg-accent text-accent-fg hover:bg-accent-hover",
+        secondary: "border border-border-strong/70 bg-surface text-fg hover:bg-surface-hover",
         ghost: "text-fg-muted hover:bg-surface-hover hover:text-fg",
-        soft: "bg-accent-soft text-accent-soft-fg hover:bg-accent-soft-hover",
-        danger: "bg-danger text-white shadow-sm hover:opacity-90",
-        link: "text-accent underline-offset-4 hover:underline",
+        soft: "bg-surface-hover text-fg hover:bg-surface-hover/80",
+        danger: "text-danger hover:bg-danger-soft",
+        link: "text-fg underline decoration-border-strong underline-offset-4 hover:decoration-fg",
       },
       size: {
         xs: "h-6 rounded-sm px-2 text-xs [&_svg]:size-3.5",
         sm: "h-7 rounded-md px-2.5 text-[13px]",
-        md: "h-8 rounded-md px-3 text-sm",
-        lg: "h-10 rounded-lg px-4 text-[15px]",
+        md: "h-8 rounded-lg px-3 text-sm",
+        lg: "h-9 rounded-lg px-3.5 text-[14.5px]",
         icon: "size-8 rounded-md",
         "icon-sm": "size-7 rounded-md",
         "icon-xs": "size-6 rounded-sm [&_svg]:size-3.5",
@@ -93,9 +95,9 @@ export function TypingDots({ className }: { className?: string }) {
 
 // ───────────── Inputs ─────────────
 export const inputClass = cn(
-  "w-full rounded-md border border-border bg-surface px-2.5 text-sm text-fg placeholder:text-fg-subtle",
-  "transition-[border-color,box-shadow] duration-150 hover:border-border-strong",
-  "focus:border-accent focus:outline-none focus:ring-3 focus:ring-ring/40 disabled:opacity-50",
+  "w-full rounded-lg border border-border-strong/70 bg-surface px-2.5 text-sm text-fg placeholder:text-fg-subtle",
+  "transition-[border-color,box-shadow] duration-100 hover:border-border-strong",
+  "focus:border-fg-subtle focus:outline-none focus:ring-3 focus:ring-ring/25 disabled:opacity-50",
 );
 
 export const Input = forwardRef<HTMLInputElement, ComponentProps<"input">>(function Input(
@@ -144,8 +146,8 @@ export function Kbd({ children, className }: { children: ReactNode; className?: 
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-border border-b-2 bg-surface px-1",
-        "font-sans text-[11px] font-medium text-fg-subtle",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-border bg-surface px-1",
+        "font-sans text-[11px] text-fg-subtle",
         className,
       )}
     >
@@ -175,7 +177,7 @@ export function Shortcut({ keys, className }: { keys: string; className?: string
 }
 
 export const badgeVariants = cva(
-  "inline-flex items-center gap-1 whitespace-nowrap rounded-full font-medium [&_svg]:size-3",
+  "inline-flex items-center gap-1 whitespace-nowrap rounded-md [&_svg]:size-3",
   {
     variants: {
       tone: {
@@ -186,7 +188,7 @@ export const badgeVariants = cva(
         danger: "bg-danger-soft text-danger",
         outline: "border border-border text-fg-muted",
       },
-      size: { sm: "h-5 px-2 text-[11px]", md: "h-6 px-2.5 text-xs" },
+      size: { sm: "h-5 px-1.5 text-[11.5px]", md: "h-6 px-2 text-[12.5px]" },
     },
     defaultVariants: { tone: "neutral", size: "sm" },
   },

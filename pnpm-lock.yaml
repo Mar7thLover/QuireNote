@@ -124,14 +124,14 @@ importers:
       '@dagrejs/dagre':
         specifier: ^3.1.1
         version: 3.1.1
-      '@fontsource-variable/inter':
-        specifier: ^5.3.0
-        version: 5.3.0
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.3.0
         version: 5.3.0
       '@fontsource-variable/source-serif-4':
         specifier: ^5.3.1
+        version: 5.3.1
+      '@fontsource/noto-serif-sc':
+        specifier: 5.3.1
         version: 5.3.1
       '@quirenote/core':
         specifier: workspace:*
@@ -808,14 +808,14 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@fontsource-variable/inter@5.3.0':
-    resolution: {integrity: sha512-OupL48va4JNofb97w6NYeF9S7W/kHNKM0Er8Dem5nqi4jeOLrVJDoE8tZEpnMJmtkvNbB1EIPPwHcdkF6b1oUA==}
-
   '@fontsource-variable/jetbrains-mono@5.3.0':
     resolution: {integrity: sha512-F32xpS2NsGYoQi2ADSkKTgpJj7ozajsGgDJ8woTnqjmIB+dxDIqImjl4pXZVEExu8UFZ2ndhmX18EBS/hdz3Lw==}
 
   '@fontsource-variable/source-serif-4@5.3.1':
     resolution: {integrity: sha512-4Rtay22SC4lMvw11r/+9kxANB6P3M0X8s1NudBC2v0J1KU2y3DcMoNcT3lBoZ/CqLirzf+StlO6UlJilyrvaUg==}
+
+  '@fontsource/noto-serif-sc@5.3.1':
+    resolution: {integrity: sha512-nIK2HyNGcUi2TGwIfrk2MItkh0O3Y5+TI8iPfPSzoNY6uyXYfQ9qqch8czk3aa1VhV4EU52uwCYCe1UDKJELpg==}
 
   '@hono/node-server@2.1.5':
     resolution: {integrity: sha512-MgP/I06GdvsilDspMk/qmRzpk8LOUStP6jFAbSRi40W09DhoyUn+Mj7eyKICPqeYKybOjVFLVIAQzvu1bfIa7Q==}
@@ -4591,11 +4591,11 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@fontsource-variable/inter@5.3.0': {}
-
   '@fontsource-variable/jetbrains-mono@5.3.0': {}
 
   '@fontsource-variable/source-serif-4@5.3.1': {}
+
+  '@fontsource/noto-serif-sc@5.3.1': {}
 
   '@hono/node-server@2.1.5(hono@4.13.13)':
     dependencies:

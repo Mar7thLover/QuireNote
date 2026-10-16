@@ -27,7 +27,6 @@ import { useWorkspace } from "@/stores/workspace";
 const GROUPS = ["text", "learn", "visual", "media"] as const;
 
 /** 每类生成物的卡片色调，让入口一眼可辨。 */
-const HUE: Record<string, number> = { text: 272, learn: 152, visual: 30, media: 340 };
 
 export function StudioPanel({ notebookId }: { notebookId: string }) {
   const { t } = useTranslation();
@@ -52,7 +51,7 @@ export function StudioPanel({ notebookId }: { notebookId: string }) {
                 {(Object.keys(ARTIFACT_KIND_META) as ArtifactKind[])
                   .filter((k) => ARTIFACT_KIND_META[k].group === g)
                   .map((k) => (
-                    <GenerateTile key={k} kind={k} notebookId={notebookId} hue={HUE[g]!} />
+                    <GenerateTile key={k} kind={k} notebookId={notebookId} />
                   ))}
               </div>
             </section>
@@ -77,7 +76,7 @@ export function StudioPanel({ notebookId }: { notebookId: string }) {
   );
 }
 
-function GenerateTile({ kind, notebookId, hue }: { kind: ArtifactKind; notebookId: string; hue: number }) {
+function GenerateTile({ kind, notebookId }: { kind: ArtifactKind; notebookId: string }) {
   const { t } = useTranslation();
   const meta = ARTIFACT_KIND_META[kind];
   const sourceIds = useSelectedSourceIds(notebookId);
@@ -98,15 +97,10 @@ function GenerateTile({ kind, notebookId, hue }: { kind: ArtifactKind; notebookI
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="group flex h-[52px] items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-left transition-[border-color,box-shadow,transform] hover:-translate-y-px hover:border-border-strong hover:shadow-sm focus-ring data-[state=open]:border-accent"
+          className="flex h-11 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 text-left transition-colors hover:border-border-strong focus-ring data-[state=open]:border-border-strong"
         >
-          <span
-            className="grid size-7 shrink-0 place-items-center rounded-md transition-transform group-hover:scale-105"
-            style={{ background: `oklch(0.94 0.04 ${hue} / 0.9)`, color: `oklch(0.48 0.13 ${hue})` }}
-          >
-            <Icon name={meta.icon} className="size-4" />
-          </span>
-          <span className="truncate text-[13px] font-medium">{meta.label}</span>
+          <Icon name={meta.icon} className="size-[17px] shrink-0 text-fg-muted" />
+          <span className="truncate text-[13.5px]">{meta.label}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80">

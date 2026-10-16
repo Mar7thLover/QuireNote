@@ -1,17 +1,8 @@
 import { cn } from "@quirenote/ui";
 import { Link } from "@tanstack/react-router";
-import {
-  Brain,
-  Database,
-  Info,
-  Keyboard,
-  LayoutTemplate,
-  type LucideIcon,
-  Palette,
-  Regex,
-} from "lucide-react";
 import { lazy, Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { AppShell, SETTINGS_SECTIONS } from "@/components/AppSidebar";
 import { PanelFallback } from "@/features/panels";
 import { useTranslation } from "@/i18n";
 
@@ -34,16 +25,6 @@ const ShortcutSettings = lazy(() =>
   import("@/features/settings/Shortcuts").then((m) => ({ default: m.ShortcutSettings })),
 );
 
-const SECTIONS: { id: string; icon: LucideIcon }[] = [
-  { id: "models", icon: Brain },
-  { id: "appearance", icon: Palette },
-  { id: "templates", icon: LayoutTemplate },
-  { id: "rules", icon: Regex },
-  { id: "data", icon: Database },
-  { id: "shortcuts", icon: Keyboard },
-  { id: "about", icon: Info },
-];
-
 export function SettingsPage({ section }: { section: string }) {
   const { t } = useTranslation();
   const Body =
@@ -57,38 +38,37 @@ export function SettingsPage({ section }: { section: string }) {
       about: About,
     }[section] ?? ModelSettings;
   return (
-    <div className="flex h-full flex-col">
-      <AppHeader />
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <nav
-          className="flex shrink-0 gap-0.5 overflow-x-auto px-3 pb-2 md:w-56 md:flex-col md:px-3 md:pt-4"
-          aria-label={t("settings.title")}
-        >
-          <h1 className="hidden px-2.5 pb-3 text-lg font-semibold md:block">{t("settings.title")}</h1>
-          {SECTIONS.map((s) => (
+    <AppShell>
+      <div className="md:hidden">
+        <AppHeader />
+        {/* 窄屏没有侧栏：分区导航横排 */}
+        <nav className="flex gap-0.5 overflow-x-auto px-3 pb-2" aria-label={t("settings.title")}>
+          {SETTINGS_SECTIONS.map((s) => (
             <Link
               key={s.id}
               to="/settings/$section"
               params={{ section: s.id }}
               className={cn(
-                "flex h-8 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg focus-ring",
+                "flex h-8 shrink-0 items-center rounded-md px-2.5 text-[13.5px] text-fg-muted hover:bg-surface-hover focus-ring",
                 section === s.id && "bg-surface-hover font-medium text-fg",
               )}
             >
-              <s.icon className="size-4" />
               {t(`settings.${s.id}`)}
             </Link>
           ))}
         </nav>
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-4xl px-5 pt-4 pb-24 md:px-10 md:pt-8">
-            <Suspense fallback={<PanelFallback />}>
-              <Body />
-            </Suspense>
-          </div>
-        </main>
       </div>
-    </div>
+      <main className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[880px] px-5 pt-6 pb-24 sm:px-10 sm:pt-12">
+          <h1 className="mb-8 font-serif text-[30px] leading-tight font-normal">
+            {t(`settings.${section}`)}
+          </h1>
+          <Suspense fallback={<PanelFallback />}>
+            <Body />
+          </Suspense>
+        </div>
+      </main>
+    </AppShell>
   );
 }
 
@@ -107,8 +87,8 @@ export function SettingsSection({
     <section className="mb-10">
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
-          {description ? <p className="mt-1 text-[13px] text-fg-muted">{description}</p> : null}
+          <h2 className="text-[17px] font-semibold">{title}</h2>
+          {description ? <p className="mt-1 text-[13.5px] text-fg-subtle">{description}</p> : null}
         </div>
         {action}
       </div>

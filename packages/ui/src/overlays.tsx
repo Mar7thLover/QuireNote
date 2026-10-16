@@ -17,8 +17,7 @@ import { cn } from "./cn";
 import { Shortcut } from "./primitives";
 
 const popoverSurface = cn(
-  "z-50 rounded-lg border border-border bg-surface-raised text-fg shadow-lg",
-  "data-[state=open]:animate-pop",
+  "z-50 rounded-lg bg-surface-raised text-fg shadow-lg",
   "origin-[var(--radix-popper-transform-origin)]",
 );
 
@@ -82,11 +81,11 @@ export function DialogContent({
 }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[oklch(0.2_0.02_272/0.32)] backdrop-blur-[2px] data-[state=open]:animate-fade" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[rgb(20_20_19/0.28)]" />
       <DialogPrimitive.Content
         className={cn(
           "fixed left-1/2 top-[12vh] z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2",
-          "rounded-xl border border-border bg-surface-raised shadow-lg data-[state=open]:animate-pop",
+          "rounded-xl bg-surface-raised shadow-lg",
           "max-h-[80vh] overflow-auto focus:outline-none",
           className,
         )}
@@ -96,7 +95,9 @@ export function DialogContent({
         {title ? (
           <div className="flex items-start justify-between gap-4 px-5 pt-4 pb-2">
             <div className="space-y-1">
-              <DialogPrimitive.Title className="text-[15px] font-semibold">{title}</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="font-serif text-[19px] font-medium">
+                {title}
+              </DialogPrimitive.Title>
               {description ? (
                 <DialogPrimitive.Description className="text-[13px] text-fg-muted">
                   {description}
@@ -144,7 +145,7 @@ export function Sheet({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[oklch(0.2_0.02_272/0.32)] data-[state=open]:animate-fade" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[rgb(20_20_19/0.28)]" />
         <DialogPrimitive.Content
           className={cn(
             "fixed z-50 flex flex-col border-border bg-surface-raised shadow-lg focus:outline-none",
@@ -366,7 +367,7 @@ export function Switch({ className, ...props }: ComponentProps<typeof SwitchPrim
     <SwitchPrimitive.Root
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-border-strong transition-colors",
-        "data-[state=checked]:bg-accent focus-ring disabled:opacity-50",
+        "data-[state=checked]:bg-ink focus-ring disabled:opacity-50",
         className,
       )}
       {...props}
@@ -381,8 +382,8 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
     <CheckboxPrimitive.Root
       className={cn(
         "grid size-4 shrink-0 place-items-center rounded-[4px] border border-border-strong bg-surface transition-colors",
-        "data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=checked]:text-accent-fg",
-        "data-[state=indeterminate]:border-accent data-[state=indeterminate]:bg-accent data-[state=indeterminate]:text-accent-fg",
+        "data-[state=checked]:border-ink data-[state=checked]:bg-ink data-[state=checked]:text-ink-fg",
+        "data-[state=indeterminate]:border-ink data-[state=indeterminate]:bg-ink data-[state=indeterminate]:text-ink-fg",
         "focus-ring",
         className,
       )}

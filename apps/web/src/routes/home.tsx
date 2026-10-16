@@ -12,35 +12,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
-  Input,
-  listItem,
-  Shortcut,
   Skeleton,
   tagColor,
   toast,
 } from "@quirenote/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  BookOpen,
-  Download,
-  FileText,
-  MoreHorizontal,
-  NotebookPen,
-  Pin,
-  PinOff,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-} from "lucide-react";
-import { motion } from "motion/react";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { Download, MoreHorizontal, NotebookPen, Pin, PinOff, Plus, Trash2, Upload } from "lucide-react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { AppShell } from "@/components/AppSidebar";
 import { GettingStarted } from "@/components/GettingStarted";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { greetingKey, relativeTime } from "@/lib/format";
+import { describeModel, useAssignments, useProviders } from "@/lib/models";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { useUi } from "@/stores/ui";
 
@@ -48,7 +34,6 @@ export function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const openNew = () => useUi.getState().set({ newNotebookOpen: true });
-  const [q, setQ] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const notebooks = useQuery({ queryKey: qk.notebooks, queryFn: api.notebooks.list });
 
@@ -60,39 +45,32 @@ export function HomePage() {
     },
   });
 
-  const { pinned, rest } = useMemo(() => {
-    const list = (notebooks.data ?? [])
-      .filter((n) => !q || `${n.title} ${n.description}`.toLowerCase().includes(q.toLowerCase()))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    return { pinned: list.filter((n) => n.pinned), rest: list.filter((n) => !n.pinned) };
-  }, [notebooks.data, q]);
+  const list = useMemo(
+    () =>
+      [...(notebooks.data ?? [])].sort(
+        (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt),
+      ),
+    [notebooks.data],
+  );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <AppHeader />
+    <AppShell>
+      <div className="md:hidden">
+        <AppHeader />
+      </div>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-5 pt-10 pb-24 sm:px-8 sm:pt-16">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <h1 className="font-serif text-[32px] font-semibold tracking-tight text-fg sm:text-[40px]">
+        <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-10 px-5 pt-8 pb-16 sm:px-10 sm:pt-12">
+          <header className="flex flex-wrap items-center gap-3">
+            <h1 className="mr-auto font-serif text-[30px] leading-tight font-normal">
               {t(`home.${greetingKey()}`)}
             </h1>
-            <p className="mt-2 text-[15px] text-fg-muted">{t("home.subtitle")}</p>
-          </motion.div>
-
-          {notebooks.data ? <GettingStarted notebooks={notebooks.data} /> : null}
-
-          <div className="mt-8 flex flex-wrap items-center gap-2">
-            <Button variant="primary" size="lg" onClick={openNew}>
-              <Plus />
-              {t("home.newNotebook")}
-            </Button>
             <Button size="lg" onClick={() => fileRef.current?.click()} loading={importNb.isPending}>
               <Upload />
               {t("home.importNotebook")}
+            </Button>
+            <Button size="lg" variant="primary" onClick={openNew}>
+              <Plus />
+              {t("home.newNotebook")}
             </Button>
             <input
               ref={fileRef}
@@ -105,85 +83,174 @@ export function HomePage() {
                 e.target.value = "";
               }}
             />
-            <div className="relative ml-auto w-full sm:w-64">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-fg-subtle" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("home.searchPlaceholder")}
-                className="h-10 pl-8"
-                aria-label={t("home.searchPlaceholder")}
-              />
-            </div>
-          </div>
+          </header>
 
-          {notebooks.isLoading ? (
-            <Grid label={t("home.recent")}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-44 rounded-xl border border-border bg-surface p-5">
-                  <Skeleton className="size-10 rounded-lg" />
-                  <Skeleton className="mt-5 h-5 w-2/3" />
-                  <Skeleton className="mt-3 h-3.5 w-full" />
-                  <Skeleton className="mt-2 h-3.5 w-1/2" />
-                </div>
-              ))}
-            </Grid>
-          ) : notebooks.data?.length === 0 ? (
-            <EmptyState
-              className="mt-16"
-              icon={<NotebookPen />}
-              title={t("home.empty")}
-              description={t("home.emptyDesc")}
-              action={
-                <Button variant="primary" onClick={openNew}>
-                  <Plus />
-                  {t("home.newNotebook")}
-                </Button>
-              }
-            />
-          ) : (
-            <>
-              {pinned.length > 0 ? (
-                <Grid label={t("home.pinned")}>
-                  {pinned.map((n, i) => (
-                    <NotebookCard key={n.id} nb={n} index={i} />
-                  ))}
-                </Grid>
-              ) : null}
-              <Grid label={t("home.recent")}>
-                {rest.map((n, i) => (
-                  <NotebookCard key={n.id} nb={n} index={i + pinned.length} />
+          {notebooks.data ? <Overview notebooks={notebooks.data} /> : null}
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[17px] font-semibold">{t("home.notebooks")}</h2>
+            {notebooks.isLoading ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-44 rounded-xl" />
                 ))}
-                <button
-                  type="button"
-                  onClick={openNew}
-                  className="group flex h-44 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong text-fg-subtle transition-colors hover:border-accent hover:bg-accent-soft/40 hover:text-accent-soft-fg focus-ring"
-                >
-                  <Plus className="size-5 transition-transform group-hover:scale-110" />
-                  <span className="text-sm font-medium">{t("home.newNotebook")}</span>
-                </button>
-              </Grid>
-            </>
-          )}
-          <p className="mt-10 flex items-center justify-center gap-1.5 text-xs text-fg-subtle">
-            <Shortcut keys="Mod+K" /> 打开命令面板
-          </p>
+              </div>
+            ) : list.length === 0 ? (
+              <EmptyState
+                className="rounded-xl border border-border bg-surface"
+                icon={<NotebookPen />}
+                title={t("home.empty")}
+                description={t("home.emptyDesc")}
+                action={
+                  <Button variant="primary" onClick={openNew}>
+                    <Plus />
+                    {t("home.newNotebook")}
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((n) => (
+                  <NotebookCard key={n.id} nb={n} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {notebooks.data ? <GettingStarted notebooks={notebooks.data} /> : null}
+
+          <footer className="flex flex-wrap justify-center gap-x-5 gap-y-2 pt-4 text-[13px] text-fg-subtle">
+            <button
+              type="button"
+              onClick={() => useUi.getState().set({ shortcutsOpen: true })}
+              className="underline decoration-border-strong underline-offset-4 hover:text-fg"
+            >
+              {t("home.shortcuts")}
+            </button>
+            <Link
+              to="/settings/$section"
+              params={{ section: "data" }}
+              className="underline decoration-border-strong underline-offset-4 hover:text-fg"
+            >
+              {t("home.backup")}
+            </Link>
+            <Link
+              to="/settings/$section"
+              params={{ section: "about" }}
+              className="underline decoration-border-strong underline-offset-4 hover:text-fg"
+            >
+              {t("home.about")}
+            </Link>
+          </footer>
         </div>
       </main>
+    </AppShell>
+  );
+}
+
+function StatCard({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-[132px] flex-col gap-2 rounded-xl border border-border bg-surface p-5">
+      <span className="text-[14px] text-fg-muted">{label}</span>
+      {children}
     </div>
   );
 }
 
-function Grid({ label, children }: { label: string; children: ReactNode }) {
+/** 顶部三张概览卡：对话模型、待复习、资料库。只放真实、可行动的数据。 */
+function Overview({ notebooks }: { notebooks: Notebook[] }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const assignments = useAssignments();
+  const providers = useProviders();
+  const chat = assignments.data?.find((a) => a.capability === "chat");
+  const model = chat ? describeModel(providers.data, chat) : null;
+  const stats = useQueries({
+    queries: notebooks.map((n) => ({
+      queryKey: ["review-stats", n.id],
+      queryFn: () => api.review.stats(n.id),
+    })),
+  });
+  const due = stats.reduce((s, q) => s + (q.data?.due ?? 0), 0);
+  const total = stats.reduce((s, q) => s + (q.data?.total ?? 0), 0);
+  const mostDue = notebooks
+    .map((n, i) => ({ n, due: stats[i]?.data?.due ?? 0 }))
+    .sort((a, b) => b.due - a.due)[0];
+  const sources = notebooks.reduce((s, n) => s + (n.stats?.sources ?? 0), 0);
+  const notes = notebooks.reduce((s, n) => s + (n.stats?.notes ?? 0), 0);
+
   return (
-    <section className="mt-10">
-      <h2 className="mb-3 text-[13px] font-medium text-fg-subtle">{label}</h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-    </section>
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <StatCard label={t("home.chatModel")}>
+        {assignments.isLoading ? (
+          <Skeleton className="h-8 w-40" />
+        ) : model ? (
+          <>
+            <div className="flex items-start gap-3">
+              <span className="min-w-0 flex-1 truncate text-[22px] font-semibold tracking-tight">
+                {model.model}
+              </span>
+              <Button size="sm" asChild>
+                <Link to="/settings/$section" params={{ section: "models" }}>
+                  {t("home.change")}
+                </Link>
+              </Button>
+            </div>
+            <span className="truncate text-[13.5px] text-fg-subtle">{model.provider}</span>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-3">
+              <span className="flex-1 text-[22px] font-semibold tracking-tight text-fg-subtle">
+                {t("home.noModel")}
+              </span>
+              <Button size="sm" variant="primary" asChild>
+                <Link to="/settings/$section" params={{ section: "models" }}>
+                  {t("home.setUp")}
+                </Link>
+              </Button>
+            </div>
+            <span className="text-[13.5px] text-fg-subtle">{t("home.noModelHint")}</span>
+          </>
+        )}
+      </StatCard>
+      <StatCard label={t("home.due")}>
+        <div className="flex items-start gap-3">
+          <span className="flex-1 text-[30px] leading-none font-semibold tracking-tight tabular-nums">
+            {due}
+          </span>
+          {due > 0 && mostDue ? (
+            <Button
+              size="sm"
+              onClick={() =>
+                navigate({
+                  to: "/n/$notebookId",
+                  params: { notebookId: mostDue.n.id },
+                  search: { panel: "review" },
+                })
+              }
+            >
+              {t("home.review")}
+            </Button>
+          ) : null}
+        </div>
+        <span className="text-[13.5px] text-fg-subtle">
+          {total ? t("home.dueHint", { total }) : t("home.dueNone")}
+        </span>
+      </StatCard>
+      <StatCard label={t("home.library")}>
+        <span className="text-[30px] leading-none font-semibold tracking-tight tabular-nums">
+          {t("home.sources", { count: sources })}
+        </span>
+        <span className="text-[13.5px] text-fg-subtle">
+          {t("home.libraryHint", { notes, notebooks: notebooks.length })}
+        </span>
+      </StatCard>
+    </div>
   );
 }
 
-function NotebookCard({ nb, index }: { nb: Notebook; index: number }) {
+function NotebookCard({ nb }: { nb: Notebook }) {
   const { t } = useTranslation();
   const color = tagColor(nb.color);
 
@@ -224,67 +291,56 @@ function NotebookCard({ nb, index }: { nb: Notebook; index: number }) {
   );
 
   return (
-    <motion.div {...listItem(index)}>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <Link
-            to="/n/$notebookId"
-            params={{ notebookId: nb.id }}
-            className="group relative flex min-h-44 flex-col overflow-hidden rounded-xl border border-border bg-surface p-5 shadow-sm transition-[box-shadow,transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-ring"
-          >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full opacity-[0.14] blur-2xl transition-opacity group-hover:opacity-25"
-              style={{ background: color }}
-            />
-            <div className="flex items-start justify-between">
-              <div
-                className="grid size-10 place-items-center rounded-lg text-xl"
-                style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
-              >
-                {nb.icon}
-              </div>
-              <div className="flex items-center gap-1">
-                {nb.pinned ? <Pin className="size-3.5 text-fg-subtle" /> : null}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100"
-                      onClick={(e) => e.preventDefault()}
-                      aria-label={t("common.more")}
-                    >
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    {menu(DropdownMenuItem, DropdownMenuSeparator)}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Link
+          to="/n/$notebookId"
+          params={{ notebookId: nb.id }}
+          className="group flex min-h-44 flex-col overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-border-strong focus-ring"
+        >
+          {/* 色带取 Notebook 自己的颜色，低饱和，只做区分 */}
+          <div
+            aria-hidden
+            className="h-14 shrink-0"
+            style={{ background: `color-mix(in srgb, ${color} 22%, var(--surface-sunken))` }}
+          />
+          <div className="flex flex-1 flex-col gap-1.5 p-4">
+            <div className="flex items-start gap-2">
+              <h3 className="min-w-0 flex-1 truncate text-[15.5px] font-medium">{nb.title}</h3>
+              {nb.pinned ? <Pin className="mt-1 size-3.5 shrink-0 text-fg-subtle" /> : null}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="-mt-0.5 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 focus-visible:opacity-100"
+                    onClick={(e) => e.preventDefault()}
+                    aria-label={t("common.more")}
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                  {menu(DropdownMenuItem, DropdownMenuSeparator)}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <h3 className="mt-4 truncate py-0.5 text-[16px] leading-normal font-semibold tracking-tight text-fg">
-              {nb.title}
-            </h3>
-            <p className="mt-0.5 line-clamp-2 min-h-[2lh] text-[13px] leading-relaxed text-fg-muted">
-              {nb.description || " "}
-            </p>
-            <div className="mt-auto flex items-center gap-3 pt-3 text-xs text-fg-subtle">
-              <span className="inline-flex items-center gap-1">
-                <BookOpen className="size-3.5" />
+            {nb.description ? (
+              <p className="line-clamp-2 text-[13.5px] leading-relaxed text-fg-subtle">{nb.description}</p>
+            ) : null}
+            <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-2">
+              <span className="rounded-md bg-surface-sunken px-2 py-0.5 text-[12.5px] text-fg-muted">
                 {t("home.sources", { count: nb.stats?.sources ?? 0 })}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <FileText className="size-3.5" />
+              <span className="rounded-md bg-surface-sunken px-2 py-0.5 text-[12.5px] text-fg-muted">
                 {t("home.notes", { count: nb.stats?.notes ?? 0 })}
               </span>
-              <span className="ml-auto">{relativeTime(nb.updatedAt)}</span>
+              <span className="ml-auto text-[12.5px] text-fg-subtle">{relativeTime(nb.updatedAt)}</span>
             </div>
-          </Link>
-        </ContextMenuTrigger>
-        <ContextMenuContent>{menu(ContextMenuItem, ContextMenuSeparator)}</ContextMenuContent>
-      </ContextMenu>
-    </motion.div>
+          </div>
+        </Link>
+      </ContextMenuTrigger>
+      <ContextMenuContent>{menu(ContextMenuItem, ContextMenuSeparator)}</ContextMenuContent>
+    </ContextMenu>
   );
 }

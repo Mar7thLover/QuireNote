@@ -58,12 +58,13 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
 
   return (
     <PanelShell
+      className="bg-surface"
       toolbar={
         <>
           <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
-            <span className="truncate text-[13px] font-semibold">{s?.title ?? "…"}</span>
+            <span className="truncate text-[13px] text-fg-muted">{s?.title ?? "…"}</span>
             {s ? <Badge>{SOURCE_KIND_META[s.kind].label}</Badge> : null}
-            {s?.props.edited ? <Badge tone="accent">{t("reader.edited")}</Badge> : null}
+            {s?.props.edited ? <Badge>{t("reader.edited")}</Badge> : null}
             {s?.url ? (
               <a
                 href={s.url}
@@ -117,17 +118,10 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
               {t("reader.edit")}
             </Button>
           </Tooltip>
-          <Tooltip content={t("reader.autoHighlight")}>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => auto.mutate()}
-              loading={auto.isPending}
-              aria-label={t("reader.autoHighlight")}
-            >
-              {auto.isPending ? null : <Sparkles />}
-            </Button>
-          </Tooltip>
+          <Button variant="ghost" size="sm" onClick={() => auto.mutate()} loading={auto.isPending}>
+            {auto.isPending ? null : <Sparkles />}
+            {t("reader.autoHighlight")}
+          </Button>
           <Tooltip content={t("reader.highlightsList")}>
             <Button
               variant="ghost"
@@ -304,7 +298,7 @@ function ParsedText({
       className={cn("relative min-w-0 flex-1 overflow-y-auto", className)}
       onMouseUp={onMouseUp}
     >
-      <div className="relative mx-auto max-w-[44rem] px-8 py-8" style={{ height: v.getTotalSize() + 64 }}>
+      <div className="relative mx-auto max-w-[40rem] px-8 py-8" style={{ height: v.getTotalSize() + 64 }}>
         {v.getVirtualItems().map((row) => {
           const p = paras[row.index]!;
           return (
@@ -362,11 +356,12 @@ function Paragraph({
         data-source={sourceId}
         className={cn(
           "font-serif text-fg",
-          para.heading === 1 && "mt-2 mb-3 font-sans text-[26px] font-semibold tracking-tight",
-          para.heading === 2 && "mt-6 mb-2 font-sans text-[19px] font-semibold",
-          para.heading && para.heading >= 3 && "mt-4 mb-1.5 font-sans text-[16px] font-semibold",
-          !para.heading && "mb-3.5 text-[16.5px] leading-[1.85]",
-          !para.text.trim() && "h-2",
+          para.heading === 1 && "mt-4 mb-5 text-[30px] leading-tight font-medium",
+          para.heading === 2 && "mt-8 mb-3 text-[21px] leading-snug font-medium",
+          para.heading && para.heading >= 3 && "mt-6 mb-2 text-[17.5px] font-medium",
+          !para.heading && para.text.trim() && "mb-4 text-[17px] leading-[1.9]",
+          // 空行只占一点高度：段落本身已有下边距。
+          !para.text.trim() && "h-1",
         )}
       >
         {segs.map((s, i) =>

@@ -285,7 +285,7 @@ function MarkButton({
     <Button
       variant="ghost"
       size="icon-sm"
-      className={cn(active && "bg-accent-soft text-accent-soft-fg")}
+      className={cn(active && "bg-surface-hover text-fg")}
       onClick={() => editor.chain().focus().toggleMark(mark).run()}
       aria-label={label ?? mark}
       aria-pressed={active}

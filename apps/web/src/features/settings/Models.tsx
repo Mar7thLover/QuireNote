@@ -98,18 +98,6 @@ export function ModelSettings() {
   );
 }
 
-function ProviderGlyph({ kind }: { kind: string }) {
-  const hue = [...kind].reduce((a, c) => a + c.charCodeAt(0) * 7, 0) % 360;
-  return (
-    <span
-      className="grid size-9 shrink-0 place-items-center rounded-lg text-[13px] font-bold uppercase"
-      style={{ background: `oklch(0.93 0.04 ${hue})`, color: `oklch(0.45 0.12 ${hue})` }}
-    >
-      {kind.slice(0, 2)}
-    </span>
-  );
-}
-
 function useUpdateProvider(id: string, onDone?: () => void) {
   return useMutation({
     mutationFn: (patch: Parameters<typeof api.providers.update>[1]) => api.providers.update(id, patch),
@@ -135,7 +123,6 @@ function ProviderRow({ p, entry }: { p: ProviderConfig; entry?: ProviderCatalogE
   return (
     <div className="rounded-xl border border-border bg-surface">
       <div className="flex flex-wrap items-center gap-3 p-3.5">
-        <ProviderGlyph kind={p.kind} />
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 text-sm font-medium">
             <span className="truncate">{p.name}</span>
@@ -374,7 +361,7 @@ function CapToggles({
             className={cn(
               "rounded-md border px-1.5 py-0.5 text-[11.5px] transition-colors focus-ring",
               on
-                ? "border-accent/50 bg-accent-soft text-accent-soft-fg"
+                ? "border-border-strong bg-surface-sunken text-fg"
                 : "border-border text-fg-subtle hover:bg-surface-hover hover:text-fg",
             )}
           >
@@ -674,7 +661,9 @@ function AddProviderDialog({
                 onClick={() => setKind(c.kind)}
                 className={cn(
                   "flex h-16 flex-col items-start justify-center gap-0.5 rounded-lg border px-2.5 text-left transition-colors focus-ring",
-                  kind === c.kind ? "border-accent bg-accent-soft" : "border-border hover:bg-surface-hover",
+                  kind === c.kind
+                    ? "border-fg-subtle bg-surface-hover"
+                    : "border-border hover:bg-surface-hover",
                 )}
               >
                 <span className="text-[13px] font-medium">{c.label}</span>

@@ -151,11 +151,10 @@ export function SlideCanvas({
   return (
     <div
       className={cn(
-        "relative aspect-video w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-surface shadow-lg [container-type:inline-size]",
+        "relative aspect-video w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-surface [container-type:inline-size]",
         className,
       )}
     >
-      <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-accent to-[oklch(0.65_0.18_calc(var(--accent-h)+50))]" />
       <div className="flex h-full gap-[4cqw] p-[6cqw]">
         <div className="min-w-0 flex-1">
           {editable ? (

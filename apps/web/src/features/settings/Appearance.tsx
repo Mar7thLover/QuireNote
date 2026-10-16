@@ -58,7 +58,7 @@ export function AppearanceSettings() {
               aria-pressed={theme.accent === id}
             >
               <span
-                className="grid size-9 place-items-center rounded-full shadow-sm ring-offset-2 ring-offset-bg transition-transform hover:scale-105"
+                className="grid size-9 place-items-center rounded-full shadow-sm ring-offset-2 ring-offset-bg"
                 style={{
                   background: `oklch(0.55 ${a.c} ${a.h})`,
                   boxShadow:

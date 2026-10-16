@@ -15,10 +15,7 @@ export function TimelineView({ data, onChange }: ArtifactViewProps<"timeline">) 
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-8">
       <ol className="relative">
-        <span
-          aria-hidden
-          className="absolute top-2 bottom-2 left-[7.25rem] w-px bg-gradient-to-b from-accent/60 via-border-strong to-transparent"
-        />
+        <span aria-hidden className="absolute top-2 bottom-2 left-[7.25rem] w-px bg-border-strong" />
         {events.map((e, i) => (
           <li key={e.id} className="group relative grid grid-cols-[6.5rem_1.5rem_1fr] gap-x-2 pb-7">
             <input

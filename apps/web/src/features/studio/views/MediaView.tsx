@@ -60,7 +60,7 @@ export function MediaView(props: ArtifactViewProps<"audio" | "video" | "image">)
     onChange({ ...data, script: data.script.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   return (
     <div className="mx-auto max-w-2xl px-6 py-6">
-      <div className="mb-6 rounded-2xl border border-border bg-gradient-to-br from-accent-soft via-surface to-surface p-5 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-border bg-surface p-5">
         <div className="flex items-center gap-3">
           <div className="grid size-12 place-items-center rounded-xl bg-accent text-accent-fg shadow-md">
             <Mic2 className="size-6" />
@@ -96,7 +96,7 @@ export function MediaView(props: ArtifactViewProps<"audio" | "video" | "image">)
               rows={Math.max(2, Math.ceil(l.text.length / 34))}
               className={cn(
                 "min-w-0 flex-1 resize-none rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed outline-none focus:ring-2 focus:ring-ring/30",
-                l.speaker === "A" ? "rounded-tl-md bg-surface-sunken" : "rounded-tr-md bg-accent-soft/60",
+                l.speaker === "A" ? "rounded-tl-md bg-surface-sunken" : "rounded-tr-md bg-surface-hover",
               )}
             />
           </div>

@@ -1,4 +1,4 @@
-import { Button, cn, Shortcut, Tooltip } from "@quirenote/ui";
+import { Button, cn, Tooltip } from "@quirenote/ui";
 import { ArrowUp, BookOpen, Quote, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSources } from "@/features/sources/hooks";
@@ -75,9 +75,9 @@ export function Composer({
     <div className="shrink-0 px-3 pb-3">
       <div
         className={cn(
-          "relative mx-auto max-w-3xl rounded-xl border border-border bg-surface shadow-sm transition-[border-color,box-shadow]",
-          "focus-within:border-accent/60 focus-within:shadow-md focus-within:ring-3 focus-within:ring-ring/20",
-          dropping && "border-accent ring-3 ring-ring/30",
+          "relative mx-auto max-w-3xl rounded-2xl bg-surface shadow-md transition-shadow",
+          "focus-within:shadow-[0_0_0_0.5px_var(--border-strong),0_2px_10px_rgb(31_30_29/0.07)]",
+          dropping && "ring-2 ring-ring/40",
         )}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(DND_SOURCE) || e.dataTransfer.types.includes(DND_SNIPPET)) {
@@ -152,9 +152,6 @@ export function Composer({
           </span>
           {modelPicker}
           <div className="flex-1" />
-          <span className="hidden text-[11px] whitespace-nowrap text-fg-subtle @lg:inline">
-            <Shortcut keys="Enter" /> 发送 · Shift+Enter 换行
-          </span>
           {streaming ? (
             <Tooltip content={t("chat.stop")}>
               <Button variant="secondary" size="icon-sm" onClick={onStop} aria-label={t("chat.stop")}>
@@ -163,7 +160,7 @@ export function Composer({
             </Tooltip>
           ) : (
             <Button
-              variant="primary"
+              variant="accent"
               size="icon-sm"
               onClick={submit}
               disabled={!canSend}

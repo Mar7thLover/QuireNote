@@ -82,7 +82,7 @@ export function FlashcardsView({ artifact, data, onChange, notebookId }: Artifac
                 <span className="mb-3 text-[11px] font-semibold tracking-widest text-fg-subtle">问题</span>
                 <p className="text-balance text-[20px] leading-snug font-semibold">{card.front}</p>
               </Face>
-              <Face className="bg-gradient-to-br from-accent-soft to-surface [transform:rotateY(180deg)]">
+              <Face className="bg-surface-sunken [transform:rotateY(180deg)]">
                 <span className="mb-3 text-[11px] font-semibold tracking-widest text-accent-soft-fg">
                   答案
                 </span>

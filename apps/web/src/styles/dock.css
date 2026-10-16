@@ -1,8 +1,8 @@
-/* dockview 主题：基于 light-spaced 结构，颜色全部取设计 tokens，深浅色自动跟随 */
+/* dockview 主题：面板平铺、不浮起，面板之间只有 1px 分隔线；颜色取设计 tokens，深浅色自动跟随 */
 .quirenote-dock .dockview-theme-light-spaced {
   --dv-group-view-background-color: transparent;
-  --dv-tabs-and-actions-container-background-color: var(--surface);
-  --dv-activegroup-visiblepanel-tab-background-color: var(--surface-sunken);
+  --dv-tabs-and-actions-container-background-color: transparent;
+  --dv-activegroup-visiblepanel-tab-background-color: var(--surface-hover);
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
   --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
   --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
@@ -11,7 +11,7 @@
   --dv-inactivegroup-visiblepanel-tab-color: var(--fg-muted);
   --dv-inactivegroup-hiddenpanel-tab-color: var(--fg-subtle);
   --dv-tab-divider-color: transparent;
-  --dv-separator-border: transparent;
+  --dv-separator-border: var(--border);
   --dv-paneview-header-border-color: var(--border);
   --dv-active-sash-color: var(--accent);
   --dv-sash-color: transparent;
@@ -26,7 +26,7 @@
   --dv-context-menu-background-color: var(--surface-raised);
   --dv-context-menu-color: var(--fg);
   --dv-spacing-padding: 6px;
-  --dv-border-radius: calc(var(--radius) * 1.2);
+  --dv-border-radius: 0px;
   --dv-tab-border-radius: calc(var(--radius) * 0.7);
   --dv-tabs-and-actions-container-height: 40px;
   --dv-tab-margin-block: 6px;
@@ -49,21 +49,18 @@
 }
 
 .quirenote-dock .dv-groupview {
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  background: var(--surface);
-}
-.quirenote-dock .dv-groupview.dv-active-group {
-  border-color: color-mix(in srgb, var(--border-strong) 82%, var(--accent) 18%);
+  border: 0;
+  box-shadow: none;
+  background: var(--bg);
 }
 .quirenote-dock .dv-groupview .dv-content-container {
-  background: var(--surface);
+  background: var(--bg);
 }
 .quirenote-dock .dv-tabs-and-actions-container {
   border-bottom: 1px solid var(--border);
 }
 .quirenote-dock .dv-tab {
-  font-weight: 500;
+  font-weight: 400;
   transition:
     background-color var(--dur-fast),
     color var(--dur-fast);
@@ -80,5 +77,5 @@
   opacity: 0.6;
 }
 .quirenote-dock .dv-watermark {
-  background: var(--surface);
+  background: var(--bg);
 }

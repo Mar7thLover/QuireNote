@@ -135,7 +135,7 @@ export function AiDraft({
   return (
     <div
       ref={boxRef}
-      className="fixed z-[65] w-[min(480px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-lg animate-pop"
+      className="fixed z-[65] w-[min(480px,calc(100vw-24px))] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-lg"
       style={below ? { left, top: coords.bottom + 8 } : { left, bottom: window.innerHeight - coords.top + 8 }}
     >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs font-medium text-fg-muted">

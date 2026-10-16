@@ -180,8 +180,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
                   type="button"
                   onClick={() => open(n)}
                   className={cn(
-                    "mb-2.5 block w-full break-inside-avoid rounded-xl border border-border bg-surface p-3 text-left shadow-sm transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-md focus-ring",
-                    n.kind === "card" && "bg-gradient-to-b from-accent-soft/40 to-surface",
+                    "mb-2.5 block w-full break-inside-avoid rounded-xl border border-border bg-surface p-3 text-left transition-colors hover:shadow-md focus-ring",
                   )}
                 >
                   {n.title ? <p className="mb-1.5 text-[13px] font-semibold">{n.title}</p> : null}

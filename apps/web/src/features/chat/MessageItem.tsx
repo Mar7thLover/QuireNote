@@ -9,7 +9,6 @@ import {
   FilePlus2,
   Pencil,
   RefreshCw,
-  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { CitationPreview, Markdown } from "@/components/Markdown";
@@ -71,7 +70,7 @@ export function MessageItem({
     return (
       <div className="group flex flex-col items-end gap-1">
         {editing ? (
-          <div className="w-full max-w-[85%] rounded-xl border border-accent bg-surface p-2 shadow-sm">
+          <div className="w-full max-w-[85%] rounded-2xl border border-border-strong bg-surface p-2">
             <Textarea
               autoFocus
               value={draft}
@@ -101,7 +100,7 @@ export function MessageItem({
             </div>
           </div>
         ) : (
-          <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent-soft px-3.5 py-2 text-[14.5px] leading-relaxed whitespace-pre-wrap text-fg">
+          <div className="max-w-[85%] rounded-2xl bg-surface-sunken px-4 py-2.5 text-[14.5px] leading-relaxed whitespace-pre-wrap text-fg">
             {m.content}
           </div>
         )}
@@ -248,7 +247,12 @@ function AssistantBody({ text, citations, error }: { text: string; citations: Ci
         if (sel) e.dataTransfer.setData(DND_SNIPPET, sel);
       }}
     >
-      <Markdown text={text} citations={citations} scope="chat" className={cn(error && "text-danger")} />
+      <Markdown
+        text={text}
+        citations={citations}
+        scope="chat"
+        className={cn("prose-serif", error && "text-danger")}
+      />
       {citations.length ? <CitationList citations={citations} /> : null}
     </div>
   );
@@ -265,7 +269,7 @@ function CitationList({ citations }: { citations: Citation[] }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs text-fg-muted hover:bg-surface-hover focus-ring"
+        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs text-fg-subtle hover:bg-surface-hover hover:text-fg focus-ring"
       >
         {t("chat.citations")} · {citations.length}
         <span className="text-fg-subtle">
@@ -274,13 +278,13 @@ function CitationList({ citations }: { citations: Citation[] }) {
         </span>
       </button>
       {open ? (
-        <div className="mt-2 grid gap-2 animate-fade sm:grid-cols-2">
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {citations.map((c) => (
             <button
               key={c.n}
               type="button"
               onClick={() => jumpTo(c.sourceId, c.start, c.end)}
-              className="rounded-lg border border-border bg-surface p-2.5 text-left transition-colors hover:border-accent/50 hover:bg-surface-hover focus-ring"
+              className="rounded-lg border border-border bg-surface p-2.5 text-left transition-colors hover:border-border-strong focus-ring"
             >
               <CitationPreview citation={c} extra={<span className="cite ml-auto">{c.n}</span>} />
             </button>
@@ -296,7 +300,6 @@ export function StreamingItem({ streaming }: { streaming: Streaming }) {
   if (!streaming.text) {
     return (
       <div className="flex items-center gap-2 text-[13px] text-fg-subtle">
-        <Sparkles className="size-4 animate-pulse text-accent" />
         {t("chat.thinking")}
         <TypingDots />
       </div>
@@ -304,7 +307,7 @@ export function StreamingItem({ streaming }: { streaming: Streaming }) {
   }
   return (
     <div>
-      <Markdown text={`${streaming.text} ▍`} citations={streaming.citations} />
+      <Markdown text={`${streaming.text} ▍`} citations={streaming.citations} className="prose-serif" />
     </div>
   );
 }
@@ -322,12 +325,9 @@ export function ChatEmpty({ notebookId, onAsk }: { notebookId: string; onAsk: (q
       ]
     : [];
   return (
-    <div className="flex flex-col items-center pt-10 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent-soft-fg">
-        <Sparkles className="size-6" />
-      </div>
-      <h3 className="mt-4 text-[17px] font-semibold">{t("chat.emptyTitle")}</h3>
-      <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-fg-muted">{t("chat.emptyDesc")}</p>
+    <div className="flex flex-col items-center pt-12 text-center">
+      <h3 className="font-serif text-[24px] font-normal">{t("chat.emptyTitle")}</h3>
+      <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-fg-subtle">{t("chat.emptyDesc")}</p>
       {suggestions.length ? (
         <div className="mt-6 grid w-full max-w-lg gap-2">
           <p className="text-left text-xs font-medium text-fg-subtle">{t("chat.suggestions")}</p>
@@ -336,7 +336,7 @@ export function ChatEmpty({ notebookId, onAsk }: { notebookId: string; onAsk: (q
               key={s}
               type="button"
               onClick={() => onAsk(s)}
-              className="rounded-lg border border-border bg-surface px-3.5 py-2.5 text-left text-[13.5px] text-fg-muted transition-[border-color,color,transform] hover:-translate-y-px hover:border-accent/50 hover:text-fg focus-ring"
+              className="rounded-lg border border-border bg-surface px-3.5 py-2.5 text-left text-[13.5px] text-fg-muted transition-colors hover:border-border-strong hover:text-fg focus-ring"
             >
               {s}
             </button>

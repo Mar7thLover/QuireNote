@@ -134,7 +134,7 @@ export function ReviewPanel({ notebookId }: { notebookId: string }) {
                     type="button"
                     onClick={() => rate.mutate(x.r)}
                     className={cn(
-                      "flex flex-1 flex-col items-center gap-1 rounded-xl border py-2.5 text-[13px] font-medium transition-transform hover:-translate-y-0.5 active:scale-95 focus-ring",
+                      "flex flex-1 flex-col items-center gap-1 rounded-xl border py-2.5 text-[13px] font-medium transition-colors focus-ring",
                     )}
                     style={{
                       borderColor: `oklch(0.7 0.13 ${x.hue} / 0.5)`,

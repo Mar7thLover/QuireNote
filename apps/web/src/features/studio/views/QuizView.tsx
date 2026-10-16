@@ -129,7 +129,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
                           "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-[14px] transition-colors focus-ring",
                           !submitted &&
                             (chosen
-                              ? "border-accent bg-accent-soft"
+                              ? "border-fg-subtle bg-surface-hover"
                               : "border-border hover:bg-surface-hover"),
                           submitted && correct && "border-success/60 bg-success-soft",
                           submitted && chosen && !correct && "border-danger/60 bg-danger-soft",

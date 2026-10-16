@@ -110,10 +110,10 @@ function UploadTab({ notebookId, onDone }: { notebookId: string; onDone: () => v
       }}
       className={cn(
         "flex h-48 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border-strong transition-colors focus-ring",
-        over ? "border-accent bg-accent-soft" : "hover:border-accent/60 hover:bg-surface-hover",
+        over ? "border-fg-subtle bg-surface-hover" : "hover:border-border-strong hover:bg-surface-hover",
       )}
     >
-      <div className="grid size-12 place-items-center rounded-full bg-accent-soft text-accent-soft-fg">
+      <div className="grid size-12 place-items-center rounded-full bg-surface-sunken text-fg-muted">
         <UploadCloud className={cn("size-6", up.isPending && "animate-bounce")} />
       </div>
       <div className="text-center">

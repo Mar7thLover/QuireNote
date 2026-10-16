@@ -9,23 +9,8 @@ import { useUi } from "@/stores/ui";
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <Link
-      to="/"
-      className={cn("flex items-center gap-2 rounded-md focus-ring", className)}
-      aria-label="QuireNote"
-    >
-      <svg viewBox="0 0 32 32" className="size-6" aria-hidden>
-        <defs>
-          <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="oklch(0.6 0.19 var(--accent-h))" />
-            <stop offset="1" stopColor="oklch(0.55 0.2 calc(var(--accent-h) + 30))" />
-          </linearGradient>
-        </defs>
-        <rect width="32" height="32" rx="8" fill="url(#logo-g)" />
-        <circle cx="15.5" cy="15" r="6.6" fill="none" stroke="#fff" strokeWidth="3.2" />
-        <path d="M19.6 19.4l3.9 3.9" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
-      </svg>
-      <span className="text-[15px] font-semibold tracking-tight">QuireNote</span>
+    <Link to="/" className={cn("rounded-md font-serif text-[19px] font-medium focus-ring", className)}>
+      QuireNote
     </Link>
   );
 }

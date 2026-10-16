@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export const ACCENTS: Record<string, { h: number; c: number; label: string }> = {
+  clay: { h: 40, c: 0.13, label: "陶土" },
   indigo: { h: 272, c: 0.19, label: "靛蓝" },
   violet: { h: 300, c: 0.2, label: "紫罗兰" },
   blue: { h: 250, c: 0.17, label: "海蓝" },
@@ -16,18 +17,17 @@ export const ACCENTS: Record<string, { h: number; c: number; label: string }> = 
 export const FONT_PRESETS = {
   sans: [
     {
-      label: "Inter",
-      value: '"Inter Variable", "PingFang SC", "Microsoft YaHei UI", "Noto Sans SC", system-ui, sans-serif',
+      label: "系统默认",
+      value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", "Noto Sans SC", sans-serif',
     },
-    { label: "系统默认", value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", sans-serif' },
-    { label: "思源宋体风格", value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", serif' },
+    { label: "衬线", value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", serif' },
   ],
   serif: [
     {
-      label: "Source Serif",
-      value: '"Source Serif 4 Variable", "Songti SC", "Noto Serif SC", "SimSun", Georgia, serif',
+      label: "Source Serif + 思源宋体",
+      value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", Georgia, serif',
     },
-    { label: "无衬线", value: '"Inter Variable", "PingFang SC", "Microsoft YaHei UI", sans-serif' },
+    { label: "无衬线", value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif' },
   ],
 };
 
@@ -57,7 +57,7 @@ export const BACKGROUNDS: {
 
 export const defaultTheme: ThemeSettings = {
   mode: "system",
-  accent: "indigo",
+  accent: "clay",
   fontSans: FONT_PRESETS.sans[0]!.value,
   fontSerif: FONT_PRESETS.serif[0]!.value,
   fontMono: '"JetBrains Mono Variable", ui-monospace, monospace',
@@ -78,7 +78,24 @@ export const useTheme = create<ThemeState>()(
       set: (patch) => set(patch),
       reset: () => set(defaultTheme),
     }),
-    { name: "quirenote.theme", version: 1 },
+    {
+      name: "quirenote.theme",
+      version: 2,
+      // v2：视觉改版。仍是旧默认值（靛蓝、Inter 字体）的设置换成新默认，用户自己改过的保留。
+      migrate: (persisted, version) => {
+        const s = { ...defaultTheme, ...(persisted as Partial<ThemeSettings>) };
+        if (version < 2) {
+          if (s.accent === "indigo") s.accent = defaultTheme.accent;
+          if (s.fontSans.includes("Inter")) s.fontSans = defaultTheme.fontSans;
+          if (
+            s.fontSerif.includes("Inter") ||
+            s.fontSerif.startsWith('"Source Serif 4 Variable", "Songti SC"')
+          )
+            s.fontSerif = defaultTheme.fontSerif;
+        }
+        return s as ThemeState;
+      },
+    },
   ),
 );
 
@@ -94,7 +111,7 @@ export function applyTheme(t: ThemeSettings) {
   const root = document.documentElement;
   root.dataset.theme = resolvedMode(t.mode);
   root.dataset.density = t.density;
-  const acc = ACCENTS[t.accent] ?? ACCENTS.indigo!;
+  const acc = ACCENTS[t.accent] ?? ACCENTS.clay!;
   root.style.setProperty("--accent-h", String(acc.h));
   root.style.setProperty("--accent-c", String(acc.c));
   root.style.setProperty("--radius", `${t.radius}px`);

@@ -428,7 +428,7 @@ function RowCard({ row, fields, onOpen }: { row: DbRow; fields: FieldDef[]; onOp
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col rounded-xl border border-border bg-surface p-3 text-left shadow-sm transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-md focus-ring"
+      className="flex flex-col rounded-xl border border-border bg-surface p-3 text-left transition-colors hover:border-border-strong focus-ring"
     >
       <span className="text-[13.5px] font-semibold">{row.title}</span>
       {preview ? (

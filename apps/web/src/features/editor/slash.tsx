@@ -162,7 +162,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>(function Sl
   if (!props.items.length) return null;
   let lastGroup = "";
   return (
-    <div className="max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-lg animate-pop">
+    <div className="max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-surface-raised p-1 shadow-lg">
       {props.items.map((item, i) => {
         const header = item.group !== lastGroup;
         lastGroup = item.group;
@@ -187,7 +187,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>(function Sl
               }}
               className={cn(
                 "flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[13px]",
-                i === index && "bg-accent-soft text-accent-soft-fg",
+                i === index && "bg-surface-hover text-fg",
               )}
             >
               <span
