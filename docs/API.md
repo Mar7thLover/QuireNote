@@ -166,7 +166,7 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 - 补充：`POST /sources/:id/reprocess` → `Job`，重新解析（失败重试 / 换模型后重建）。
 - `GET /sources/:id/file`：带 `Content-Security-Policy: sandbox`，抓取的网页 HTML 不会在 API 源下执行脚本。URL 资料保存的是抓取到的页面（`page.html` / `.pdf` / `.txt`）。
 - `SourceContent.pageOffsets`：PDF 每页起始偏移，页与页之间以一个空行（`\n\n`）分隔；非分页资料为 `[0]`。`Chunk.page` 从 1 开始，非分页资料为 `null`。分块不跨页，`chunk.text === content.text.slice(chunk.start, chunk.end)`。
-- `POST /sources/:id/highlights` 返回与 `SourceContent.highlights[]` 相同的结构 `{id,start,end,color,note,by:"user"}`；`auto-highlight` 会替换上一次的 AI 标注（`by:"ai"`），保留用户高亮。
+- `POST /sources/:id/highlights` 返回与 `SourceContent.highlights[]` 相同的结构 `{id,start,end,color,note,by:"user"}`，外加 `replaced: string[]`：与新范围重叠的用户高亮会合并成这一条（取并集、用新颜色、批注拼接），被合并的旧 id 列在这里；`auto-highlight` 会替换上一次的 AI 标注（`by:"ai"`），保留用户高亮。
 - `PUT /sources/:id/content`：编辑的是解析出的全文，原始文件不变。资料必须是 `ready`（否则 `409 busy`），内容不能为空；与现有内容相同时 `job: null`。高亮按文本差异移到新位置，原文被删改的高亮删除（返回 `removed` 数量）；分页偏移随之移动。第一次编辑前的原文保存在 `files/source-edits/<id>.json`（随备份与 Notebook 导出）；`Source.props.edited = true`。之后排入 `ingest` 任务（`reuseContent`）重建分块、向量和摘要。
 - `POST /sources/:id/content/revert`：没有编辑过时 `400`；恢复后清除 `props.edited`，高亮同样按差异移动。`POST /sources/:id/reprocess`（重新解析原始文件）也会移动高亮，并丢弃编辑。
 

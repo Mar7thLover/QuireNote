@@ -84,20 +84,12 @@ export function segmentParagraph(
 
 /** 计算节点在段落元素内的字符偏移（包括隐藏的前缀文本）。 */
 function offsetWithin(block: Element, node: Node, offset: number): number {
-  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  let total = 0;
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if (n === node) return total + offset;
-    total += n.textContent?.length ?? 0;
-  }
-  // node 是元素时，offset 是子节点索引
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    let t = 0;
-    const kids = node.childNodes;
-    for (let i = 0; i < offset && i < kids.length; i++) t += kids[i]!.textContent?.length ?? 0;
-    return t;
-  }
-  return total;
+  // 用 Range 量出「段落开头 → 选区端点」之间的文本长度。端点落在元素上（选中整个高亮、三击选段落等）
+  // 时 offset 是子节点下标，逐个文本节点累加的写法会漏掉元素之前的文字。
+  const r = document.createRange();
+  r.selectNodeContents(block);
+  r.setEnd(node, offset);
+  return r.toString().length;
 }
 
 /** 当前选区在全文中的偏移。不在容器内或为空时返回 null。 */

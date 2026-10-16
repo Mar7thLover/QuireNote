@@ -13,16 +13,15 @@ import {
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ExternalLink, FileQuestion, PanelRight, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { ExternalLink, FileQuestion, Highlighter, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PanelShell } from "@/components/Panel";
-import { useTranslation } from "@/i18n";
+import i18n, { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
-import { qk, queryClient } from "@/lib/query";
+import { qk } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
-import { HighlightMenu } from "./HighlightMenu";
 import { HighlightsSidebar } from "./HighlightsSidebar";
-import { SelectionToolbar } from "./SelectionToolbar";
+import { SelectionToolbar, type ToolbarTarget } from "./SelectionToolbar";
 import { applyEditResult, SourceEditor } from "./SourceEditor";
 import { type Para, paragraphize, segmentParagraph, selectionOffsets } from "./text";
 
@@ -129,15 +128,16 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
               {auto.isPending ? null : <Sparkles />}
             </Button>
           </Tooltip>
-          <Tooltip content={t("reader.highlights")}>
+          <Tooltip content={t("reader.highlightsList")}>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="sm"
               className={cn(showSide && "bg-surface-hover text-fg")}
               onClick={() => setShowSide((v) => !v)}
-              aria-label={t("reader.highlights")}
+              aria-pressed={showSide}
             >
-              <PanelRight />
+              <Highlighter />
+              {t("reader.highlightsCount", { count: content.data?.highlights.length ?? 0 })}
             </Button>
           </Tooltip>
         </>
@@ -231,11 +231,7 @@ function ParsedText({
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const jump = useWorkspace((s) => (s.jump?.sourceId === sourceId ? s.jump : null));
-  const [sel, setSel] = useState<{ start: number; end: number; text: string; x: number; y: number } | null>(
-    null,
-  );
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const menuHighlight = menu ? content.highlights.find((h) => h.id === menu.id) : undefined;
+  const [sel, setSel] = useState<ToolbarTarget | null>(null);
 
   const v = useVirtualizer({
     count: paras.length,
@@ -262,21 +258,25 @@ function ParsedText({
     const container = scrollRef.current;
     const r = selectionOffsets(container);
     if (!r || !container) {
-      setSel(null);
-      // 没有选中文字时点到高亮：打开高亮菜单（改颜色、批注、删除）。
+      // 没有选中文字时点到高亮：对这条高亮弹出同一个工具栏（改颜色、批注、取消高亮）。
       const mark = (e.target as HTMLElement).closest<HTMLElement>("mark[data-hid]");
-      if (mark?.dataset.hid && container) {
-        const box = container.getBoundingClientRect();
-        const rect = mark.getBoundingClientRect();
-        setMenu({
-          id: mark.dataset.hid,
-          x: e.clientX - box.left,
-          y: rect.bottom - box.top + container.scrollTop,
-        });
-      } else setMenu(null);
+      const h = mark?.dataset.hid ? content.highlights.find((x) => x.id === mark.dataset.hid) : undefined;
+      if (!h || !container) {
+        setSel(null);
+        return;
+      }
+      const box = container.getBoundingClientRect();
+      const first = container.querySelector(`mark[data-hid="${h.id}"]`) ?? mark!;
+      const rect = first.getBoundingClientRect();
+      setSel({
+        start: h.start,
+        end: h.end,
+        text: content.text.slice(h.start, h.end),
+        x: e.clientX - box.left,
+        y: rect.top - box.top + container.scrollTop,
+      });
       return;
     }
-    setMenu(null);
     const box = container.getBoundingClientRect();
     setSel({
       ...r,
@@ -320,36 +320,17 @@ function ParsedText({
           );
         })}
       </div>
-      {menu && menuHighlight ? (
-        <HighlightMenu
-          key={menu.id}
-          sourceId={sourceId}
-          highlight={menuHighlight}
-          x={menu.x}
-          y={menu.y}
-          onClose={() => setMenu(null)}
-        />
-      ) : null}
       {sel ? (
         <SelectionToolbar
+          key={`${sel.start}-${sel.end}`}
           notebookId={notebookId}
           sourceId={sourceId}
           sourceTitle={sourceTitle}
-          selection={sel}
+          target={sel}
+          highlights={content.highlights}
           onDone={() => {
             setSel(null);
             window.getSelection()?.removeAllRanges();
-          }}
-          onHighlight={async (color, note) => {
-            const h = await api.sources.addHighlight(sourceId, {
-              start: sel.start,
-              end: sel.end,
-              color,
-              note,
-            });
-            queryClient.setQueryData<SourceContent>(qk.content(sourceId), (old) =>
-              old ? { ...old, highlights: [...old.highlights, h] } : old,
-            );
           }}
         />
       ) : null}
@@ -394,7 +375,12 @@ function Paragraph({
               {s.text}
             </span>
           ) : s.cls.length ? (
-            <mark key={i} className={cn("hl bg-transparent text-inherit", s.cls)} data-hid={s.ids[0]}>
+            <mark
+              key={i}
+              className={cn("hl bg-transparent text-inherit", s.cls)}
+              data-hid={s.ids[0]}
+              title={s.ids.length ? i18n.t("reader.highlightHint") : undefined}
+            >
               {s.text}
             </mark>
           ) : (

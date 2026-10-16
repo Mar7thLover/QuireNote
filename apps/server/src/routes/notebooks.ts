@@ -173,21 +173,38 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
     if (input.end <= input.start) throw badRequest("end 必须大于 start");
     const content = await store.contents.get(id);
     if (content && input.end > content.text.length) throw badRequest("高亮范围超出全文长度");
+    // 与已有的用户高亮重叠时合并成一条（取并集、用新颜色、保留批注），不叠加重复的高亮。
+    const overlapping = (await store.highlights.list({ refId: id })).filter(
+      (h) => h.by === "user" && h.start < input.end && h.end > input.start,
+    );
+    const notes = [...overlapping.map((h) => h.note), input.note ?? ""].map((n) => n.trim()).filter(Boolean);
     const ts = nowIso();
     const h = {
       id: newId("hl"),
       sourceId: id,
       notebookId: src.notebookId,
-      start: input.start,
-      end: input.end,
+      start: Math.min(input.start, ...overlapping.map((x) => x.start)),
+      end: Math.max(input.end, ...overlapping.map((x) => x.end)),
       color: input.color,
-      note: input.note ?? "",
+      note: [...new Set(notes)].join("\n"),
       by: "user" as const,
       createdAt: ts,
       updatedAt: ts,
     };
+    for (const old of overlapping) await store.highlights.delete(old.id);
     await store.highlights.insert(h);
-    return c.json({ id: h.id, start: h.start, end: h.end, color: h.color, note: h.note, by: h.by }, 201);
+    return c.json(
+      {
+        id: h.id,
+        start: h.start,
+        end: h.end,
+        color: h.color,
+        note: h.note,
+        by: h.by,
+        replaced: overlapping.map((x) => x.id),
+      },
+      201,
+    );
   });
 
   /** 编辑全文：高亮随文本移动，原文被删改的高亮会被删除；之后后台重建索引。 */

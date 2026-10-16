@@ -47,6 +47,37 @@ afterAll(async () => {
 });
 
 describe("highlights", () => {
+  it("merges overlapping highlights instead of stacking duplicates", async () => {
+    const a = await highlight("监督学习使用", "yellow", "甲");
+    const c0 = await content();
+    const start = c0.text.indexOf("学习使用带标签");
+    const merged = await s.json<{
+      id: string;
+      start: number;
+      end: number;
+      color: string;
+      note: string;
+      replaced: string[];
+    }>(`/sources/${src.id}/highlights`, {
+      method: "POST",
+      json: { start, end: start + "学习使用带标签".length, color: "green", note: "乙" },
+    });
+    expect(merged.replaced).toEqual([a.id]);
+    const c = await content();
+    const mine = c.highlights.filter((h) => h.by === "user");
+    expect(mine).toHaveLength(1);
+    expect(c.text.slice(merged.start, merged.end)).toBe("监督学习使用带标签");
+    expect(merged).toMatchObject({ color: "green", note: "甲\n乙" });
+    // 同一段再高亮一次：仍然只有一条。
+    await s.json(`/sources/${src.id}/highlights`, {
+      method: "POST",
+      json: { start: merged.start, end: merged.end, color: "green" },
+    });
+    expect((await content()).highlights.filter((h) => h.by === "user")).toHaveLength(1);
+    for (const h of (await content()).highlights)
+      await s.json(`/sources/${src.id}/highlights/${h.id}`, { method: "DELETE" });
+  });
+
   it("can be recolored, annotated and removed", async () => {
     const h = await highlight("监督学习");
     const patched = await s.json<{ color: string; note: string }>(`/sources/${src.id}/highlights/${h.id}`, {

@@ -1,6 +1,6 @@
 import type { SourceContent } from "@quirenote/core";
 import { Button, cn, EmptyState } from "@quirenote/ui";
-import { Highlighter, Sparkles, Trash2 } from "lucide-react";
+import { Eraser, Highlighter, Sparkles } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
@@ -47,7 +47,7 @@ export function HighlightsSidebar({
           />
         ) : (
           list.map((h) => (
-            <div key={h.id} className="group relative mb-1 rounded-md p-2 hover:bg-surface-hover">
+            <div key={h.id} className="mb-1 rounded-md p-2 hover:bg-surface-hover">
               <button
                 type="button"
                 className="block w-full text-left"
@@ -63,12 +63,12 @@ export function HighlightsSidebar({
               </button>
               <Button
                 variant="ghost"
-                size="icon-xs"
-                className="absolute top-1 right-1 opacity-40 group-hover:opacity-100 focus-visible:opacity-100"
+                size="xs"
+                className="mt-1 text-fg-subtle hover:bg-danger-soft hover:text-danger"
                 onClick={() => remove(h.id)}
-                aria-label={t("common.delete")}
               >
-                <Trash2 />
+                <Eraser />
+                {t("reader.removeHighlight")}
               </Button>
             </div>
           ))

@@ -84,7 +84,10 @@ test.describe("引导与布局", () => {
 });
 
 test.describe("阅读器：高亮与编辑资料", () => {
-  test("点击高亮可删除；编辑资料后高亮跟着文字走，可恢复原文", async ({ page, request }) => {
+  test("选中或点击高亮都能改色、取消高亮；编辑资料后高亮跟着文字走，可恢复原文", async ({
+    page,
+    request,
+  }) => {
     // 新建一份文本资料（API 直接创建，避免依赖拖拽选区）。
     const nb = await (await request.post("/api/notebooks", { data: { title: "E2E 编辑资料" } })).json();
     const src = await (
@@ -92,7 +95,8 @@ test.describe("阅读器：高亮与编辑资料", () => {
         data: {
           kind: "markdown",
           title: "学习方式",
-          text: "# 学习方式\n\n监督学习使用标签。\n\n强化学习依靠奖励。",
+          // 第二个高亮放在段落中间：选区端点落在高亮元素上时，偏移要算上它前面的文字。
+          text: "# 学习方式\n\n监督学习使用标签。\n\n强化学习是与监督学习不同的另一大类方法，它依靠奖励来学习。",
         },
       })
     ).json();
@@ -100,7 +104,7 @@ test.describe("阅读器：高亮与编辑资料", () => {
       .poll(async () => (await (await request.get(`/api/sources/${src.id}`)).json()).status)
       .toBe("ready");
     const text: string = (await (await request.get(`/api/sources/${src.id}/content`)).json()).text;
-    for (const q of ["监督学习使用标签", "强化学习依靠奖励"]) {
+    for (const q of ["监督学习使用标签", "依靠奖励"]) {
       const start = text.indexOf(q);
       await request.post(`/api/sources/${src.id}/highlights`, { data: { start, end: start + q.length } });
     }
@@ -110,10 +114,39 @@ test.describe("阅读器：高亮与编辑资料", () => {
     const marks = page.locator("mark[data-hid]");
     await expect(marks).toHaveCount(2);
 
-    // 点击高亮 → 菜单 → 删除
-    await marks.filter({ hasText: "强化学习依靠奖励" }).click();
-    await page.getByRole("button", { name: "删除高亮" }).click();
+    // 高亮列表入口带文字和数量
+    await expect(page.getByRole("button", { name: "高亮 2" })).toBeVisible();
+
+    // 选中已高亮的文字：工具栏标出当前颜色，并有「取消高亮」
+    const selectMark = (text: string) =>
+      marks.filter({ hasText: text }).evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection()!;
+        sel.removeAllRanges();
+        sel.addRange(range);
+        el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      });
+    await selectMark("依靠奖励");
+    await expect(page.getByRole("button", { name: "当前颜色：黄色" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await page.getByRole("button", { name: "取消高亮" }).click();
+    await expect(page.getByText("已取消高亮")).toBeVisible();
     await expect(marks).toHaveCount(1);
+
+    // 点击高亮也弹出同一个工具栏：改成绿色，仍然只有一条
+    await marks.filter({ hasText: "监督学习使用标签" }).click();
+    await page.getByRole("button", { name: "绿色高亮" }).click();
+    await expect(marks).toHaveCount(1);
+    await expect(marks.first()).toHaveClass(/hl-green/);
+    // 在同一段上再高亮一次不会叠出重复的高亮
+    await selectMark("监督学习使用标签");
+    await expect(page.getByRole("button", { name: "当前颜色：绿色" })).toBeVisible();
+    await page.getByRole("button", { name: "蓝色高亮" }).click();
+    await expect(marks).toHaveCount(1);
+    await expect(marks.first()).toHaveClass(/hl-blue/);
 
     // 编辑：开头加一段，Ctrl+S 保存
     await page.getByRole("button", { name: "编辑内容" }).click();
