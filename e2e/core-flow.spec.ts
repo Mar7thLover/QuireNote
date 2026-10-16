@@ -53,6 +53,36 @@ test.describe("核心流程", () => {
   });
 });
 
+test.describe("引导与布局", () => {
+  test("首页有上手引导，设置入口带文字", async ({ page }) => {
+    await page.goto("/");
+    const guide = page.getByRole("region", { name: "开始使用 QuireNote" });
+    await expect(guide).toBeVisible();
+    // E2E 已配置假模型、示例 Notebook 自带资料：前两步完成，第三步待做。
+    await expect(guide.getByText("已完成")).toHaveCount(2);
+    await expect(page.getByRole("link", { name: "设置" })).toBeVisible();
+  });
+
+  test("工作区侧栏带名称、可收起，且没有多余的滚动条", async ({ page }) => {
+    await page.goto("/");
+    await page.getByText("人工智能简史").first().click();
+    const sidebar = page.getByRole("navigation", { name: "面板" });
+    await expect(sidebar.getByRole("button", { name: "资料" })).toContainText("资料");
+    await expect(sidebar.getByRole("link", { name: "设置" })).toBeVisible();
+    await expect(page.locator(".dv-groupview").first()).toBeVisible();
+    // dockview 的视图不应比容器大（以前主题 padding 会让整个工作区出现横竖滚动条）。
+    const overflow = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>(".quirenote-dock .dv-view")].some(
+        (v) => v.scrollWidth > v.clientWidth + 1 || v.scrollHeight > v.clientHeight + 1,
+      ),
+    );
+    expect(overflow).toBe(false);
+    await sidebar.getByRole("button", { name: "收起侧栏" }).click();
+    await expect(sidebar.getByRole("button", { name: "资料" })).not.toContainText("资料");
+    await sidebar.getByRole("button", { name: "展开侧栏" }).click();
+  });
+});
+
 test.describe("移动端 @mobile", () => {
   test("底部导航切换面板", async ({ page }) => {
     await page.goto("/");

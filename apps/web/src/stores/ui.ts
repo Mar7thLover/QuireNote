@@ -6,6 +6,8 @@ interface UiState {
   /** 打开命令面板时预填的文本（例如从选区发起自然语言命令）。 */
   paletteSeed: string;
   focusMode: boolean;
+  /** 工作区侧栏只显示图标（记住在本机）。 */
+  sidebarCollapsed: boolean;
   addSourceOpen: boolean;
   addSourceTab: "upload" | "url" | "paste" | "record" | "search";
   shortcutsOpen: boolean;
@@ -18,14 +20,26 @@ interface UiState {
   openPalette: (seed?: string) => void;
   closePalette: () => void;
   toggleFocus: () => void;
+  toggleSidebar: () => void;
   openAddSource: (tab?: UiState["addSourceTab"]) => void;
   set: (patch: Partial<UiState>) => void;
+}
+
+const SIDEBAR_KEY = "quirenote.sidebarCollapsed";
+
+function loadSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export const useUi = create<UiState>()((set) => ({
   paletteOpen: false,
   paletteSeed: "",
   focusMode: false,
+  sidebarCollapsed: loadSidebarCollapsed(),
   addSourceOpen: false,
   addSourceTab: "upload",
   shortcutsOpen: false,
@@ -35,6 +49,14 @@ export const useUi = create<UiState>()((set) => ({
   openPalette: (seed = "") => set({ paletteOpen: true, paletteSeed: seed }),
   closePalette: () => set({ paletteOpen: false, paletteSeed: "" }),
   toggleFocus: () => set((s) => ({ focusMode: !s.focusMode })),
+  toggleSidebar: () =>
+    set((s) => {
+      const next = !s.sidebarCollapsed;
+      try {
+        localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+      } catch {}
+      return { sidebarCollapsed: next };
+    }),
   openAddSource: (tab = "upload") => set({ addSourceOpen: true, addSourceTab: tab }),
   set: (patch) => set(patch),
 }));

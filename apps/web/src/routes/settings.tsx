@@ -35,8 +35,8 @@ const ShortcutSettings = lazy(() =>
 );
 
 const SECTIONS: { id: string; icon: LucideIcon }[] = [
-  { id: "appearance", icon: Palette },
   { id: "models", icon: Brain },
+  { id: "appearance", icon: Palette },
   { id: "templates", icon: LayoutTemplate },
   { id: "rules", icon: Regex },
   { id: "data", icon: Database },
@@ -55,7 +55,7 @@ export function SettingsPage({ section }: { section: string }) {
       data: DataSettings,
       shortcuts: ShortcutSettings,
       about: About,
-    }[section] ?? AppearanceSettings;
+    }[section] ?? ModelSettings;
   return (
     <div className="flex h-full flex-col">
       <AppHeader />

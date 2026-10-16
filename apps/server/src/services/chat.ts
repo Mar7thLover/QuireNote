@@ -4,10 +4,12 @@ import { type Conversation, type Message, newId, nowIso } from "@quirenote/core"
 import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";
-import { retrieve, toPassages } from "../retrieval";
-import { activeSources } from "./passages";
+import { activeSources, gatherPassages } from "./passages";
 
 export const DEFAULT_CONVERSATION_TITLE = "新对话";
+
+/** 每轮对话送给模型的资料片段总字数上限。 */
+const CHAT_CONTEXT_CHARS = 12_000;
 
 export interface SendMessageInput {
   content?: string;
@@ -94,14 +96,17 @@ export async function runChat(
   // 短追问（"为什么？"）结合上一轮提问检索。
   const prevUser = [...history].reverse().find((m) => m.role === "user");
   const query = user.content.length < 12 && prevUser ? `${prevUser.content} ${user.content}` : user.content;
-  const { results } = sources.length
-    ? await retrieve(store, conv.notebookId, query, {
+  // 先放检索命中的片段，再用每份资料的均匀抽样补足：「这几份资料分别讲了什么」这类概括性提问
+  // 关键词命中不了任何片段，没有补足时模型会拿到空资料。
+  const { passages, citable } = sources.length
+    ? await gatherPassages(ctx, conv.notebookId, {
         sourceIds: sources.map((s) => s.id),
+        query,
         k: 8,
-        embedding: await ctx.models.embedding(),
+        maxChars: CHAT_CONTEXT_CHARS,
+        order: "relevance",
       })
-    : { results: [] };
-  const passages = toPassages(results);
+    : { passages: [], citable: [] };
 
   const assistant: Message = {
     id: newId("msg"),
@@ -142,10 +147,7 @@ export async function runChat(
     return failed;
   }
 
-  const { text: cleaned, citations } = validateCitations(
-    text,
-    results.map((r, i) => ({ n: i + 1, chunk: r.chunk, sourceTitle: r.sourceTitle })),
-  );
+  const { text: cleaned, citations } = validateCitations(text, citable);
   const final = (await store.messages.update(assistant.id, { content: cleaned, citations, status: "done" }))!;
   await setLeaf(ctx, conv, assistant.id, user.content);
   await emit("citations", citations);

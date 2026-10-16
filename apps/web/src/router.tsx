@@ -39,7 +39,7 @@ export const settingsRoute = createRoute({
 const settingsIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: () => <SettingsPage section="appearance" />,
+  component: () => <SettingsPage section="models" />,
 });
 
 const routeTree = rootRoute.addChildren([homeRoute, workspaceRoute, settingsRoute, settingsIndexRoute]);

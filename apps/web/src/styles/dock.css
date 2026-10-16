@@ -39,6 +39,15 @@
   color-scheme: inherit;
 }
 
+/*
+ * light-spaced 会给带主题类的元素加 padding，而 dockview 8 把主题类同时加在 dv-shell 和内部的
+ * dockview 元素上，并按元素的完整尺寸排布子视图：padding 让内容比容器大十几像素，
+ * 整个工作区出现无意义的横竖滚动条。外边距改由 .quirenote-dock 容器提供。
+ */
+.quirenote-dock .dockview-theme-light-spaced {
+  padding: 0;
+}
+
 .quirenote-dock .dv-groupview {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);

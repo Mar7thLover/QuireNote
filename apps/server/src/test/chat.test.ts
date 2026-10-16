@@ -1,6 +1,7 @@
 import type { Citation, Conversation, Message, Notebook } from "@quirenote/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pathTo } from "../services/chat";
+import { gatherPassages } from "../services/passages";
 import { makeServer, readSse, type TestServer } from "./helpers";
 
 let s: TestServer;
@@ -219,5 +220,34 @@ describe("switching models inside a conversation", () => {
       json: { model: null },
     });
     expect(reset.model).toBeNull();
+  });
+});
+
+describe("overview questions without an embedding model", () => {
+  it("still gives the model material from every selected source", async () => {
+    // 只配对话模型、不配 Embedding：检索只剩关键词，概括性提问命中不了任何片段。
+    const s2 = await makeServer({ seed: true, env: { OPENAI_COMPATIBLE_EMBEDDING_MODEL: "" } });
+    try {
+      expect(await s2.ctx.models.embedding()).toBeNull();
+      const nb2 = (await s2.json<Notebook[]>("/notebooks"))[0]!;
+      const sources = await s2.json<{ id: string; title: string }[]>(`/notebooks/${nb2.id}/sources`);
+      const question = "这三份文件分别都讲了什么？";
+      const { passages } = await gatherPassages(s2.ctx, nb2.id, { query: question, k: 8, maxChars: 12_000 });
+      expect(new Set(passages.map((p) => p.sourceId))).toEqual(new Set(sources.map((x) => x.id)));
+
+      const c2 = await s2.json<Conversation>(`/notebooks/${nb2.id}/conversations`, {
+        method: "POST",
+        json: {},
+      });
+      const res = await s2.request(`/conversations/${c2.id}/messages`, {
+        method: "POST",
+        json: { content: question, parentId: null },
+      });
+      const done = (await readSse(res)).at(-1)!.data as Message;
+      expect(done.content).not.toMatch(/没有资料片段/);
+      expect(done.citations.length).toBeGreaterThan(0);
+    } finally {
+      await s2.dispose();
+    }
   });
 });

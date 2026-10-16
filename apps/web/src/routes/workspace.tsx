@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
+  Shortcut,
   Tooltip,
   toast,
 } from "@quirenote/ui";
@@ -38,9 +39,12 @@ import {
   MessagesSquare,
   Minimize2,
   NotebookPen,
+  PanelLeftClose,
+  PanelLeftOpen,
   Repeat,
   RotateCcw,
   Save,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -69,6 +73,8 @@ import {
 } from "@/stores/workspace";
 
 const quirenoteTheme = { ...themeLightSpaced, name: "quirenote", gap: 6 };
+const GROUP_MIN_WIDTH = 300;
+const GROUP_MIN_HEIGHT = 180;
 
 const ACTIVITY: { kind: PanelKind; icon: LucideIcon; shortcut?: string }[] = [
   { kind: "sources", icon: BookOpen, shortcut: SHORTCUTS.openSources },
@@ -154,6 +160,12 @@ function DesktopWorkspace({ notebookId, notebook }: { notebookId: string; notebo
         }
       }
       if (!restored) applyPreset(e.api, notebookId, "research", t);
+      // 面板组设最小尺寸：拖拽或恢复旧布局时不会被挤成一条（对话输入框等会变形）。
+      const constrain = (g: {
+        api: { setConstraints: (c: { minimumWidth: number; minimumHeight: number }) => void };
+      }) => g.api.setConstraints({ minimumWidth: GROUP_MIN_WIDTH, minimumHeight: GROUP_MIN_HEIGHT });
+      for (const g of e.api.groups) constrain(g);
+      e.api.onDidAddGroup(constrain);
       e.api.onDidLayoutChange(() => saveLayout(notebookId, e.api.toJSON()));
       apiRef.current = e.api;
       useWorkspace.getState().setApi(e.api, notebookId);
@@ -170,20 +182,13 @@ function DesktopWorkspace({ notebookId, notebook }: { notebookId: string; notebo
     <div className="flex h-full flex-col">
       {focusMode ? null : <WorkspaceHeader notebook={notebook} notebookId={notebookId} />}
       <div className="flex min-h-0 flex-1">
-        {focusMode ? null : (
-          <nav className="flex w-12 shrink-0 flex-col items-center gap-1 pt-1.5 pb-3" aria-label="panels">
-            {ACTIVITY.map((a) => (
-              <ActivityButton
-                key={a.kind}
-                kind={a.kind}
-                icon={a.icon}
-                shortcut={a.shortcut}
-                onClick={() => openKind(a.kind)}
-              />
-            ))}
-          </nav>
-        )}
-        <div className={cn("quirenote-dock relative min-w-0 flex-1", focusMode ? "p-2" : "pr-1.5 pb-1.5")}>
+        {focusMode ? null : <WorkspaceSidebar onOpen={openKind} />}
+        <div
+          className={cn(
+            "quirenote-dock relative min-w-0 flex-1 overflow-hidden",
+            focusMode ? "p-3.5" : "pt-1.5 pr-3 pb-3 pl-1.5",
+          )}
+        >
           <DockviewReact
             className="dockview-theme-light-spaced"
             theme={quirenoteTheme}
@@ -208,15 +213,97 @@ function DesktopWorkspace({ notebookId, notebook }: { notebookId: string; notebo
   );
 }
 
+/** 工作区侧栏：展开时图标 + 名称，收起时只有图标（悬停显示名称）。底部是设置与收起按钮。 */
+function WorkspaceSidebar({ onOpen }: { onOpen: (kind: PanelKind) => void }) {
+  const { t } = useTranslation();
+  const collapsed = useUi((s) => s.sidebarCollapsed);
+  return (
+    <nav
+      aria-label={t("nav.panels")}
+      className={cn(
+        "flex shrink-0 flex-col gap-0.5 pt-1.5 pb-3 transition-[width] duration-200",
+        collapsed ? "w-14 items-center px-1.5" : "w-48 px-2",
+      )}
+    >
+      {collapsed ? null : (
+        <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-fg-subtle">
+          {t("nav.panels")}
+        </p>
+      )}
+      {ACTIVITY.map((a) => (
+        <ActivityButton
+          key={a.kind}
+          kind={a.kind}
+          icon={a.icon}
+          shortcut={a.shortcut}
+          collapsed={collapsed}
+          onClick={() => onOpen(a.kind)}
+        />
+      ))}
+      <div className="flex-1" />
+      <SidebarItem collapsed={collapsed} icon={Settings} label={t("nav.settings")} asLink />
+      <SidebarItem
+        collapsed={collapsed}
+        icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+        label={collapsed ? t("nav.expand") : t("nav.collapse")}
+        onClick={() => useUi.getState().toggleSidebar()}
+      />
+    </nav>
+  );
+}
+
+const sidebarRow =
+  "relative flex h-9 items-center gap-2.5 rounded-lg text-[13.5px] text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg focus-ring";
+
+function SidebarItem({
+  collapsed,
+  icon: Icon,
+  label,
+  onClick,
+  asLink,
+}: {
+  collapsed: boolean;
+  icon: LucideIcon;
+  label: string;
+  onClick?: () => void;
+  asLink?: boolean;
+}) {
+  const cls = cn(sidebarRow, collapsed ? "w-10 justify-center" : "w-full px-2.5");
+  const body = (
+    <>
+      <Icon className="size-[18px] shrink-0" strokeWidth={1.8} />
+      {collapsed ? null : <span className="truncate">{label}</span>}
+    </>
+  );
+  const el = asLink ? (
+    <Link to="/settings" className={cls} aria-label={label}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls} aria-label={label}>
+      {body}
+    </button>
+  );
+  return collapsed ? (
+    <Tooltip content={label} side="right">
+      {el}
+    </Tooltip>
+  ) : (
+    el
+  );
+}
+
 function ActivityButton({
   kind,
   icon: Icon,
   shortcut,
+  collapsed,
   onClick,
 }: {
   kind: PanelKind;
   icon: LucideIcon;
   shortcut?: string;
+  collapsed: boolean;
   onClick: () => void;
 }) {
   const { t } = useTranslation();
@@ -233,21 +320,42 @@ function ActivityButton({
       d2.dispose();
     };
   }, [api, kind]);
-  return (
-    <Tooltip content={t(`nav.${kind}`)} shortcut={shortcut} side="right">
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={t(`nav.${kind}`)}
-        className={cn(
-          "relative grid size-9 place-items-center rounded-lg text-fg-subtle transition-colors hover:bg-surface-hover hover:text-fg focus-ring",
-          active && "text-fg",
-        )}
-      >
-        <Icon className="size-[18px]" strokeWidth={active ? 2.1 : 1.8} />
-        {active ? <span className="absolute top-2.5 -left-1.5 h-4 w-[3px] rounded-full bg-accent" /> : null}
-      </button>
+  const label = t(`nav.${kind}`);
+  const button = (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? "true" : undefined}
+      className={cn(
+        sidebarRow,
+        "group",
+        collapsed ? "w-10 justify-center" : "w-full px-2.5",
+        active && "bg-surface-hover/70 font-medium text-fg",
+      )}
+    >
+      <Icon className="size-[18px] shrink-0" strokeWidth={active ? 2.1 : 1.8} />
+      {collapsed ? null : (
+        <>
+          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+          {shortcut ? (
+            // 只在悬停时占位，平时把宽度留给名称。
+            <Shortcut
+              keys={shortcut}
+              className="hidden group-hover:inline-flex [&_kbd]:border-0 [&_kbd]:bg-transparent"
+            />
+          ) : null}
+        </>
+      )}
+      {active ? <span className="absolute top-2.5 -left-2 h-4 w-[3px] rounded-full bg-accent" /> : null}
+    </button>
+  );
+  return collapsed ? (
+    <Tooltip content={label} shortcut={shortcut} side="right">
+      {button}
     </Tooltip>
+  ) : (
+    button
   );
 }
 

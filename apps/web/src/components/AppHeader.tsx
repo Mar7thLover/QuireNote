@@ -89,13 +89,12 @@ export function AppHeader({ left, right }: { left?: ReactNode; right?: ReactNode
         </Button>
       </Tooltip>
       <ThemeToggle />
-      <Tooltip content={t("common.settings")}>
-        <Button variant="ghost" size="icon-sm" asChild>
-          <Link to="/settings/$section" params={{ section: "appearance" }} aria-label={t("common.settings")}>
-            <Settings />
-          </Link>
-        </Button>
-      </Tooltip>
+      <Button variant="ghost" size="sm" asChild>
+        <Link to="/settings">
+          <Settings />
+          {t("common.settings")}
+        </Link>
+      </Button>
     </header>
   );
 }

@@ -17,12 +17,13 @@ export function useProviderCatalog() {
   });
 }
 
+// 模型配置数据很小，又决定 AI 功能能否使用：每次挂载都向服务端确认，不吃 30 秒的缓存。
 export function useProviders() {
-  return useQuery({ queryKey: qk.providers, queryFn: api.providers.list });
+  return useQuery({ queryKey: qk.providers, queryFn: api.providers.list, staleTime: 0 });
 }
 
 export function useAssignments() {
-  return useQuery({ queryKey: qk.assignments, queryFn: api.providers.assignments });
+  return useQuery({ queryKey: qk.assignments, queryFn: api.providers.assignments, staleTime: 0 });
 }
 
 /** 已启用、类型支持该能力、并登记了该用途模型的提供方，按提供方分组。 */

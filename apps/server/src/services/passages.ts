@@ -33,7 +33,15 @@ export interface GatheredPassages {
 export async function gatherPassages(
   ctx: AppContext,
   notebookId: string,
-  opts: { sourceIds?: string[] | null; maxChars?: number; query?: string; k?: number; fill?: boolean } = {},
+  opts: {
+    sourceIds?: string[] | null;
+    maxChars?: number;
+    query?: string;
+    k?: number;
+    fill?: boolean;
+    /** relevance：检索命中按相关度排在前面，补足的片段按文中顺序跟在后面（对话用）；默认全部按文中顺序。 */
+    order?: "document" | "relevance";
+  } = {},
 ): Promise<GatheredPassages> {
   const maxChars = opts.maxChars ?? 16_000;
   const sources = await activeSources(ctx, notebookId, opts.sourceIds);
@@ -47,6 +55,7 @@ export async function gatherPassages(
     });
     chosen = results.map((r) => r.chunk);
   }
+  const hits = chosen.length;
   const used = new Set(chosen.map((c) => c.id));
   let budget = maxChars - chosen.reduce((s, c) => s + c.text.length, 0);
   if (opts.fill !== false && budget > 0 && sources.length) {
@@ -65,7 +74,10 @@ export async function gatherPassages(
   }
   // 按资料顺序、文中顺序排列，便于模型理解。
   const order = new Map(sources.map((s, i) => [s.id, i]));
-  chosen.sort((a, b) => (order.get(a.sourceId) ?? 0) - (order.get(b.sourceId) ?? 0) || a.index - b.index);
+  const byDoc = (a: Chunk, b: Chunk) =>
+    (order.get(a.sourceId) ?? 0) - (order.get(b.sourceId) ?? 0) || a.index - b.index;
+  if (opts.order === "relevance") chosen = [...chosen.slice(0, hits), ...chosen.slice(hits).sort(byDoc)];
+  else chosen.sort(byDoc);
   const passages: Passage[] = [];
   const citable: CitablePassage[] = [];
   chosen.forEach((c, i) => {

@@ -12,13 +12,16 @@ import {
   toast,
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronDown, History, MessageSquareDashed, Plus, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, ChevronDown, History, MessageSquareDashed, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { markAsked } from "@/components/GettingStarted";
 import { PanelShell } from "@/components/Panel";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
+import { useAssignments } from "@/lib/models";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { Composer } from "./Composer";
 import { ChatEmpty, MessageItem, StreamingItem } from "./MessageItem";
@@ -85,6 +88,7 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
       const c = await ensureConversation(content);
       stick.current = true;
       await send(c.id, { content, parentId: path.at(-1)?.message.id ?? null, sourceIds });
+      markAsked();
     } catch (e) {
       if ((e as Error).name !== "AbortError") toast.error((e as Error).message);
     }
@@ -96,6 +100,9 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
     upsertInList(qk.conversations(notebookId), { ...conv, activeLeafId: leaf });
     api.conversations.update(conv.id, { activeLeafId: leaf });
   };
+
+  const assignments = useAssignments();
+  const noModel = !!assignments.data && !model && !assignments.data.some((a) => a.capability === "chat");
 
   const selectedIds = (sources.data ?? []).filter((s) => s.selected && s.status === "ready").map((s) => s.id);
 
@@ -160,6 +167,7 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
             )}
           </div>
         </div>
+        {noModel ? <NoModelNotice /> : null}
         <Composer
           notebookId={notebookId}
           onlySource={onlySource}
@@ -241,5 +249,24 @@ function ConversationMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** 没有任何可用的对话模型时，在输入框上方提示并直达设置。 */
+function NoModelNotice() {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-3 mb-2 flex items-start gap-2.5 rounded-xl border border-warning/40 bg-warning-soft/60 p-3 sm:mx-auto sm:w-[calc(100%-1.5rem)] sm:max-w-3xl">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13.5px] font-medium">{t("chat.noModelTitle")}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-fg-muted">{t("chat.noModelDesc")}</p>
+      </div>
+      <Button size="sm" variant="primary" asChild>
+        <Link to="/settings/$section" params={{ section: "models" }}>
+          {t("chat.noModelAction")}
+        </Link>
+      </Button>
+    </div>
   );
 }

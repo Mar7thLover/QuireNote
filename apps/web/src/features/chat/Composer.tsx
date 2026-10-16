@@ -140,14 +140,19 @@ export function Composer({
           className="block max-h-56 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14.5px] leading-relaxed outline-none placeholder:text-fg-subtle"
           aria-label={t("chat.placeholder")}
         />
-        <div className="flex items-center gap-2 px-2 pb-2">
-          <span className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-fg-subtle">
+        {/* 按输入框自身宽度（而不是窗口宽度）决定显示哪些提示，窄面板里也保持一行。 */}
+        <div className="@container flex min-w-0 items-center gap-2 px-2 pb-2">
+          <span
+            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs whitespace-nowrap text-fg-subtle"
+            title={t("chat.sourcesUsed", { count: scope.length })}
+          >
             <BookOpen className="size-3.5" />
-            {t("chat.sourcesUsed", { count: scope.length })}
+            <span className="hidden @xs:inline">{t("chat.sourcesUsed", { count: scope.length })}</span>
+            <span className="@xs:hidden">{scope.length}</span>
           </span>
           {modelPicker}
           <div className="flex-1" />
-          <span className="hidden text-[11px] text-fg-subtle sm:inline">
+          <span className="hidden text-[11px] whitespace-nowrap text-fg-subtle @lg:inline">
             <Shortcut keys="Enter" /> 发送 · Shift+Enter 换行
           </span>
           {streaming ? (

@@ -37,6 +37,7 @@ import {
 import { motion } from "motion/react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { GettingStarted } from "@/components/GettingStarted";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { greetingKey, relativeTime } from "@/lib/format";
@@ -81,6 +82,8 @@ export function HomePage() {
             </h1>
             <p className="mt-2 text-[15px] text-fg-muted">{t("home.subtitle")}</p>
           </motion.div>
+
+          {notebooks.data ? <GettingStarted notebooks={notebooks.data} /> : null}
 
           <div className="mt-8 flex flex-wrap items-center gap-2">
             <Button variant="primary" size="lg" onClick={openNew}>

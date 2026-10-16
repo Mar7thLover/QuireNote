@@ -39,7 +39,7 @@ export function ModelPicker({
         <button
           type="button"
           className={cn(
-            "flex min-w-0 max-w-52 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs transition-colors hover:bg-surface-hover focus-ring",
+            "flex min-w-0 max-w-52 shrink items-center gap-1 rounded-md px-1.5 py-0.5 text-xs transition-colors hover:bg-surface-hover focus-ring",
             effective ? "text-fg-subtle hover:text-fg" : "text-warning",
           )}
           aria-label={t("chat.model")}
