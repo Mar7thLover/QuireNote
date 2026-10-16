@@ -1,4 +1,4 @@
-import type { RenderRule } from "@folio/core";
+import type { RenderRule } from "@quirenote/core";
 
 /**
  * 内置规则。字段分隔符同时支持中文全角竖线「｜」和英文「|」；

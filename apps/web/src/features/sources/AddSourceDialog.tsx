@@ -10,7 +10,7 @@ import {
   TabsTrigger,
   Textarea,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { ClipboardPaste, FileUp, Globe, Link2, Mic, Square, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

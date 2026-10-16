@@ -1,4 +1,4 @@
-import type { Capability, ProviderConfig, ProviderKind } from "@folio/core";
+import type { Capability, ProviderConfig, ProviderKind } from "@quirenote/core";
 import {
   Badge,
   Button,
@@ -11,7 +11,7 @@ import {
   Skeleton,
   Switch,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,

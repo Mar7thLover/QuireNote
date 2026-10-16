@@ -4,16 +4,16 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@folio/web", "dev"],
+      "runtimeArgs": ["--filter", "@quirenote/web", "dev"],
       "port": 5173,
-      "env": { "FOLIO_API_TARGET": "http://localhost:8790" }
+      "env": { "QUIRENOTE_API_TARGET": "http://localhost:8790" }
     },
     {
       "name": "server",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@folio/server", "start"],
+      "runtimeArgs": ["--filter", "@quirenote/server", "start"],
       "port": 8790,
-      "env": { "PORT": "8790", "FOLIO_DATA_DIR": "data-dev" }
+      "env": { "PORT": "8790", "QUIRENOTE_DATA_DIR": "data-dev" }
     }
   ]
 }

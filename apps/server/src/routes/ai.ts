@@ -1,5 +1,5 @@
-import { LOCAL_PROVIDER_ID, listCatalog, listModels, testConnection, transformStream } from "@folio/ai";
-import { AgentProposal, Capability, ModelAssignment, ProviderInput } from "@folio/core";
+import { LOCAL_PROVIDER_ID, listCatalog, listModels, testConnection, transformStream } from "@quirenote/ai";
+import { AgentProposal, Capability, ModelAssignment, ProviderInput } from "@quirenote/core";
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";

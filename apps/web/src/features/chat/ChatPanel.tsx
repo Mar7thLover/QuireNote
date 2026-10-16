@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "@folio/core";
+import type { Conversation, Message } from "@quirenote/core";
 import {
   Button,
   cn,
@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Tooltip,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ChevronDown, History, MessageSquareDashed, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";

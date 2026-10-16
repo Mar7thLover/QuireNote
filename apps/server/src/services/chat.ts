@@ -1,6 +1,6 @@
 /** 带引用的对话：消息树、分支、重新生成；SSE 事件 user → start → delta* → citations → done。 */
-import { buildCitationSystemPrompt, type ChatTurn, streamChat, truncate } from "@folio/ai";
-import { type Conversation, type Message, newId, nowIso } from "@folio/core";
+import { buildCitationSystemPrompt, type ChatTurn, streamChat, truncate } from "@quirenote/ai";
+import { type Conversation, type Message, newId, nowIso } from "@quirenote/core";
 import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";

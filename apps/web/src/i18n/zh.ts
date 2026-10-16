@@ -1,5 +1,5 @@
 export const zh = {
-  app: { name: "Folio", tagline: "你的 AI 研究笔记本" },
+  app: { name: "Quirenote", tagline: "你的 AI 研究笔记本" },
   common: {
     cancel: "取消",
     confirm: "确认",
@@ -25,7 +25,7 @@ export const zh = {
     none: "无",
     untitled: "未命名",
     offline: "离线模式：可浏览和编辑，恢复连接后自动同步",
-    serverDown: "无法连接到 Folio 服务器",
+    serverDown: "无法连接到 Quirenote 服务器",
     justNow: "刚刚",
     settings: "设置",
     import: "导入",
@@ -347,7 +347,7 @@ export const zh = {
     bgOpacity: "背景强度",
     resetTheme: "恢复默认",
     server: "服务器地址",
-    serverHint: "移动端或桌面壳连接自托管服务器时填写，例如 https://folio.example.com",
+    serverHint: "移动端或桌面壳连接自托管服务器时填写，例如 https://quirenote.example.com",
   },
   models: {
     providers: "服务提供方",
@@ -410,8 +410,8 @@ export const zh = {
     scope_artifact: "生成物",
     order: "顺序",
     testInput: "测试文本",
-    importTheme: "导入 .folio-theme",
-    exportTheme: "导出 .folio-theme",
+    importTheme: "导入 .quirenote-theme",
+    exportTheme: "导出 .quirenote-theme",
     builtin: "内置",
     redosWarning: "可能存在灾难性回溯风险",
     sandboxNote: "模板在沙箱 iframe 中渲染：禁用脚本，外部请求被 CSP 阻断。",

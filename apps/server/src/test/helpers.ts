@@ -22,7 +22,7 @@ export async function makeServer(
     dir?: string;
   } = {},
 ): Promise<TestServer> {
-  const dir = opts.dir ?? mkdtempSync(join(tmpdir(), "folio-test-"));
+  const dir = opts.dir ?? mkdtempSync(join(tmpdir(), "quirenote-test-"));
   const config: ServerConfig = {
     port: 0,
     dataDir: dir,

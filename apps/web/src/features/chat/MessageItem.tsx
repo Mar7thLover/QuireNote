@@ -1,5 +1,5 @@
-import type { Citation, Message } from "@folio/core";
-import { Button, cn, Textarea, Tooltip, TypingDots, toast } from "@folio/ui";
+import type { Citation, Message } from "@quirenote/core";
+import { Button, cn, Textarea, Tooltip, TypingDots, toast } from "@quirenote/ui";
 import {
   BookmarkPlus,
   Check,

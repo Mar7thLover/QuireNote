@@ -1,5 +1,5 @@
-import { ARTIFACT_KIND_META, type Artifact, type ArtifactData } from "@folio/core";
-import { Badge, Button, EmptyState, Skeleton, Spinner, TypingDots, toast } from "@folio/ui";
+import { ARTIFACT_KIND_META, type Artifact, type ArtifactData } from "@quirenote/core";
+import { Badge, Button, EmptyState, Skeleton, Spinner, TypingDots, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, Download, SendHorizontal, Sparkles } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";

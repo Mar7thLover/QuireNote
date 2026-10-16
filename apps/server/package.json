@@ -1,5 +1,5 @@
 {
-  "name": "@folio/server",
+  "name": "@quirenote/server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@folio/ai": "workspace:*",
-    "@folio/core": "workspace:*",
-    "@folio/render": "workspace:*",
+    "@quirenote/ai": "workspace:*",
+    "@quirenote/core": "workspace:*",
+    "@quirenote/render": "workspace:*",
     "@hono/node-server": "^2.1.5",
     "@hono/zod-validator": "^0.9.1",
     "@mozilla/readability": "^0.6.0",

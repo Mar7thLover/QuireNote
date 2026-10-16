@@ -1,4 +1,4 @@
-import { type Conversation, newId, nowIso } from "@folio/core";
+import { type Conversation, newId, nowIso } from "@quirenote/core";
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";

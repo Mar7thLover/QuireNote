@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { type CardTemplate, ThemeSettings } from "@folio/core";
+import { type CardTemplate, ThemeSettings } from "@quirenote/core";
 import { describe, expect, it } from "vitest";
 import { builtinRules } from "./builtin/rules";
 import { builtinTemplates, termTemplate } from "./builtin/templates";
@@ -38,17 +38,17 @@ describe("defaultThemeSettings", () => {
   });
 });
 
-describe(".folio-theme 往返", () => {
+describe(".quirenote-theme 往返", () => {
   it("导出再导入得到相同内容且没有警告", () => {
     const text = exportTheme({
       name: "清晨",
-      author: "Folio",
+      author: "Quirenote",
       theme: { accent: "#0a7", radius: 8 },
       templates: [myTemplate, termTemplate],
       rules: [myRule],
     });
     const json = JSON.parse(text);
-    expect(json).toMatchObject({ format: "folio-theme", version: 1, name: "清晨", author: "Folio" });
+    expect(json).toMatchObject({ format: "quirenote-theme", version: 1, name: "清晨", author: "Quirenote" });
     expect(json.templates).toHaveLength(1); // 内置模板不导出
 
     const res = mustImport(text);
@@ -67,8 +67,11 @@ describe("拒绝非法文件", () => {
   it.each([
     ["不是 JSON", "{not json"],
     ["格式标记错误", JSON.stringify({ format: "other", version: 1, name: "x" })],
-    ["版本不支持", JSON.stringify({ format: "folio-theme", version: 2, name: "x" })],
-    ["字段类型错误", JSON.stringify({ format: "folio-theme", version: 1, name: "x", rules: [{ id: 1 }] })],
+    ["版本不支持", JSON.stringify({ format: "quirenote-theme", version: 2, name: "x" })],
+    [
+      "字段类型错误",
+      JSON.stringify({ format: "quirenote-theme", version: 1, name: "x", rules: [{ id: 1 }] }),
+    ],
     ["根不是对象", "[]"],
   ])("%s", (_label, text) => {
     const res = importTheme(text);
@@ -78,7 +81,7 @@ describe("拒绝非法文件", () => {
 
   it("schema 错误给出带路径的 issues", () => {
     const res = importTheme(
-      JSON.stringify({ format: "folio-theme", version: 1, name: "x", theme: { radius: 100 } }),
+      JSON.stringify({ format: "quirenote-theme", version: 1, name: "x", theme: { radius: 100 } }),
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.issues.some((i) => i.startsWith("theme.radius"))).toBe(true);
@@ -108,7 +111,7 @@ describe("导入时的清洗与检查", () => {
 
   it("声明为内置的模板改为普通模板", () => {
     const text = JSON.stringify({
-      format: "folio-theme",
+      format: "quirenote-theme",
       version: 1,
       name: "x",
       templates: [{ ...myTemplate, builtin: true }],
@@ -195,7 +198,7 @@ describe("id 冲突", () => {
 
   it("文件内部重复的 id 也会去重", () => {
     const dup = JSON.stringify({
-      format: "folio-theme",
+      format: "quirenote-theme",
       version: 1,
       name: "x",
       templates: [myTemplate, myTemplate],

@@ -1,4 +1,4 @@
-import { ARTIFACT_KIND_META, type Artifact, type ArtifactKind } from "@folio/core";
+import { ARTIFACT_KIND_META, type Artifact, type ArtifactKind } from "@quirenote/core";
 import {
   Button,
   ContextMenu,
@@ -11,7 +11,7 @@ import {
   PopoverTrigger,
   Spinner,
   Textarea,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";

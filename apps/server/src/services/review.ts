@@ -1,5 +1,5 @@
 /** FSRS 间隔重复：建卡、到期、评分，同步更新元素掌握度。 */
-import { newId, nowIso, type ReviewCard, type ReviewRating } from "@folio/core";
+import { newId, nowIso, type ReviewCard, type ReviewRating } from "@quirenote/core";
 import { type Card, createEmptyCard, fsrs, type Grade, State } from "ts-fsrs";
 import type { AppContext } from "../context";
 import { notFound } from "../errors";

@@ -1,8 +1,8 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Chunk } from "@folio/core";
-import { DEMO_SOURCES } from "@folio/core/fixtures";
+import type { Chunk } from "@quirenote/core";
+import { DEMO_SOURCES } from "@quirenote/core/fixtures";
 import { describe, expect, it } from "vitest";
 import { chunkText, joinPages, pageAt } from "../chunking";
 import { stripInvalidMarkers, validateCitations } from "../citations";
@@ -194,7 +194,7 @@ describe("key encryption", () => {
   });
 
   it("generates and reuses secret.key in the data dir", () => {
-    const dir = mkdtempSync(join(tmpdir(), "folio-secret-"));
+    const dir = mkdtempSync(join(tmpdir(), "quirenote-secret-"));
     try {
       const s1 = loadOrCreateSecret(dir, null);
       expect(s1).toMatch(/^[0-9a-f]{64}$/);

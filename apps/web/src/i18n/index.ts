@@ -7,7 +7,7 @@ export type Lang = "zh" | "en";
 
 function detect(): Lang {
   try {
-    const saved = localStorage.getItem("folio.lang");
+    const saved = localStorage.getItem("quirenote.lang");
     if (saved === "zh" || saved === "en") return saved;
   } catch {}
   return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
@@ -27,7 +27,7 @@ export function setLang(lang: Lang) {
   i18n.changeLanguage(lang);
   document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
   try {
-    localStorage.setItem("folio.lang", lang);
+    localStorage.setItem("quirenote.lang", lang);
   } catch {}
 }
 

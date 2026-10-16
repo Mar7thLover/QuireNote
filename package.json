@@ -1,5 +1,5 @@
 {
-  "name": "folio",
+  "name": "quirenote",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.8.0",
@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "turbo run dev --parallel --filter=@folio/web --filter=@folio/server",
+    "dev": "turbo run dev --parallel --filter=@quirenote/web --filter=@quirenote/server",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

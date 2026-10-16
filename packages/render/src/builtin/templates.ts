@@ -1,4 +1,4 @@
-import type { CardTemplate } from "@folio/core";
+import type { CardTemplate } from "@quirenote/core";
 
 /**
  * 内置卡片模板。所有颜色、圆角、字体都取自宿主注入的主题变量（`--card-*`、`--font-*`），

@@ -1,4 +1,4 @@
-import { type Notebook, newId, nowIso } from "@folio/core";
+import { type Notebook, newId, nowIso } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { deleteSourceCascade } from "../ingest/pipeline";
 import type { NotebookRecord } from "../store/types";

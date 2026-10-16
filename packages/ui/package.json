@@ -1,5 +1,5 @@
 {
-  "name": "@folio/ui",
+  "name": "@quirenote/ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@folio/core": "workspace:*",
+    "@quirenote/core": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

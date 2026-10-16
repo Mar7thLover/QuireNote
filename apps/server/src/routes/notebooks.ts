@@ -7,7 +7,7 @@ import {
   Props,
   type Source,
   type SourceContent,
-} from "@folio/core";
+} from "@quirenote/core";
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";

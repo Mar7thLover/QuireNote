@@ -1,5 +1,5 @@
-import { type Citation, parseCitationMarkers, type RuleScope } from "@folio/core";
-import { cn, HoverCard, HoverCardContent, HoverCardTrigger } from "@folio/ui";
+import { type Citation, parseCitationMarkers, type RuleScope } from "@quirenote/core";
+import { cn, HoverCard, HoverCardContent, HoverCardTrigger } from "@quirenote/ui";
 import { FileText } from "lucide-react";
 import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";

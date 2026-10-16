@@ -1,4 +1,4 @@
-import { ElementType } from "@folio/core";
+import { ElementType } from "@quirenote/core";
 import { z } from "zod";
 
 /**

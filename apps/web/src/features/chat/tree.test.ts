@@ -1,4 +1,4 @@
-import type { Message } from "@folio/core";
+import type { Message } from "@quirenote/core";
 import { describe, expect, it } from "vitest";
 import { latestLeaf, visiblePath } from "./tree";
 

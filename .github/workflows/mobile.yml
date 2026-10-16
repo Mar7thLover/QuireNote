@@ -17,11 +17,11 @@ jobs:
         with: { distribution: temurin, java-version: 21 }
       - uses: android-actions/setup-android@v3
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @folio/mobile build
+      - run: pnpm --filter @quirenote/mobile build
       - run: cd apps/mobile/android && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: folio-android-debug
+          name: quirenote-android-debug
           path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
 
   ios:
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @folio/mobile build
+      - run: pnpm --filter @quirenote/mobile build
       - name: Build for simulator (unsigned)
         run: |
           cd apps/mobile/ios/App

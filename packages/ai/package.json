@@ -1,5 +1,5 @@
 {
-  "name": "@folio/ai",
+  "name": "@quirenote/ai",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "@ai-sdk/google": "^4.0.95",
     "@ai-sdk/openai": "^4.0.93",
     "@ai-sdk/openai-compatible": "^3.0.68",
-    "@folio/core": "workspace:*",
+    "@quirenote/core": "workspace:*",
     "ai": "^7.0.139",
     "zod": "^4.6.7"
   }

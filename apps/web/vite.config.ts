@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const apiTarget = process.env.FOLIO_API_TARGET ?? "http://localhost:8787";
+const apiTarget = process.env.QUIRENOTE_API_TARGET ?? "http://localhost:8787";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

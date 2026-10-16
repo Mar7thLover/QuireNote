@@ -1,4 +1,4 @@
-import type { RenderRule } from "@folio/core";
+import type { RenderRule } from "@quirenote/core";
 import {
   applyMatches,
   normalizeSegments,
@@ -30,7 +30,7 @@ export interface WorkerLike {
 }
 
 export interface RuleRunnerOptions {
-  /** 创建一个运行 `@folio/render/worker` 的 worker。超时后旧 worker 会被 terminate，并在下次需要时重新调用。 */
+  /** 创建一个运行 `@quirenote/render/worker` 的 worker。超时后旧 worker 会被 terminate，并在下次需要时重新调用。 */
   createWorker: () => WorkerLike;
   /** 单条规则（在整段文本上）的执行超时，默认 300ms。 */
   timeoutMs?: number;

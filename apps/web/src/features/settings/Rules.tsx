@@ -1,6 +1,6 @@
-import { newId, type RenderRule, type RuleScope } from "@folio/core";
-import { analyzePattern, builtinRuleSamples, builtinRules, builtinTemplates } from "@folio/render";
-import { Badge, Button, Checkbox, cn, Input, Select, Switch, Textarea } from "@folio/ui";
+import { newId, type RenderRule, type RuleScope } from "@quirenote/core";
+import { analyzePattern, builtinRuleSamples, builtinRules, builtinTemplates } from "@quirenote/render";
+import { Badge, Button, Checkbox, cn, Input, Select, Switch, Textarea } from "@quirenote/ui";
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Markdown } from "@/components/Markdown";

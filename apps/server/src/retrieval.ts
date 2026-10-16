@@ -1,6 +1,6 @@
 /** 混合检索：sqlite-vec 向量 + FTS5 关键词，RRF 融合。 */
-import { embeddingKey, embedTexts, type ModelRef, type Passage } from "@folio/ai";
-import type { Chunk } from "@folio/core";
+import { embeddingKey, embedTexts, type ModelRef, type Passage } from "@quirenote/ai";
+import type { Chunk } from "@quirenote/core";
 import type { Store } from "./store/types";
 
 export interface RankedList {

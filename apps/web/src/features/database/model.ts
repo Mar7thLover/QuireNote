@@ -10,7 +10,7 @@ import {
   type PropValue,
   SOURCE_KIND_META,
   type Source,
-} from "@folio/core";
+} from "@quirenote/core";
 
 /** 数据库视图中的统一条目。 */
 export interface DbRow {

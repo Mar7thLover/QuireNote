@@ -1,5 +1,5 @@
-import type { PodcastLine } from "@folio/core";
-import { cn, EmptyState } from "@folio/ui";
+import type { PodcastLine } from "@quirenote/core";
+import { cn, EmptyState } from "@quirenote/ui";
 import { ImageOff, Mic2 } from "lucide-react";
 import { apiBase } from "@/lib/api";
 import type { ArtifactViewProps } from "../ArtifactPanel";

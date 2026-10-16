@@ -1,9 +1,9 @@
 /*
- * Folio 设计 tokens。
+ * Quirenote 设计 tokens。
  * - 颜色全部用 OKLCH，浅色为暖纸色调，深色为墨蓝色调，两套同等精细。
  * - 主色由 --accent-h（色相）和 --accent-c（彩度）决定，用户可在外观设置里调。
  * - 圆角、密度由 --radius / --density 决定。
- * 使用方：在应用 CSS 中 `@import "tailwindcss"; @import "@folio/ui/styles.css";`
+ * 使用方：在应用 CSS 中 `@import "tailwindcss"; @import "@quirenote/ui/styles.css";`
  */
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

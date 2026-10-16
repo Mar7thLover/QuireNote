@@ -1,4 +1,4 @@
-/** API Key 加密：AES-256-GCM。密钥来自 FOLIO_SECRET，或数据目录下自动生成的 secret.key。 */
+/** API Key 加密：AES-256-GCM。密钥来自 QUIRENOTE_SECRET，或数据目录下自动生成的 secret.key。 */
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +10,7 @@ export interface KeyCipher {
 
 /** 从任意长度的口令派生 32 字节密钥。 */
 function deriveKey(secret: string): Buffer {
-  return createHash("sha256").update(`folio:v1:${secret}`).digest();
+  return createHash("sha256").update(`quirenote:v1:${secret}`).digest();
 }
 
 export function createCipher(secret: string): KeyCipher {

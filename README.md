@@ -1,8 +1,8 @@
-# Folio（工作代号）
+# Quirenote
 
 前端优先、多模型、可自托管的 AI Notebook。功能对标 NotebookLM，体验上追求超越：可拆分的工作区、AI 贯穿编辑器与阅读器、所有生成物可编辑、可定制的卡片渲染层。
 
-> 正式名称待定，候选：**Quirenote**、**Lumiscribe**、**Annotia**、**Lumenote**。代码中统一使用 `folio` 前缀，改名时全局替换即可。
+> Quirenote = quire（书帖，装订成册的一叠书页）+ note。代码、包名（`@quirenote/*`）、环境变量（`QUIRENOTE_*`）和主题文件（`.quirenote-theme`）统一使用这个名字。
 
 ## 功能一览
 
@@ -16,7 +16,7 @@
 | 学习 | FSRS 间隔重复复习；闪卡、测验、元素可一键加入复习，掌握度回写到元素 |
 | 元素分析 | 抽取概念、术语、人物、事件、日期、数据、论点、公式、问题；列表 / 表格 / 关系图；合并、补充定义、追问、批量出卡、回溯出处 |
 | 数据库视图 | 笔记 / 资料 / 生成物 / 元素都可用表格、看板、画廊、日历查看，支持自定义属性、筛选、排序、分组 |
-| 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP）；内置 7 套模板；`.folio-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景） |
+| 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP）；内置 7 套模板；`.quirenote-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景） |
 | 联网搜索 | Tavily / Brave / SearXNG，快速搜索结果一键加入资料；深度研究多轮检索后自动导入并出报告 |
 | 模型 | Claude、OpenAI、Gemini、Ollama、OpenAI 兼容、ElevenLabs、fal、Replicate、ComfyUI 等；按能力（对话 / Embedding / 搜索 / TTS / STT / 图像 / 视频）分别指定；内置无需 Key 的 Local 模型用于离线演示 |
 | 工作区 | dockview 可拆分、拖拽、浮动的面板与标签页；布局预设（研究 / 写作 / 学习 / 专注）和自定义预设；专注模式；移动端底部导航 + 推入式详情页 |
@@ -30,7 +30,7 @@ apps/server      Hono (Node) + better-sqlite3 + sqlite-vec + FTS5，进程内任
 apps/mobile      Capacitor 壳（iOS / Android）
 packages/core    共享 zod schema 与类型、示例数据
 packages/ui      设计系统：tokens、组件、动效
-packages/render  正则规则引擎、模板渲染、HTML/CSS 清洗、.folio-theme
+packages/render  正则规则引擎、模板渲染、HTML/CSS 清洗、.quirenote-theme
 packages/ai      基于 Vercel AI SDK 的多 Provider 抽象与内置 Local 模型
 e2e/             Playwright 端到端测试
 docs/API.md      前后端接口契约
@@ -57,11 +57,11 @@ cp .env.example .env   # 可选：填入 Key，或之后在界面里添加
 docker compose up -d --build
 ```
 
-访问 http://localhost:8787。数据保存在 `folio-data` 卷中。服务端会同时托管前端页面（`FOLIO_WEB_DIST`）。
+访问 http://localhost:8787。数据保存在 `quirenote-data` 卷中。服务端会同时托管前端页面（`QUIRENOTE_WEB_DIST`）。
 
 ### 环境变量
 
-见 [.env.example](.env.example)。常用：`PORT`、`FOLIO_DATA_DIR`、`FOLIO_SECRET`（Key 加密主密钥）、`FOLIO_SEED=0`（不建示例数据）、`FOLIO_JOB_CONCURRENCY`、`FFMPEG_PATH`；以及 `ANTHROPIC_API_KEY` 等启动时自动添加的 Provider（均支持 `*_FILE`）。
+见 [.env.example](.env.example)。常用：`PORT`、`QUIRENOTE_DATA_DIR`、`QUIRENOTE_SECRET`（Key 加密主密钥）、`QUIRENOTE_SEED=0`（不建示例数据）、`QUIRENOTE_JOB_CONCURRENCY`、`FFMPEG_PATH`；以及 `ANTHROPIC_API_KEY` 等启动时自动添加的 Provider（均支持 `*_FILE`）。
 
 ## 开发命令
 

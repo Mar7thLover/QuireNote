@@ -1,4 +1,4 @@
-import type { Source } from "@folio/core";
+import type { Source } from "@quirenote/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";

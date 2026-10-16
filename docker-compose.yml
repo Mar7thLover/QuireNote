@@ -1,7 +1,7 @@
 services:
-  folio:
+  quirenote:
     build: .
-    image: folio:latest
+    image: quirenote:latest
     restart: unless-stopped
     ports:
       - "8787:8787"
@@ -9,7 +9,7 @@ services:
       - path: .env
         required: false
     volumes:
-      - folio-data:/data
+      - quirenote-data:/data
 
   # 可选：自托管搜索后端。启用后在「设置 → 模型与服务」添加 SearXNG，地址填 http://searxng:8080
   # searxng:
@@ -21,4 +21,4 @@ services:
   #     - SEARXNG_BASE_URL=http://localhost:8080/
 
 volumes:
-  folio-data:
+  quirenote-data:

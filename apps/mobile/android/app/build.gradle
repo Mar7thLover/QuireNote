@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "app.folio.notebook"
+    namespace = "app.quirenote.notebook"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.folio.notebook"
+        applicationId "app.quirenote.notebook"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -92,7 +92,7 @@ export function comfyWorkflow(checkpoint: string, prompt: string, seed: number):
     "6": { class_type: "CLIPTextEncode", inputs: { text: prompt, clip: ["4", 1] } },
     "7": { class_type: "CLIPTextEncode", inputs: { text: "text, watermark, blurry", clip: ["4", 1] } },
     "8": { class_type: "VAEDecode", inputs: { samples: ["3", 0], vae: ["4", 2] } },
-    "9": { class_type: "SaveImage", inputs: { filename_prefix: "folio", images: ["8", 0] } },
+    "9": { class_type: "SaveImage", inputs: { filename_prefix: "quirenote", images: ["8", 0] } },
   };
 }
 
@@ -103,7 +103,7 @@ async function comfyRun(ref: ModelRef, prompt: string, opts: MediaOptions): Prom
   const queued = await requestJson<{ prompt_id: string }>(p, `${base}/prompt`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ prompt: comfyWorkflow(ref.model, prompt, seed), client_id: "folio" }),
+    body: JSON.stringify({ prompt: comfyWorkflow(ref.model, prompt, seed), client_id: "quirenote" }),
   });
   const deadline = Date.now() + (opts.timeoutMs ?? 300_000);
   for (;;) {

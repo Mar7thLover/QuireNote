@@ -1,4 +1,4 @@
-import { CardTemplate, RenderRule } from "@folio/core";
+import { CardTemplate, RenderRule } from "@quirenote/core";
 import { describe, expect, it } from "vitest";
 import { builtinRuleSamples, builtinRules } from "./builtin/rules";
 import { builtinTemplates } from "./builtin/templates";

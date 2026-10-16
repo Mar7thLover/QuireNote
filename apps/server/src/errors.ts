@@ -1,4 +1,4 @@
-import { AiError } from "@folio/ai";
+import { AiError } from "@quirenote/ai";
 
 /** 统一错误：{ error: { code, message } } + HTTP 状态码。 */
 export class ApiError extends Error {

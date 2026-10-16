@@ -1,4 +1,4 @@
-import type { ThemeSettings } from "@folio/core";
+import type { ThemeSettings } from "@quirenote/core";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -78,7 +78,7 @@ export const useTheme = create<ThemeState>()(
       set: (patch) => set(patch),
       reset: () => set(defaultTheme),
     }),
-    { name: "folio.theme", version: 1 },
+    { name: "quirenote.theme", version: 1 },
   ),
 );
 

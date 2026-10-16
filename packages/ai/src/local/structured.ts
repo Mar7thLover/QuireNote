@@ -2,7 +2,7 @@
  * local provider 的启发式结构化生成。目标：结构合法、内容来自资料、绝不为空。
  * 所有函数都是纯函数、确定性的，便于测试。
  */
-import type { ArtifactKind, ElementType } from "@folio/core";
+import type { ArtifactKind, ElementType } from "@quirenote/core";
 import {
   type AgentDraft,
   type AgentOpDraft,

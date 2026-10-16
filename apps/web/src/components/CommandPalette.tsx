@@ -9,7 +9,7 @@ import {
   DialogContent,
   Spinner,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {

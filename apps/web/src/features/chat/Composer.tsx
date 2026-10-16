@@ -1,4 +1,4 @@
-import { Button, cn, Shortcut, Tooltip } from "@folio/ui";
+import { Button, cn, Shortcut, Tooltip } from "@quirenote/ui";
 import { ArrowUp, BookOpen, Quote, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSources } from "@/features/sources/hooks";

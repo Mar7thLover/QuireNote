@@ -1,5 +1,5 @@
-import type { Artifact, Job, Source } from "@folio/core";
-import { toast } from "@folio/ui";
+import type { Artifact, Job, Source } from "@quirenote/core";
+import { toast } from "@quirenote/ui";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { MutationCache, onlineManager, QueryClient } from "@tanstack/react-query";
 import { del, get, set } from "idb-keyval";
@@ -32,7 +32,7 @@ export const persister = createAsyncStoragePersister({
     setItem: (k, v) => set(k, v),
     removeItem: (k) => del(k),
   },
-  key: "folio.query-cache",
+  key: "quirenote.query-cache",
   throttleTime: 1500,
 });
 

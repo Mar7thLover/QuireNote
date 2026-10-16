@@ -1,4 +1,4 @@
-import { Button, cn, Field, Input, Sheet, toast } from "@folio/ui";
+import { Button, cn, Field, Input, Sheet, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileText, Link2, Server, Type } from "lucide-react";
 import { useState } from "react";
@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
 import { hasServerOverride, isNative, type SharedPayload, useShareInbox } from "./native";
 
-/** 「发送到 Folio」：选择 Notebook，把分享来的链接、文本、文件加入资料。 */
+/** 「发送到 Quirenote」：选择 Notebook，把分享来的链接、文本、文件加入资料。 */
 export function ShareInbox() {
   const { t } = useTranslation();
   const payload = useShareInbox((s) => s.payload);
@@ -25,7 +25,7 @@ export function ShareInbox() {
   });
 
   return (
-    <Sheet open={!!payload} onOpenChange={(o) => !o && set(null)} title="发送到 Folio">
+    <Sheet open={!!payload} onOpenChange={(o) => !o && set(null)} title="发送到 Quirenote">
       {payload ? (
         <div className="space-y-4 px-4 pb-6">
           <div className="space-y-1.5 rounded-xl bg-surface-sunken p-3 text-[13px]">
@@ -113,7 +113,7 @@ export function ServerOnboarding() {
     try {
       const res = await fetch(`${base}/api/health`);
       if (!res.ok) throw new Error(String(res.status));
-      localStorage.setItem("folio.server", base);
+      localStorage.setItem("quirenote.server", base);
       setOpen(false);
       location.reload();
     } catch (e) {
@@ -123,11 +123,11 @@ export function ServerOnboarding() {
     }
   };
   return (
-    <Sheet open={open} onOpenChange={() => {}} title="连接你的 Folio 服务器">
+    <Sheet open={open} onOpenChange={() => {}} title="连接你的 Quirenote 服务器">
       <div className="space-y-4 px-4 pb-8">
         <div className="flex items-start gap-3 rounded-xl bg-accent-soft p-3 text-[13px] leading-relaxed text-accent-soft-fg">
           <Server className="mt-0.5 size-5 shrink-0" />
-          Folio 的数据保存在你自托管的服务器上（docker compose 一键部署）。请填写服务器地址。
+          Quirenote 的数据保存在你自托管的服务器上（docker compose 一键部署）。请填写服务器地址。
         </div>
         <Field label="服务器地址">
           <Input

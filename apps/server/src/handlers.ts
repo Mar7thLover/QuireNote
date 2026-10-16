@@ -1,6 +1,6 @@
 /** 注册后台任务处理函数。 */
-import { autoHighlights } from "@folio/ai";
-import { newId, nowIso } from "@folio/core";
+import { autoHighlights } from "@quirenote/ai";
+import { newId, nowIso } from "@quirenote/core";
 import type { AppContext } from "./context";
 import { notFound } from "./errors";
 import { embedMissing, processSource } from "./ingest/pipeline";

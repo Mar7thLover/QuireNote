@@ -1,5 +1,5 @@
-import { ELEMENT_TYPE_META, type Element } from "@folio/core";
-import { Button, Tag, Textarea, toast } from "@folio/ui";
+import { ELEMENT_TYPE_META, type Element } from "@quirenote/core";
+import { Button, Tag, Textarea, toast } from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { FileText, Layers, MessageCircleQuestion, Sparkles, Trash2, X } from "lucide-react";
 import { useSources } from "@/features/sources/hooks";

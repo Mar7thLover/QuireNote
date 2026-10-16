@@ -1,4 +1,4 @@
-import { cn, Input } from "@folio/ui";
+import { cn, Input } from "@quirenote/ui";
 import { flexRender } from "@tanstack/react-table";
 import {
   getCoreRowModel,

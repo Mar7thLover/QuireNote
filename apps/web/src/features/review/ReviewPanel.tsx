@@ -1,5 +1,5 @@
-import type { ReviewCard } from "@folio/core";
-import { Button, cn, EmptyState, Shortcut, Skeleton } from "@folio/ui";
+import type { ReviewCard } from "@quirenote/core";
+import { Button, cn, EmptyState, Shortcut, Skeleton } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { PartyPopper } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";

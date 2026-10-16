@@ -400,7 +400,9 @@ describe("image adapters", () => {
       if (c.url.endsWith("/prompt")) return json({ prompt_id: "abc" });
       if (c.url.endsWith("/history/abc"))
         return json({
-          abc: { outputs: { "9": { images: [{ filename: "folio_1.png", subfolder: "", type: "output" }] } } },
+          abc: {
+            outputs: { "9": { images: [{ filename: "quirenote_1.png", subfolder: "", type: "output" }] } },
+          },
         });
       return new Response(png, { headers: { "content-type": "image/png" } });
     });
@@ -413,7 +415,9 @@ describe("image adapters", () => {
     const queued = JSON.parse(m.calls[0]!.body!);
     expect(queued.prompt["4"].inputs.ckpt_name).toBe("sd_xl_base_1.0.safetensors");
     expect(queued.prompt["6"].inputs.text).toBe("mountains");
-    expect(m.calls[2]!.url).toBe("http://127.0.0.1:8188/view?filename=folio_1.png&subfolder=&type=output");
+    expect(m.calls[2]!.url).toBe(
+      "http://127.0.0.1:8188/view?filename=quirenote_1.png&subfolder=&type=output",
+    );
     expect(Object.keys(comfyWorkflow("a", "b", 1))).toContain("9");
   });
 });

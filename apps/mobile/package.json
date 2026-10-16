@@ -1,10 +1,10 @@
 {
-  "name": "@folio/mobile",
+  "name": "@quirenote/mobile",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @folio/web build && cap sync",
+    "build": "pnpm --filter @quirenote/web build && cap sync",
     "sync": "cap sync",
     "android": "cap open android",
     "ios": "cap open ios",

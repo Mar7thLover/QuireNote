@@ -1,12 +1,12 @@
 // 关键界面巡检截图：node scripts/tour.mjs [--dark] [--only=name]
-// 依赖已运行的 web（FOLIO_WEB，默认 5173）和 server；截图存到 e2e/.screens/tour-*.png
+// 依赖已运行的 web（QUIRENOTE_WEB，默认 5173）和 server；截图存到 e2e/.screens/tour-*.png
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
 const dark = process.argv.includes("--dark");
 const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
-const base = process.env.FOLIO_WEB ?? "http://localhost:5173";
-const api = process.env.FOLIO_API ?? "http://localhost:8790/api";
+const base = process.env.QUIRENOTE_WEB ?? "http://localhost:5173";
+const api = process.env.QUIRENOTE_API ?? "http://localhost:8790/api";
 mkdirSync("e2e/.screens", { recursive: true });
 
 const nbs = await (await fetch(`${api}/notebooks`)).json();
@@ -19,8 +19,12 @@ const ctx = await browser.newContext({
   locale: "zh-CN",
 });
 await ctx.addInitScript((d) => {
-  localStorage.setItem("folio.theme", JSON.stringify({ state: { mode: d ? "dark" : "light" }, version: 1 }));
-  for (const k of Object.keys(localStorage)) if (k.startsWith("folio.layout.")) localStorage.removeItem(k);
+  localStorage.setItem(
+    "quirenote.theme",
+    JSON.stringify({ state: { mode: d ? "dark" : "light" }, version: 1 }),
+  );
+  for (const k of Object.keys(localStorage))
+    if (k.startsWith("quirenote.layout.")) localStorage.removeItem(k);
 }, dark);
 const page = await ctx.newPage();
 page.on("pageerror", (e) => console.log("pageerror:", e.message));

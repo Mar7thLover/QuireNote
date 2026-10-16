@@ -1,4 +1,4 @@
-import type { Citation, Conversation, Message, Notebook } from "@folio/core";
+import type { Citation, Conversation, Message, Notebook } from "@quirenote/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pathTo } from "../services/chat";
 import { makeServer, readSse, type TestServer } from "./helpers";

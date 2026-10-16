@@ -2,7 +2,7 @@
  * 正则执行 worker。前端用法（Vite）：
  *
  * ```ts
- * import RegexWorker from "@folio/render/worker?worker";
+ * import RegexWorker from "@quirenote/render/worker?worker";
  * const runner = createRuleRunner({ createWorker: () => new RegexWorker(), timeoutMs: 300 });
  * ```
  *

@@ -175,8 +175,8 @@ function sizeColumns(api: DockviewApi, widths: (number | null)[]) {
   });
 }
 
-const LAYOUT_KEY = (nb: string) => `folio.layout.${nb}`;
-const PRESETS_KEY = "folio.layout-presets";
+const LAYOUT_KEY = (nb: string) => `quirenote.layout.${nb}`;
+const PRESETS_KEY = "quirenote.layout-presets";
 
 export function saveLayout(nb: string, layout: SerializedDockview) {
   try {

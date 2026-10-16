@@ -1,6 +1,12 @@
-import { type CardTemplate, type FolioTheme, newId } from "@folio/core";
-import { builtinRules, builtinTemplates, exportTheme, importTheme, templateVariables } from "@folio/render";
-import { Badge, Button, cn, Input, Textarea, toast } from "@folio/ui";
+import { type CardTemplate, newId, type QuirenoteTheme } from "@quirenote/core";
+import {
+  builtinRules,
+  builtinTemplates,
+  exportTheme,
+  importTheme,
+  templateVariables,
+} from "@quirenote/render";
+import { Badge, Button, cn, Input, Textarea, toast } from "@quirenote/ui";
 import { Copy, Download, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { SandboxCard } from "@/features/render/RenderedSegments";
@@ -26,7 +32,7 @@ export function TemplateSettings() {
 
   const doExport = () => {
     const text = exportTheme({
-      name: "我的 Folio 主题",
+      name: "我的 Quirenote 主题",
       author: "",
       theme: {
         mode: theme.mode,
@@ -42,7 +48,7 @@ export function TemplateSettings() {
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "my-theme.folio-theme";
+    a.download = "my-theme.quirenote-theme";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -57,7 +63,7 @@ export function TemplateSettings() {
       toast.error(`导入失败：${res.error}`);
       return;
     }
-    const th = res.theme as FolioTheme;
+    const th = res.theme as QuirenoteTheme;
     setTemplates([...templates, ...th.templates]);
     setRules([...rules, ...th.rules]);
     if (th.theme) theme.set(th.theme);
@@ -83,7 +89,7 @@ export function TemplateSettings() {
           <input
             ref={fileRef}
             type="file"
-            accept=".folio-theme,.json"
+            accept=".quirenote-theme,.json"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];

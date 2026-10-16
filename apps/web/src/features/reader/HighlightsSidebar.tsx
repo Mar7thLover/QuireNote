@@ -1,5 +1,5 @@
-import type { SourceContent } from "@folio/core";
-import { Button, cn, EmptyState } from "@folio/ui";
+import type { SourceContent } from "@quirenote/core";
+import { Button, cn, EmptyState } from "@quirenote/ui";
 import { Highlighter, Sparkles, Trash2 } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";

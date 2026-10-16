@@ -1,4 +1,4 @@
-import { ELEMENT_TYPE_META, type Element, type ElementType } from "@folio/core";
+import { ELEMENT_TYPE_META, type Element, type ElementType } from "@quirenote/core";
 import {
   Button,
   Checkbox,
@@ -12,7 +12,7 @@ import {
   Tag,
   Tooltip,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Boxes, Combine, GitFork, Layers, List, Search, Sparkles, Table2 } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";

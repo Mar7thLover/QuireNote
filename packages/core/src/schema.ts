@@ -471,9 +471,9 @@ export const ThemeSettings = z.object({
 });
 export type ThemeSettings = z.infer<typeof ThemeSettings>;
 
-/** .folio-theme 文件内容。 */
-export const FolioTheme = z.object({
-  format: z.literal("folio-theme"),
+/** .quirenote-theme 文件内容。 */
+export const QuirenoteTheme = z.object({
+  format: z.literal("quirenote-theme"),
   version: z.literal(1),
   name: z.string(),
   author: z.string().default(""),
@@ -481,7 +481,7 @@ export const FolioTheme = z.object({
   templates: z.array(CardTemplate).default([]),
   rules: z.array(RenderRule).default([]),
 });
-export type FolioTheme = z.infer<typeof FolioTheme>;
+export type QuirenoteTheme = z.infer<typeof QuirenoteTheme>;
 
 // ───────────── Agent diff ─────────────
 /** Agent 提出的一组改动；用户确认后才落库。 */

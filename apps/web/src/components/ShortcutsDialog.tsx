@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, Shortcut } from "@folio/ui";
+import { Dialog, DialogContent, Shortcut } from "@quirenote/ui";
 import { useTranslation } from "@/i18n";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { useUi } from "@/stores/ui";

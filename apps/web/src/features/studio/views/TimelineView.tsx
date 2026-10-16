@@ -1,5 +1,5 @@
-import { newId } from "@folio/core";
-import { Button } from "@folio/ui";
+import { newId } from "@quirenote/core";
+import { Button } from "@quirenote/ui";
 import { Plus, Trash2 } from "lucide-react";
 import type { ArtifactViewProps } from "../ArtifactPanel";
 

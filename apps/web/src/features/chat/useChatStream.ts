@@ -1,4 +1,4 @@
-import type { Citation, Conversation, Message } from "@folio/core";
+import type { Citation, Conversation, Message } from "@quirenote/core";
 import { useCallback, useRef, useState } from "react";
 import { type ChatStreamEvent, streamSse } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";

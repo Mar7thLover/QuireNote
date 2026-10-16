@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const dataDir = process.env.FOLIO_E2E_DATA_DIR ?? "./data-e2e";
-// 设置 FOLIO_WEB 时直接复用已在运行的开发服务器（本地调试用）
-const external = process.env.FOLIO_WEB;
+const dataDir = process.env.QUIRENOTE_E2E_DATA_DIR ?? "./data-e2e";
+// 设置 QUIRENOTE_WEB 时直接复用已在运行的开发服务器（本地调试用）
+const external = process.env.QUIRENOTE_WEB;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -27,16 +27,16 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: "pnpm --filter @folio/server start",
+          command: "pnpm --filter @quirenote/server start",
           url: "http://localhost:8799/api/health",
-          env: { PORT: "8799", FOLIO_DATA_DIR: dataDir, FOLIO_RESET_DATA: "1" },
+          env: { PORT: "8799", QUIRENOTE_DATA_DIR: dataDir, QUIRENOTE_RESET_DATA: "1" },
           reuseExistingServer: false,
           timeout: 120_000,
         },
         {
-          command: "pnpm --filter @folio/web dev --port 5199 --strictPort",
+          command: "pnpm --filter @quirenote/web dev --port 5199 --strictPort",
           url: "http://localhost:5199",
-          env: { FOLIO_API_TARGET: "http://localhost:8799" },
+          env: { QUIRENOTE_API_TARGET: "http://localhost:8799" },
           reuseExistingServer: false,
           timeout: 120_000,
         },

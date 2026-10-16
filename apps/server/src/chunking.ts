@@ -2,7 +2,7 @@
  * 分块：按标题与段落边界切分，带重叠；每块的 text 恰好等于原文 text.slice(start, end)，
  * 并记录所在页码（1 起）与最近的标题，用于跳转高亮。
  */
-import { splitSentences } from "@folio/ai";
+import { splitSentences } from "@quirenote/ai";
 
 export interface ChunkDraft {
   index: number;

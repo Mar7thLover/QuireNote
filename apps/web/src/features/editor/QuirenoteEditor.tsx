@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   Separator,
   Tooltip,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import Highlight from "@tiptap/extension-highlight";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
@@ -52,7 +52,7 @@ export interface EditorChange {
   markdown: string;
 }
 
-export function FolioEditor({
+export function QuirenoteEditor({
   notebookId,
   initialDoc,
   initialMarkdown,

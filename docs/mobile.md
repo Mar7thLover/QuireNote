@@ -1,6 +1,6 @@
 # 移动端（Capacitor）
 
-移动端是 `apps/web` 构建产物的原生壳，界面在窄屏下自动切换为「底部导航 + 推入式详情页」。数据仍然保存在自托管的 Folio 服务器上：首次打开会要求填写服务器地址（例如 `https://folio.example.com`），之后可在「设置 → 数据管理 → 服务器地址」修改。
+移动端是 `apps/web` 构建产物的原生壳，界面在窄屏下自动切换为「底部导航 + 推入式详情页」。数据仍然保存在自托管的 Quirenote 服务器上：首次打开会要求填写服务器地址（例如 `https://quirenote.example.com`），之后可在「设置 → 数据管理 → 服务器地址」修改。
 
 服务端的 CORS 已放行 `https://localhost`（Android）和 `capacitor://localhost`（iOS）。
 
@@ -8,7 +8,7 @@
 
 | 能力 | 实现 |
 | --- | --- |
-| 分享菜单「发送到 Folio」 | `@capgo/capacitor-share-target`。Android 已在 `AndroidManifest.xml` 声明文本、PDF、EPUB、DOCX、图片、音视频的 SEND / SEND_MULTIPLE；iOS 需要分享扩展（见下文） |
+| 分享菜单「发送到 Quirenote」 | `@capgo/capacitor-share-target`。Android 已在 `AndroidManifest.xml` 声明文本、PDF、EPUB、DOCX、图片、音视频的 SEND / SEND_MULTIPLE；iOS 需要分享扩展（见下文） |
 | 文件选择 | WebView 原生 `<input type="file">` |
 | 录音 | WebView 中的 MediaRecorder，已声明 Android `RECORD_AUDIO` 和 iOS `NSMicrophoneUsageDescription` |
 | 返回键 | `@capacitor/app` 监听 Android 返回键 |
@@ -17,7 +17,7 @@
 ## 构建
 
 ```bash
-pnpm --filter @folio/mobile build      # 构建 web 并 cap sync
+pnpm --filter @quirenote/mobile build      # 构建 web 并 cap sync
 ```
 
 ### Android（本机）
@@ -39,5 +39,5 @@ Windows 上无法生成 Xcode target，需要在 Mac 或云端 Xcode 中做一�
 
 1. 在 Xcode 打开 `apps/mobile/ios/App/App.xcworkspace`（或 `.xcodeproj`），File → New → Target → Share Extension，命名为 `ShareExtension`。
 2. 用 `apps/mobile/ios-share-extension/ShareViewController.swift` 替换生成的同名文件。
-3. 给 App 和 ShareExtension 两个 target 都开启 App Groups，组 ID 为 `group.app.folio.notebook`（与 `capacitor.config.ts` 一致）。
-4. Info.plist 已注册 URL Scheme `folio`，扩展保存数据后会用 `folio://share` 唤起主应用。
+3. 给 App 和 ShareExtension 两个 target 都开启 App Groups，组 ID 为 `group.app.quirenote.notebook`（与 `capacitor.config.ts` 一致）。
+4. Info.plist 已注册 URL Scheme `quirenote`，扩展保存数据后会用 `quirenote://share` 唤起主应用。

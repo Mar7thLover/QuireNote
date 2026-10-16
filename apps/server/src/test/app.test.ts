@@ -13,7 +13,7 @@ import type {
   ReviewCard,
   Source,
   SourceContent,
-} from "@folio/core";
+} from "@quirenote/core";
 import { unzipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isAllowedOrigin } from "../app";

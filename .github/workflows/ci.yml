@@ -18,7 +18,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter @folio/web build
+      - run: pnpm --filter @quirenote/web build
 
   e2e:
     runs-on: ubuntu-latest

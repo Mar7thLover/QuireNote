@@ -1,4 +1,4 @@
-import type { CardTemplate, ThemeSettings } from "@folio/core";
+import type { CardTemplate, ThemeSettings } from "@quirenote/core";
 import { type SanitizeOptions, sanitizeCss, sanitizeHtml } from "./sanitize";
 import { renderTemplate } from "./template";
 

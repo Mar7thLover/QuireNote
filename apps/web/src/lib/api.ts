@@ -21,12 +21,12 @@ import type {
   ReviewCard,
   Source,
   SourceContent,
-} from "@folio/core";
+} from "@quirenote/core";
 
 /** 服务端地址。Capacitor 等外部壳可以通过 localStorage 覆盖。 */
 export function apiBase(): string {
   try {
-    const override = localStorage.getItem("folio.server");
+    const override = localStorage.getItem("quirenote.server");
     if (override) return `${override.replace(/\/$/, "")}/api`;
   } catch {}
   return "/api";

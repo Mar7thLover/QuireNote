@@ -1,5 +1,5 @@
-import { newId, type Slide } from "@folio/core";
-import { Button, cn } from "@folio/ui";
+import { newId, type Slide } from "@quirenote/core";
+import { Button, cn } from "@quirenote/ui";
 import { ChevronLeft, ChevronRight, Maximize, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ArtifactViewProps } from "../ArtifactPanel";

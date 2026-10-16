@@ -1,5 +1,11 @@
-import { newId } from "@folio/core";
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@folio/ui";
+import { newId } from "@quirenote/core";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@quirenote/ui";
 import { Columns3, MoreVertical, Pencil, Plus, Rows3, Trash2 } from "lucide-react";
 import { DataGrid, type GridRow } from "@/components/DataGrid";
 import { useTranslation } from "@/i18n";

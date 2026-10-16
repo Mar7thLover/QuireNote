@@ -1,5 +1,5 @@
-import type { Citation } from "@folio/core";
-import { Button, TypingDots } from "@folio/ui";
+import type { Citation } from "@quirenote/core";
+import { Button, TypingDots } from "@quirenote/ui";
 import type { Editor } from "@tiptap/core";
 import { ArrowDownToLine, RefreshCw, Replace, SendHorizontal, Sparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

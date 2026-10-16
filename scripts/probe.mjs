@@ -12,12 +12,12 @@ page.on("pageerror", (e) => console.log("pageerror:", e.message));
 await page.addInitScript(
   (d) =>
     localStorage.setItem(
-      "folio.theme",
+      "quirenote.theme",
       JSON.stringify({ state: { mode: d ? "dark" : "light" }, version: 1 }),
     ),
   dark,
 );
-await page.goto((process.env.FOLIO_WEB ?? "http://localhost:5173") + path, { waitUntil: "networkidle" });
+await page.goto((process.env.QUIRENOTE_WEB ?? "http://localhost:5173") + path, { waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 console.log(JSON.stringify(await page.evaluate(js), null, 1));
 await browser.close();

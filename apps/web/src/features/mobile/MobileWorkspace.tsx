@@ -1,5 +1,5 @@
-import type { Notebook } from "@folio/core";
-import { Button, cn, Sheet } from "@folio/ui";
+import type { Notebook } from "@quirenote/core";
+import { Button, cn, Sheet } from "@quirenote/ui";
 import { Link } from "@tanstack/react-router";
 import {
   BookOpen,

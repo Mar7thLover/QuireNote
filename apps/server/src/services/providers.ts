@@ -1,6 +1,6 @@
 /** Provider 管理：Key 加密入库，对外只暴露 hasKey / keyHint。 */
 import { readFileSync } from "node:fs";
-import { defaultModel, LOCAL_PROVIDER_ID, supportsCapability } from "@folio/ai";
+import { defaultModel, LOCAL_PROVIDER_ID, supportsCapability } from "@quirenote/ai";
 import {
   type Capability,
   type ModelAssignment,
@@ -9,7 +9,7 @@ import {
   type ProviderConfig,
   type ProviderInput,
   type ProviderKind,
-} from "@folio/core";
+} from "@quirenote/core";
 import type { AppContext } from "../context";
 import { keyHint } from "../crypto";
 import { badRequest, notFound } from "../errors";

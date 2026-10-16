@@ -1,6 +1,13 @@
 /** 引用校验：只保留真实存在的片段编号，并把每个编号定位到资料原文中的一句话。 */
-import { cosine, isHeadingLine, keywordOverlap, localEmbed, splitSentences, stripMarkdown } from "@folio/ai";
-import type { Chunk, Citation } from "@folio/core";
+import {
+  cosine,
+  isHeadingLine,
+  keywordOverlap,
+  localEmbed,
+  splitSentences,
+  stripMarkdown,
+} from "@quirenote/ai";
+import type { Chunk, Citation } from "@quirenote/core";
 
 export interface CitablePassage {
   n: number;

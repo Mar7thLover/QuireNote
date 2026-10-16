@@ -1,4 +1,4 @@
-import type { Note } from "@folio/core";
+import type { Note } from "@quirenote/core";
 import {
   Badge,
   Button,
@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Copy, CreditCard, FileText, MoreHorizontal, Pin, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
-import { type EditorChange, FolioEditor } from "../editor/FolioEditor";
+import { type EditorChange, QuirenoteEditor } from "../editor/QuirenoteEditor";
 
 export function NoteEditorPanel({ notebookId, noteId }: { notebookId: string; noteId: string }) {
   const note = useQuery({ queryKey: qk.note(noteId), queryFn: () => api.notes.get(noteId) });
@@ -132,7 +132,7 @@ function NoteEditor({ notebookId, note }: { notebookId: string; note: Note }) {
               schedule({ tags });
             }}
           />
-          <FolioEditor
+          <QuirenoteEditor
             notebookId={notebookId}
             initialDoc={note.doc}
             initialMarkdown={note.markdown}

@@ -1,5 +1,5 @@
 /** 就地 AI 的 Agent：命令 → 提案（不落库）→ 用户确认后 apply → 可 undo。 */
-import { proposeAgentOps } from "@folio/ai";
+import { proposeAgentOps } from "@quirenote/ai";
 import {
   AgentOp,
   type AgentProposal,
@@ -8,7 +8,7 @@ import {
   type Note,
   newId,
   nowIso,
-} from "@folio/core";
+} from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
 import { gatherPassages } from "./passages";

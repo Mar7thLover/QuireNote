@@ -1,4 +1,4 @@
-import type { Artifact, MindmapNode } from "@folio/core";
+import type { Artifact, MindmapNode } from "@quirenote/core";
 
 function mindmapToMarkdown(nodes: MindmapNode[]): string {
   const kids = new Map<string | null, MindmapNode[]>();

@@ -1,5 +1,5 @@
-import type { CardTemplate, RuleScope } from "@folio/core";
-import { buildSrcdoc, SANDBOX_ATTR } from "@folio/render";
+import type { CardTemplate, RuleScope } from "@quirenote/core";
+import { buildSrcdoc, SANDBOX_ATTR } from "@quirenote/render";
 import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { resolvedMode, useTheme } from "@/stores/theme";
 import { allTemplates, useRenderedSegments } from "./store";

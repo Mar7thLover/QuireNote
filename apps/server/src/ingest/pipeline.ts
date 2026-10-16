@@ -6,8 +6,8 @@ import {
   localSummary,
   summarizeText,
   transcribeAudio,
-} from "@folio/ai";
-import { type Chunk, newId, nowIso, type Source } from "@folio/core";
+} from "@quirenote/ai";
+import { type Chunk, newId, nowIso, type Source } from "@quirenote/core";
 import { chunkText } from "../chunking";
 import type { AppContext } from "../context";
 import { ApiError, errorMessageOf } from "../errors";

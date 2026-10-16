@@ -1,12 +1,12 @@
-import type { CardTemplate, RenderRule, RuleScope } from "@folio/core";
+import type { CardTemplate, RenderRule, RuleScope } from "@quirenote/core";
 import {
   builtinRules,
   builtinTemplates,
   createRuleRunner,
   type RenderResult,
   type RuleRunner,
-} from "@folio/render";
-import RegexWorker from "@folio/render/worker?worker";
+} from "@quirenote/render";
+import RegexWorker from "@quirenote/render/worker?worker";
 import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -48,7 +48,7 @@ export const useRenderStore = create<RenderState>()(
       },
     }),
     {
-      name: "folio.render",
+      name: "quirenote.render",
       partialize: (s) => ({ templates: s.templates, rules: s.rules, disabledBuiltins: s.disabledBuiltins }),
     },
   ),

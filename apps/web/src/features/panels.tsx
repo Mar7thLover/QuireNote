@@ -1,4 +1,4 @@
-import { EmptyState } from "@folio/ui";
+import { EmptyState } from "@quirenote/ui";
 import type { IDockviewPanelProps } from "dockview-react";
 import { Construction } from "lucide-react";
 import { type ComponentType, lazy, Suspense, useEffect } from "react";

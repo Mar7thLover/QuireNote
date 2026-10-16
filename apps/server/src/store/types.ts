@@ -18,7 +18,7 @@ import type {
   ProviderKind,
   ReviewCard,
   Source,
-} from "@folio/core";
+} from "@quirenote/core";
 
 export interface ListFilter {
   notebookId?: string;

@@ -1,6 +1,6 @@
 /** 元素：抽取（任务）、合并、补充定义、批量出卡。 */
-import { enrichElement, extractElements, type Passage } from "@folio/ai";
-import { ELEMENT_TYPE_META, type Element, newId, nowIso, type ReviewCard } from "@folio/core";
+import { enrichElement, extractElements, type Passage } from "@quirenote/ai";
+import { ELEMENT_TYPE_META, type Element, newId, nowIso, type ReviewCard } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest, notFound } from "../errors";
 import { retrieve, toPassages } from "../retrieval";

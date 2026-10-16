@@ -1,6 +1,6 @@
 /** 联网搜索与深度研究：多轮检索 → 抓取正文 → 作为 search 资料导入 → 生成报告。 */
-import { type ModelRef, researchQueries, type SearchResult, webSearch } from "@folio/ai";
-import { newId, nowIso, type Source } from "@folio/core";
+import { type ModelRef, researchQueries, type SearchResult, webSearch } from "@quirenote/ai";
+import { newId, nowIso, type Source } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest } from "../errors";
 import { fetchUrl } from "../ingest/parsers";

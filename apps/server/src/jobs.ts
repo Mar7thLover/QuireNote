@@ -1,5 +1,5 @@
 /** 进程内后台任务队列：可控并发，状态持久化到 jobs 表，变更通过事件总线推送。 */
-import { type Job, newId, nowIso } from "@folio/core";
+import { type Job, newId, nowIso } from "@quirenote/core";
 import { errorMessageOf } from "./errors";
 import type { EventBus } from "./events";
 import type { JobRecord, Store } from "./store/types";

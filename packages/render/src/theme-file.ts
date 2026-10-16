@@ -1,9 +1,9 @@
-import { type CardTemplate, FolioTheme, type RenderRule, type ThemeSettings } from "@folio/core";
+import { type CardTemplate, QuirenoteTheme, type RenderRule, type ThemeSettings } from "@quirenote/core";
 import { analyzePattern } from "./analyze";
 import { BUILTIN_TEMPLATE_PREFIX, builtinTemplates } from "./builtin/templates";
 import { hasHtmlParser, type SanitizeOptions, sanitizeCss, sanitizeHtml, serializeHtml } from "./sanitize";
 
-export const THEME_FILE_EXTENSION = ".folio-theme";
+export const THEME_FILE_EXTENSION = ".quirenote-theme";
 export const THEME_FILE_MAX_BYTES = 1024 * 1024;
 
 export interface ExportThemeInput {
@@ -15,7 +15,7 @@ export interface ExportThemeInput {
 }
 
 /**
- * 生成 `.folio-theme` 文件内容（格式化的 JSON）。内置模板不会被导出（导入方本来就有）。
+ * 生成 `.quirenote-theme` 文件内容（格式化的 JSON）。内置模板不会被导出（导入方本来就有）。
  * 输入不符合 schema 时抛出异常。
  */
 export function exportTheme({
@@ -25,8 +25,8 @@ export function exportTheme({
   templates = [],
   rules = [],
 }: ExportThemeInput): string {
-  const file = FolioTheme.parse({
-    format: "folio-theme",
+  const file = QuirenoteTheme.parse({
+    format: "quirenote-theme",
     version: 1,
     name,
     author,
@@ -58,7 +58,7 @@ export interface ImportThemeOptions extends SanitizeOptions {
 export type ImportThemeResult =
   | {
       ok: true;
-      theme: FolioTheme;
+      theme: QuirenoteTheme;
       warnings: string[];
       /** 旧 id → 新 id。 */
       renamed: { templates: Record<string, string>; rules: Record<string, string> };
@@ -86,7 +86,7 @@ function fail(error: string, issues: string[] = []): ImportThemeResult {
   return { ok: false, error, issues };
 }
 
-/** 解析并校验 `.folio-theme` 文本：zod 校验、模板清洗、id 冲突处理、规则风险检查。 */
+/** 解析并校验 `.quirenote-theme` 文本：zod 校验、模板清洗、id 冲突处理、规则风险检查。 */
 export function importTheme(text: string, options: ImportThemeOptions = {}): ImportThemeResult {
   const maxBytes = options.maxBytes ?? THEME_FILE_MAX_BYTES;
   if (text.length > maxBytes) return fail(`主题文件过大（上限 ${Math.round(maxBytes / 1024)} KB）`);
@@ -97,12 +97,12 @@ export function importTheme(text: string, options: ImportThemeOptions = {}): Imp
   } catch (e) {
     return fail(`不是合法的 JSON：${e instanceof Error ? e.message : String(e)}`);
   }
-  const parsed = FolioTheme.safeParse(json);
+  const parsed = QuirenoteTheme.safeParse(json);
   if (!parsed.success) {
     const issues = parsed.error.issues.map(
       (i) => `${i.path.length > 0 ? i.path.join(".") : "(根)"}：${i.message}`,
     );
-    return fail("不是有效的 .folio-theme 文件", issues);
+    return fail("不是有效的 .quirenote-theme 文件", issues);
   }
 
   const file = parsed.data;

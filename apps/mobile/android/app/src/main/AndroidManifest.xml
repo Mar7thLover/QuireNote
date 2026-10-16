@@ -22,7 +22,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- 系统分享菜单「发送到 Folio」：文本/链接、PDF、文档、图片、音视频 -->
+            <!-- 系统分享菜单「发送到 Quirenote」：文本/链接、PDF、文档、图片、音视频 -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -1,6 +1,6 @@
-import type { AgentOp, Note } from "@folio/core";
-import { ELEMENT_TYPE_META } from "@folio/core";
-import { Badge, Button, cn, Dialog, DialogContent, Tag, toast } from "@folio/ui";
+import type { AgentOp, Note } from "@quirenote/core";
+import { ELEMENT_TYPE_META } from "@quirenote/core";
+import { Badge, Button, cn, Dialog, DialogContent, Tag, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FilePlus2, FileX2, GitBranchPlus, PencilLine, Sparkles, Table, Tags } from "lucide-react";
 import { useTranslation } from "@/i18n";

@@ -1,5 +1,5 @@
 /* dockview 主题：基于 light-spaced 结构，颜色全部取设计 tokens，深浅色自动跟随 */
-.folio-dock .dockview-theme-light-spaced {
+.quirenote-dock .dockview-theme-light-spaced {
   --dv-group-view-background-color: transparent;
   --dv-tabs-and-actions-container-background-color: var(--surface);
   --dv-activegroup-visiblepanel-tab-background-color: var(--surface-sunken);
@@ -39,37 +39,37 @@
   color-scheme: inherit;
 }
 
-.folio-dock .dv-groupview {
+.quirenote-dock .dv-groupview {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   background: var(--surface);
 }
-.folio-dock .dv-groupview.dv-active-group {
+.quirenote-dock .dv-groupview.dv-active-group {
   border-color: color-mix(in srgb, var(--border-strong) 82%, var(--accent) 18%);
 }
-.folio-dock .dv-groupview .dv-content-container {
+.quirenote-dock .dv-groupview .dv-content-container {
   background: var(--surface);
 }
-.folio-dock .dv-tabs-and-actions-container {
+.quirenote-dock .dv-tabs-and-actions-container {
   border-bottom: 1px solid var(--border);
 }
-.folio-dock .dv-tab {
+.quirenote-dock .dv-tab {
   font-weight: 500;
   transition:
     background-color var(--dur-fast),
     color var(--dur-fast);
 }
-.folio-dock .dv-tab:hover {
+.quirenote-dock .dv-tab:hover {
   color: var(--fg);
 }
-.folio-dock .dv-tab .dv-default-tab-action {
+.quirenote-dock .dv-tab .dv-default-tab-action {
   opacity: 0;
   transition: opacity var(--dur-fast);
 }
-.folio-dock .dv-tab:hover .dv-default-tab-action,
-.folio-dock .dv-tab.dv-active-tab .dv-default-tab-action {
+.quirenote-dock .dv-tab:hover .dv-default-tab-action,
+.quirenote-dock .dv-tab.dv-active-tab .dv-default-tab-action {
   opacity: 0.6;
 }
-.folio-dock .dv-watermark {
+.quirenote-dock .dv-watermark {
   background: var(--surface);
 }

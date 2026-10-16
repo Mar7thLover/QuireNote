@@ -7,7 +7,7 @@ import {
   refineArtifactData,
   synthesizeSpeech,
   topicOf,
-} from "@folio/ai";
+} from "@quirenote/ai";
 import {
   ARTIFACT_KIND_META,
   type Artifact,
@@ -15,7 +15,7 @@ import {
   type ArtifactKind,
   newId,
   nowIso,
-} from "@folio/core";
+} from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
 import { extFromMime } from "../files";

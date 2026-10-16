@@ -86,9 +86,13 @@ export async function testConnection(p: ProviderRuntime): Promise<ConnectionResu
       case "tavily":
       case "brave":
       case "searxng": {
-        await webSearch({ provider: p, model: PROVIDER_CATALOG[p.kind].models.search?.[0] ?? "" }, "folio", {
-          maxResults: 1,
-        });
+        await webSearch(
+          { provider: p, model: PROVIDER_CATALOG[p.kind].models.search?.[0] ?? "" },
+          "quirenote",
+          {
+            maxResults: 1,
+          },
+        );
         return done({ ok: true, models: catalogModels(p) });
       }
       case "fal": {

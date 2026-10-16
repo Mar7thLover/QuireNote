@@ -1,4 +1,4 @@
-import { Button, Field, Input, Skeleton, toast } from "@folio/ui";
+import { Button, Field, Input, Skeleton, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { del } from "idb-keyval";
 import { DatabaseBackup, HardDriveDownload, RefreshCcw, Trash2, Upload } from "lucide-react";
@@ -105,7 +105,7 @@ export function DataSettings() {
           variant="ghost"
           className="text-danger"
           onClick={async () => {
-            await del("folio.query-cache");
+            await del("quirenote.query-cache");
             queryClient.clear();
             toast.success(t("common.done"));
           }}
@@ -124,7 +124,7 @@ function ServerSetting() {
   const { t } = useTranslation();
   const [v, setV] = useState(() => {
     try {
-      return localStorage.getItem("folio.server") ?? "";
+      return localStorage.getItem("quirenote.server") ?? "";
     } catch {
       return "";
     }
@@ -138,8 +138,8 @@ function ServerSetting() {
         <Button
           onClick={() => {
             try {
-              if (v.trim()) localStorage.setItem("folio.server", v.trim());
-              else localStorage.removeItem("folio.server");
+              if (v.trim()) localStorage.setItem("quirenote.server", v.trim());
+              else localStorage.removeItem("quirenote.server");
             } catch {}
             queryClient.clear();
             location.reload();

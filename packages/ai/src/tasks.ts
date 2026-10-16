@@ -10,7 +10,7 @@ import {
   type ElementType,
   MARKDOWN_ARTIFACTS,
   newId,
-} from "@folio/core";
+} from "@quirenote/core";
 import { generateChatText, generateStructured, isLocal, streamChat } from "./chat";
 import {
   AgentDraft,
@@ -76,7 +76,7 @@ function langHint(passages: Passage[], extra = ""): string {
 /** 带引用对话的系统提示词：编号片段 + 引用规则。 */
 export function buildCitationSystemPrompt(passages: Passage[], question = ""): string {
   const rules = [
-    "你是 Folio 的研究助手，只依据下方编号资料片段回答用户问题。",
+    "你是 Quirenote 的研究助手，只依据下方编号资料片段回答用户问题。",
     "规则：",
     "1. 每个关键结论后用方括号标注来源编号，例如 [1] 或 [2, 3]，编号必须来自下方片段。",
     "2. 资料中没有的信息不要编造；如果资料不足以回答，请直接说明。",
@@ -116,7 +116,7 @@ const KIND_GUIDE: Record<ArtifactKind, string> = {
 function artifactSystem(kind: ArtifactKind, passages: Passage[], title?: string): string {
   const meta = ARTIFACT_KIND_META[kind];
   return [
-    `你是 Folio 的 Studio 助手，负责根据资料生成「${meta.label}」(${meta.labelEn})。`,
+    `你是 Quirenote 的 Studio 助手，负责根据资料生成「${meta.label}」(${meta.labelEn})。`,
     KIND_GUIDE[kind],
     "只使用资料中的信息，不要编造。",
     kind === "image" ? "" : langHint(passages, title),
@@ -623,7 +623,7 @@ export async function proposeAgentOps(ref: ModelRef, input: AgentInput): Promise
     schema: AgentDraft,
     name: "agent_proposal",
     system: [
-      "你是 Folio 的笔记 Agent。根据用户的自然语言指令，提出一组对笔记 / 表格 / 思维导图 / 元素的改动。",
+      "你是 Quirenote 的笔记 Agent。根据用户的自然语言指令，提出一组对笔记 / 表格 / 思维导图 / 元素的改动。",
       "可用操作：create_note(title, markdown)、update_note(noteId, title?, markdown 为完整新内容)、delete_note(noteId)、create_table(title, table.columns, table.rows)、add_mindmap_node(artifactId, parentId, label)、create_element(elementType, name, definition)。",
       "不用的字段填 null。noteId / artifactId / parentId 必须来自给定内容。改动会以 diff 形式给用户确认。",
       langHint(input.passages, input.instruction),

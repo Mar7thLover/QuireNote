@@ -1,4 +1,4 @@
-import type { Note } from "@folio/core";
+import type { Note } from "@quirenote/core";
 import {
   Badge,
   Button,
@@ -10,7 +10,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
 import { FilePlus2, LayoutGrid, List, NotebookPen, Pin, Search } from "lucide-react";
 import { useMemo, useState } from "react";

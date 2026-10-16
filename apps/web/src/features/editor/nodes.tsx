@@ -1,5 +1,5 @@
-import { ELEMENT_TYPE_META, type ElementType } from "@folio/core";
-import { Tag } from "@folio/ui";
+import { ELEMENT_TYPE_META, type ElementType } from "@quirenote/core";
+import { Tag } from "@quirenote/ui";
 import { mergeAttributes, Node } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { Pencil } from "lucide-react";
@@ -9,8 +9,8 @@ import { useWorkspace } from "@/stores/workspace";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
-    folioCard: { insertCard: (raw: string) => ReturnType };
-    folioCallout: { setCallout: () => ReturnType };
+    quirenoteCard: { insertCard: (raw: string) => ReturnType };
+    quirenoteCallout: { setCallout: () => ReturnType };
   }
 }
 
@@ -37,14 +37,14 @@ export const CardEmbed = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["div", mergeAttributes({ "data-card-embed": "", "data-raw": HTMLAttributes.raw })];
   },
-  markdownTokenName: "folioCard",
+  markdownTokenName: "quirenoteCard",
   markdownTokenizer: {
-    name: "folioCard",
+    name: "quirenoteCard",
     level: "block",
     start: (src: string) => src.search(/(^|\n)【/),
     tokenize: (src: string) => {
       const m = /^【[^】\n]{1,2000}】[ \t]*(?:\n|$)/.exec(src);
-      return m ? { type: "folioCard", raw: m[0], text: m[0].trim() } : undefined;
+      return m ? { type: "quirenoteCard", raw: m[0], text: m[0].trim() } : undefined;
     },
   },
   parseMarkdown: (token) => ({
@@ -180,14 +180,14 @@ export const ElementTag = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["span", mergeAttributes(HTMLAttributes, { "data-element": "" }), HTMLAttributes.name];
   },
-  markdownTokenName: "folioElement",
+  markdownTokenName: "quirenoteElement",
   markdownTokenizer: {
-    name: "folioElement",
+    name: "quirenoteElement",
     level: "inline",
     start: "[[",
     tokenize: (src: string) => {
       const m = /^\[\[([^\]\n]{1,80})\]\]/.exec(src);
-      return m ? { type: "folioElement", raw: m[0], text: m[1] } : undefined;
+      return m ? { type: "quirenoteElement", raw: m[0], text: m[1] } : undefined;
     },
   },
   parseMarkdown: (token) => ({ type: "elementTag", attrs: { name: token.text } }),

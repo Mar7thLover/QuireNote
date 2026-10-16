@@ -8,7 +8,7 @@ export function isNative(): boolean {
 
 export function hasServerOverride(): boolean {
   try {
-    return !!localStorage.getItem("folio.server");
+    return !!localStorage.getItem("quirenote.server");
   } catch {
     return false;
   }

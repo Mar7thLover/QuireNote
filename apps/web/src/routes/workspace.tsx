@@ -1,4 +1,4 @@
-import type { Notebook } from "@folio/core";
+import type { Notebook } from "@quirenote/core";
 import {
   Button,
   cn,
@@ -14,7 +14,7 @@ import {
   Separator,
   Tooltip,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -68,7 +68,7 @@ import {
   useWorkspace,
 } from "@/stores/workspace";
 
-const folioTheme = { ...themeLightSpaced, name: "folio", gap: 6 };
+const quirenoteTheme = { ...themeLightSpaced, name: "quirenote", gap: 6 };
 
 const ACTIVITY: { kind: PanelKind; icon: LucideIcon; shortcut?: string }[] = [
   { kind: "sources", icon: BookOpen, shortcut: SHORTCUTS.openSources },
@@ -183,10 +183,10 @@ function DesktopWorkspace({ notebookId, notebook }: { notebookId: string; notebo
             ))}
           </nav>
         )}
-        <div className={cn("folio-dock relative min-w-0 flex-1", focusMode ? "p-2" : "pr-1.5 pb-1.5")}>
+        <div className={cn("quirenote-dock relative min-w-0 flex-1", focusMode ? "p-2" : "pr-1.5 pb-1.5")}>
           <DockviewReact
             className="dockview-theme-light-spaced"
-            theme={folioTheme}
+            theme={quirenoteTheme}
             components={components}
             onReady={onReady}
             watermarkComponent={Watermark}

@@ -1,6 +1,6 @@
-# Folio HTTP API 契约
+# Quirenote HTTP API 契约
 
-前后端共享的接口约定。类型名均指 `@folio/core` 中的 zod schema。
+前后端共享的接口约定。类型名均指 `@quirenote/core` 中的 zod schema。
 
 - 基础路径 `/api`，JSON 请求/响应；上传用 `multipart/form-data`。
 - 错误统一为 `{ "error": { "code": string, "message": string } }`，配合 4xx/5xx 状态码。
@@ -242,12 +242,12 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 - `GET /settings/:key` 未设置时返回 `null`；`key` 只允许 `[a-zA-Z0-9_.-]{1,64}`。`PUT` 返回保存的值。
 - `GET /admin/stats` 中 `embedded` 为当前 Embedding 模型已生成向量的分块数，`embeddingModel` 形如 `"local:hash-384"`。
 - `POST /admin/reindex` 清除范围内的旧向量后用当前模型重建。
-- `GET /admin/backup`：zip 内含 `backup.json`、`folio.db`（SQLite 快照，含向量与全文索引）、`files/**`。**不含** `secret.key`：在另一台机器恢复时需要相同的 `FOLIO_SECRET` / `secret.key`，否则需重新填写 provider Key。
+- `GET /admin/backup`：zip 内含 `backup.json`、`quirenote.db`（SQLite 快照，含向量与全文索引）、`files/**`。**不含** `secret.key`：在另一台机器恢复时需要相同的 `QUIRENOTE_SECRET` / `secret.key`，否则需重新填写 provider Key。
 - `POST /admin/restore`：有后台任务运行时 `409 busy`；成功返回 `{ok: true, files: number}`。
 
 ### Notebook 导出 / 导入
 
-- `GET /notebooks/:nb/export` → `<标题>.folio.zip`：`notebook.json`（`format: "folio-notebook", version: 1`，含资料全文、分块、笔记、生成物、元素、复习卡与记录、视图、属性、对话与消息）、`markdown/notes|sources|artifacts/*.md`、`files/sources/<id>/*`（原始文件）、`files/media/*`（生成的媒体）、`README.md`。
+- `GET /notebooks/:nb/export` → `<标题>.quirenote.zip`：`notebook.json`（`format: "quirenote-notebook", version: 1`，含资料全文、分块、笔记、生成物、元素、复习卡与记录、视图、属性、对话与消息）、`markdown/notes|sources|artifacts/*.md`、`files/sources/<id>/*`（原始文件）、`files/media/*`（生成的媒体）、`README.md`。
 - `POST /import`：所有 id 重新生成（引用随之更新），返回新的 `Notebook`（带 `stats`）；向量不随包导出，导入后自动排入该笔记本的 `reindex` 任务。
 
 ### 文件

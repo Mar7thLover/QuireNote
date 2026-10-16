@@ -1,4 +1,4 @@
-import type { DbView, EntityType, PropertyDef, PropValue } from "@folio/core";
+import type { DbView, EntityType, PropertyDef, PropValue } from "@quirenote/core";
 import {
   Button,
   cn,
@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
   Select,
   Tag,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowDownUp,

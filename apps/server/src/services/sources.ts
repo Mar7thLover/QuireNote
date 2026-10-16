@@ -1,5 +1,5 @@
 /** 资料的创建（上传 / URL / 文本 / YouTube / 搜索结果）与删除。 */
-import { newId, nowIso, type Source, type SourceKind } from "@folio/core";
+import { newId, nowIso, type Source, type SourceKind } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest } from "../errors";
 import { mimeFromName, safeName } from "../files";

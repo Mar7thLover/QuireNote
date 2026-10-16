@@ -1,4 +1,4 @@
-import type { Notebook } from "@folio/core";
+import type { Notebook } from "@quirenote/core";
 import {
   Button,
   ContextMenu,
@@ -18,7 +18,7 @@ import {
   Skeleton,
   tagColor,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {

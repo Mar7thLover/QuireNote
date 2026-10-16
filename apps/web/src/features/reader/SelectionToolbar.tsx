@@ -1,4 +1,4 @@
-import { Button, cn, Separator, Tooltip, TypingDots, toast } from "@folio/ui";
+import { Button, cn, Separator, Tooltip, TypingDots, toast } from "@quirenote/ui";
 import { BookmarkPlus, Lightbulb, MessageSquarePlus, MessagesSquare, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";

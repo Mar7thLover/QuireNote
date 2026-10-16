@@ -1,6 +1,6 @@
 import "@xyflow/react/dist/style.css";
-import { type MindmapNode, newId } from "@folio/core";
-import { Button, cn, Tooltip } from "@folio/ui";
+import { type MindmapNode, newId } from "@quirenote/core";
+import { Button, cn, Tooltip } from "@quirenote/ui";
 import {
   Background,
   BackgroundVariant,

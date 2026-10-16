@@ -1,6 +1,6 @@
 /** 为生成任务挑选资料片段：覆盖全文、控制总长度。 */
-import type { Passage } from "@folio/ai";
-import type { Chunk, Source } from "@folio/core";
+import type { Passage } from "@quirenote/ai";
+import type { Chunk, Source } from "@quirenote/core";
 import type { CitablePassage } from "../citations";
 import type { AppContext } from "../context";
 import { retrieve } from "../retrieval";

@@ -1,4 +1,4 @@
-import { cn } from "@folio/ui";
+import { cn } from "@quirenote/ui";
 import type { ReactNode } from "react";
 
 /** 面板内部的统一结构：工具栏 + 可滚动内容。 */

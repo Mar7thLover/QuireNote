@@ -1,5 +1,5 @@
 /**
- * @folio/render — 正则规则引擎与沙箱卡片模板渲染（框架无关）。
+ * @quirenote/render — 正则规则引擎与沙箱卡片模板渲染（框架无关）。
  *
  * - 规则引擎：applyRulesSync / createRuleRunner / analyzePattern
  * - 模板与沙箱：renderTemplate / sanitizeHtml / sanitizeCss / buildSrcdoc / SANDBOX_ATTR

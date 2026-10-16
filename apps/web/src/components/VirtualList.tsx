@@ -1,4 +1,4 @@
-import { cn } from "@folio/ui";
+import { cn } from "@quirenote/ui";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { type ReactNode, useRef } from "react";
 

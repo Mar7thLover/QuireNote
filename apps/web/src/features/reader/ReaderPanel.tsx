@@ -1,4 +1,4 @@
-import { SOURCE_KIND_META, type SourceContent } from "@folio/core";
+import { SOURCE_KIND_META, type SourceContent } from "@quirenote/core";
 import {
   Badge,
   Button,
@@ -10,7 +10,7 @@ import {
   TabsTrigger,
   Tooltip,
   toast,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ExternalLink, FileQuestion, PanelRight, Sparkles } from "lucide-react";

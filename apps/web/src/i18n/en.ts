@@ -2,7 +2,7 @@ import type { Messages } from "./zh";
 
 // English copy: translated from zh.ts. The structure must match zh (enforced by the type checker).
 export const en: Messages = {
-  app: { name: "Folio", tagline: "Your AI research notebook" },
+  app: { name: "Quirenote", tagline: "Your AI research notebook" },
   common: {
     cancel: "Cancel",
     confirm: "Confirm",
@@ -28,7 +28,7 @@ export const en: Messages = {
     none: "None",
     untitled: "Untitled",
     offline: "Offline mode: you can browse and edit, and changes sync automatically once you reconnect",
-    serverDown: "Can't connect to the Folio server",
+    serverDown: "Can't connect to the Quirenote server",
     justNow: "Just now",
     settings: "Settings",
     import: "Import",
@@ -354,7 +354,7 @@ export const en: Messages = {
     resetTheme: "Reset to default",
     server: "Server address",
     serverHint:
-      "Enter this when the mobile or desktop app connects to a self-hosted server, e.g. https://folio.example.com",
+      "Enter this when the mobile or desktop app connects to a self-hosted server, e.g. https://quirenote.example.com",
   },
   models: {
     providers: "Providers",
@@ -417,8 +417,8 @@ export const en: Messages = {
     scope_artifact: "Generated items",
     order: "Order",
     testInput: "Test text",
-    importTheme: "Import .folio-theme",
-    exportTheme: "Export .folio-theme",
+    importTheme: "Import .quirenote-theme",
+    exportTheme: "Export .quirenote-theme",
     builtin: "Built-in",
     redosWarning: "Possible catastrophic backtracking risk",
     sandboxNote:

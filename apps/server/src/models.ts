@@ -5,8 +5,8 @@ import {
   LOCAL_PROVIDER_ID,
   type ModelRef,
   type ProviderRuntime,
-} from "@folio/ai";
-import type { Capability, ModelAssignment } from "@folio/core";
+} from "@quirenote/ai";
+import type { Capability, ModelAssignment } from "@quirenote/core";
 import type { KeyCipher } from "./crypto";
 import { ApiError } from "./errors";
 import type { Store } from "./store/types";
@@ -47,7 +47,7 @@ export class ModelResolver {
         throw new ApiError(
           500,
           "key_decrypt_failed",
-          `provider「${p.name}」的 Key 无法解密（FOLIO_SECRET 或 secret.key 可能已变更），请重新填写`,
+          `provider「${p.name}」的 Key 无法解密（QUIRENOTE_SECRET 或 secret.key 可能已变更），请重新填写`,
         );
       }
     }

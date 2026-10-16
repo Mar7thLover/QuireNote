@@ -32,7 +32,7 @@ export interface ContextOptions {
 }
 
 export function createContext(config: ServerConfig, opts: ContextOptions = {}): AppContext {
-  const store = createSqliteStore(opts.memoryDb ? ":memory:" : join(config.dataDir, "folio.db"));
+  const store = createSqliteStore(opts.memoryDb ? ":memory:" : join(config.dataDir, "quirenote.db"));
   const files = new DiskFileStore(join(config.dataDir, "files"));
   const events = new EventBus();
   const cipher = createCipher(loadOrCreateSecret(config.dataDir, config.secret));

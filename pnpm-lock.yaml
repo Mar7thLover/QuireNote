@@ -57,15 +57,6 @@ importers:
 
   apps/server:
     dependencies:
-      '@folio/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@folio/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@folio/render':
-        specifier: workspace:*
-        version: link:../../packages/render
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.13)
@@ -75,6 +66,15 @@ importers:
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
+      '@quirenote/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@quirenote/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@quirenote/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -124,15 +124,6 @@ importers:
       '@dagrejs/dagre':
         specifier: ^3.1.1
         version: 3.1.1
-      '@folio/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@folio/render':
-        specifier: workspace:*
-        version: link:../../packages/render
-      '@folio/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@fontsource-variable/inter':
         specifier: ^5.3.0
         version: 5.3.0
@@ -142,6 +133,15 @@ importers:
       '@fontsource-variable/source-serif-4':
         specifier: ^5.3.1
         version: 5.3.1
+      '@quirenote/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@quirenote/render':
+        specifier: workspace:*
+        version: link:../../packages/render
+      '@quirenote/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/query-async-storage-persister':
         specifier: ^5.104.2
         version: 5.104.2
@@ -299,7 +299,7 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.68
         version: 3.0.68(zod@4.6.7)
-      '@folio/core':
+      '@quirenote/core':
         specifier: workspace:*
         version: link:../core
       ai:
@@ -320,7 +320,7 @@ importers:
 
   packages/render:
     dependencies:
-      '@folio/core':
+      '@quirenote/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -330,7 +330,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@folio/core':
+      '@quirenote/core':
         specifier: workspace:*
         version: link:../core
       class-variance-authority:

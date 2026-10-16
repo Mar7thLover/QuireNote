@@ -10,7 +10,7 @@ export const VERSION = "0.1.0";
 export interface ServerConfig {
   port: number;
   dataDir: string;
-  /** FOLIO_SECRET；为空时在数据目录生成 secret.key。 */
+  /** QUIRENOTE_SECRET；为空时在数据目录生成 secret.key。 */
   secret: string | null;
   resetData: boolean;
   /** 后台任务并发数。 */
@@ -28,16 +28,16 @@ export function resolveDataDir(value: string | undefined): string {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
     port: Number(env.PORT) || 8787,
-    dataDir: resolveDataDir(env.FOLIO_DATA_DIR),
-    secret: env.FOLIO_SECRET?.trim() || null,
-    resetData: env.FOLIO_RESET_DATA === "1" || env.FOLIO_RESET_DATA === "true",
-    jobConcurrency: Math.max(1, Number(env.FOLIO_JOB_CONCURRENCY) || 2),
-    seed: env.FOLIO_SEED !== "0",
+    dataDir: resolveDataDir(env.QUIRENOTE_DATA_DIR),
+    secret: env.QUIRENOTE_SECRET?.trim() || null,
+    resetData: env.QUIRENOTE_RESET_DATA === "1" || env.QUIRENOTE_RESET_DATA === "true",
+    jobConcurrency: Math.max(1, Number(env.QUIRENOTE_JOB_CONCURRENCY) || 2),
+    seed: env.QUIRENOTE_SEED !== "0",
   };
 }
 
 /**
- * 清空数据目录（FOLIO_RESET_DATA=1）。安全检查：拒绝删除文件系统根、仓库根，
+ * 清空数据目录（QUIRENOTE_RESET_DATA=1）。安全检查：拒绝删除文件系统根、仓库根，
  * 以及符号链接 / 目录联接（只清空联接指向目录里的内容会误删别处数据，直接拒绝）。
  */
 export function resetDataDir(dir: string): void {

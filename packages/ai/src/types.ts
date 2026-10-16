@@ -1,4 +1,4 @@
-import type { Capability, ProviderKind } from "@folio/core";
+import type { Capability, ProviderKind } from "@quirenote/core";
 
 /** 内置 `local` provider 的 kind；不在 core 的 ProviderKind 枚举里，单独处理。 */
 export type ProviderKindOrLocal = ProviderKind | "local";

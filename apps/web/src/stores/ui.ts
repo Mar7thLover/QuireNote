@@ -1,4 +1,4 @@
-import type { AgentProposal } from "@folio/core";
+import type { AgentProposal } from "@quirenote/core";
 import { create } from "zustand";
 
 interface UiState {
@@ -40,5 +40,5 @@ export const useUi = create<UiState>()((set) => ({
 }));
 
 /** 拖拽数据的 MIME 类型。 */
-export const DND_SOURCE = "application/x-folio-source";
-export const DND_SNIPPET = "application/x-folio-snippet";
+export const DND_SOURCE = "application/x-quirenote-source";
+export const DND_SNIPPET = "application/x-quirenote-snippet";

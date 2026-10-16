@@ -1,4 +1,4 @@
-import { SOURCE_KIND_META, type Source } from "@folio/core";
+import { SOURCE_KIND_META, type Source } from "@quirenote/core";
 import {
   Button,
   Checkbox,
@@ -12,7 +12,7 @@ import {
   Skeleton,
   Spinner,
   Tooltip,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import {
   AlertCircle,
   BookOpen,

@@ -1,11 +1,11 @@
-# @folio/render
+# @quirenote/render
 
 正则规则引擎 + 沙箱卡片模板渲染。框架无关，不依赖 React。
 
 ## 渲染流程
 
 ```ts
-import RegexWorker from "@folio/render/worker?worker";
+import RegexWorker from "@quirenote/render/worker?worker";
 import {
   SANDBOX_ATTR,
   buildSrcdoc,
@@ -13,7 +13,7 @@ import {
   builtinTemplates,
   cardThemeVars,
   createRuleRunner,
-} from "@folio/render";
+} from "@quirenote/render";
 
 // 1. 正则在 Web Worker 里执行，单条规则超时后 worker 会被 terminate 并重建，这条规则被跳过
 const runner = createRuleRunner({ createWorker: () => new RegexWorker(), timeoutMs: 300 });
@@ -36,7 +36,7 @@ iframe 高度自适应：`SANDBOX_ATTR` 是 `"allow-same-origin"`（不带 `allo
 
 ## 规则
 
-`RenderRule`（定义见 `@folio/core`）按 `order` 升序执行，只执行 `enabled` 且 `scopes` 包含当前作用域的规则。
+`RenderRule`（定义见 `@quirenote/core`）按 `order` 升序执行，只执行 `enabled` 且 `scopes` 包含当前作用域的规则。
 
 - `templateId` 为 `null`：纯文本替换，`replacement` 支持 `$1`、`$<name>`、`$&`、`$$`。
 - 有 `templateId`：匹配到的内容替换成 `card` 段。命名捕获组直接作为变量名；`slots` 把组号（或组名）映射成变量名，例如 `{ "1": "term" }`。变量值会去掉首尾空白。
@@ -81,7 +81,7 @@ iframe 高度自适应：`SANDBOX_ATTR` 是 `"allow-same-origin"`（不带 `allo
 
 `builtinRuleSamples` 给出了每条内置规则的示例文本。
 
-## `.folio-theme`
+## `.quirenote-theme`
 
 ```ts
 const text = exportTheme({ name, author, theme, templates, rules }); // 不导出内置模板

@@ -1,6 +1,6 @@
 /** 首次启动：用 fixtures 种一个示例 Notebook（完成分块与 Embedding）。 */
-import { type Note, newId, nowIso, type Source } from "@folio/core";
-import { DEMO_NOTEBOOK, DEMO_NOTES, DEMO_SOURCES } from "@folio/core/fixtures";
+import { type Note, newId, nowIso, type Source } from "@quirenote/core";
+import { DEMO_NOTEBOOK, DEMO_NOTES, DEMO_SOURCES } from "@quirenote/core/fixtures";
 import type { AppContext } from "./context";
 import { parsePlain } from "./ingest/parsers";
 import { processSource } from "./ingest/pipeline";

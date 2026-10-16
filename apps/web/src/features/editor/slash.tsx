@@ -1,5 +1,5 @@
-import { builtinRuleSamples } from "@folio/render";
-import { cn } from "@folio/ui";
+import { builtinRuleSamples } from "@quirenote/render";
+import { cn } from "@quirenote/ui";
 import { type Editor, Extension, type Range } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";

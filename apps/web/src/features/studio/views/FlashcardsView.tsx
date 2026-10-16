@@ -1,5 +1,5 @@
-import { newId } from "@folio/core";
-import { Button, cn, toast } from "@folio/ui";
+import { newId } from "@quirenote/core";
+import { Button, cn, toast } from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import {
   ChevronLeft,

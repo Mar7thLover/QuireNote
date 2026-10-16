@@ -1,4 +1,4 @@
-import type { Message } from "@folio/core";
+import type { Message } from "@quirenote/core";
 
 export interface PathItem {
   message: Message;

@@ -4,7 +4,7 @@
  */
 import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type { Capability, Chunk, ModelAssignment } from "@folio/core";
+import type { Capability, Chunk, ModelAssignment } from "@quirenote/core";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import type {
@@ -690,20 +690,24 @@ export class SqliteStore implements Store {
     this.notebooks = new SqliteEntityRepo<import("./types").NotebookRecord>(this, "notebooks", (n) => ({
       notebookId: n.id,
     }));
-    this.sources = new SqliteEntityRepo<import("@folio/core").Source>(this, "sources", nb);
+    this.sources = new SqliteEntityRepo<import("@quirenote/core").Source>(this, "sources", nb);
     this.contents = new SqliteContentRepo(this);
     this.highlights = new SqliteEntityRepo<import("./types").Highlight>(this, "highlights", (h) => ({
       notebookId: h.notebookId,
       refId: h.sourceId,
     }));
     this.chunks = new SqliteChunkRepo(this);
-    this.conversations = new SqliteEntityRepo<import("@folio/core").Conversation>(this, "conversations", nb);
-    this.messages = new SqliteEntityRepo<import("@folio/core").Message>(this, "messages", (m) => ({
+    this.conversations = new SqliteEntityRepo<import("@quirenote/core").Conversation>(
+      this,
+      "conversations",
+      nb,
+    );
+    this.messages = new SqliteEntityRepo<import("@quirenote/core").Message>(this, "messages", (m) => ({
       refId: m.conversationId,
     }));
-    this.notes = new SqliteEntityRepo<import("@folio/core").Note>(this, "notes", nb);
-    this.artifacts = new SqliteEntityRepo<import("@folio/core").Artifact>(this, "artifacts", nb);
-    this.elements = new SqliteEntityRepo<import("@folio/core").Element>(this, "elements", nb);
+    this.notes = new SqliteEntityRepo<import("@quirenote/core").Note>(this, "notes", nb);
+    this.artifacts = new SqliteEntityRepo<import("@quirenote/core").Artifact>(this, "artifacts", nb);
+    this.elements = new SqliteEntityRepo<import("@quirenote/core").Element>(this, "elements", nb);
     this.cards = new SqliteEntityRepo<import("./types").ReviewCardRecord>(this, "review_cards", (c) => ({
       notebookId: c.notebookId,
       refId: c.elementId,
@@ -712,8 +716,8 @@ export class SqliteStore implements Store {
       notebookId: l.notebookId,
       refId: l.cardId,
     }));
-    this.views = new SqliteEntityRepo<import("@folio/core").DbView>(this, "views", nb);
-    this.properties = new SqliteEntityRepo<import("@folio/core").PropertyDef>(this, "properties", nb);
+    this.views = new SqliteEntityRepo<import("@quirenote/core").DbView>(this, "views", nb);
+    this.properties = new SqliteEntityRepo<import("@quirenote/core").PropertyDef>(this, "properties", nb);
     this.providers = new SqliteEntityRepo<import("./types").ProviderRecord>(this, "providers", () => ({}));
     this.jobs = new SqliteEntityRepo<import("./types").JobRecord>(this, "jobs", (j) => ({
       notebookId: j.notebookId,
@@ -756,12 +760,12 @@ export class SqliteStore implements Store {
   }
 
   async restore(bytes: Uint8Array): Promise<void> {
-    // 先校验快照可以打开，并且是 Folio 的库。
+    // 先校验快照可以打开，并且是 Quirenote 的库。
     const probe = new Database(inMemoryImage(bytes));
     try {
       probe.prepare("SELECT COUNT(*) FROM notebooks").get();
     } catch {
-      throw new Error("快照不是有效的 Folio 数据库");
+      throw new Error("快照不是有效的 Quirenote 数据库");
     } finally {
       probe.close();
     }

@@ -1,4 +1,4 @@
-package app.folio.notebook;
+package app.quirenote.notebook;
 
 import com.getcapacitor.BridgeActivity;
 

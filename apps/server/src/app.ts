@@ -39,7 +39,7 @@ export function createApp(
 
   app.onError((err, c) => {
     const e = toApiError(err);
-    if (e.status >= 500) log(`[folio] ${c.req.method} ${c.req.path} → ${e.status} ${e.message}`);
+    if (e.status >= 500) log(`[quirenote] ${c.req.method} ${c.req.path} → ${e.status} ${e.message}`);
     return c.json({ error: { code: e.code, message: e.message } }, e.status as 400);
   });
 
@@ -66,7 +66,7 @@ export function createApp(
     app.use("*", serveStatic({ root: dist }));
     app.get("*", (c) => (c.req.path.startsWith("/api/") ? c.notFound() : c.html(indexHtml)));
   } else {
-    app.get("/", (c) => c.json({ name: "folio-server", api: "/api", health: "/api/health" }));
+    app.get("/", (c) => c.json({ name: "quirenote-server", api: "/api", health: "/api/health" }));
   }
   return app;
 }

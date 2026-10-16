@@ -1,4 +1,4 @@
-import type { RenderRule } from "@folio/core";
+import type { RenderRule } from "@quirenote/core";
 
 /** 规则引擎输出的一段内容：纯文本，或者交给卡片模板渲染的 card。 */
 export type TextSegment = { type: "text"; text: string };

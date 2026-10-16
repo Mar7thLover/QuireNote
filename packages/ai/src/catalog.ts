@@ -1,4 +1,4 @@
-import type { Capability } from "@folio/core";
+import type { Capability } from "@quirenote/core";
 import type { CatalogEntry, ProviderKindOrLocal } from "./types";
 
 export const LOCAL_PROVIDER_ID = "local";

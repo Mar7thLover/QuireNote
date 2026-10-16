@@ -1,4 +1,4 @@
-import { Button, cn, Field, Input, Select, Slider } from "@folio/ui";
+import { Button, cn, Field, Input, Select, Slider } from "@quirenote/ui";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { currentLang, setLang, useTranslation } from "@/i18n";
 import { SettingsSection } from "@/routes/settings";

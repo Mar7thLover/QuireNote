@@ -1,6 +1,6 @@
 import "@xyflow/react/dist/style.css";
-import { ELEMENT_TYPE_META, type Element } from "@folio/core";
-import { tagColor } from "@folio/ui";
+import { ELEMENT_TYPE_META, type Element } from "@quirenote/core";
+import { tagColor } from "@quirenote/ui";
 import { Background, BackgroundVariant, Controls, type Edge, type Node, ReactFlow } from "@xyflow/react";
 import { useMemo } from "react";
 import { dagreLayout, estimateWidth } from "@/lib/graphLayout";

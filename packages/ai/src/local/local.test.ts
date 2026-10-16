@@ -1,5 +1,5 @@
-import { ArtifactData, ArtifactKind, usedCitationNumbers } from "@folio/core";
-import { DEMO_SOURCES } from "@folio/core/fixtures";
+import { ArtifactData, ArtifactKind, usedCitationNumbers } from "@quirenote/core";
+import { DEMO_SOURCES } from "@quirenote/core/fixtures";
 import { describe, expect, it } from "vitest";
 import { generateArtifactData, proposeAgentOps, refineArtifactData, transformStream } from "../tasks";
 import type { ModelRef, Passage } from "../types";

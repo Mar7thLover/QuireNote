@@ -1,4 +1,4 @@
-import { Toaster, TooltipProvider } from "@folio/ui";
+import { Toaster, TooltipProvider } from "@quirenote/ui";
 import { onlineManager, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";

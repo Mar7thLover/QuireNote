@@ -11,7 +11,7 @@ import {
   nowIso,
   type PropertyDef,
   type Source,
-} from "@folio/core";
+} from "@quirenote/core";
 import { strFromU8, strToU8, unzipSync, type Zippable, zipSync } from "fflate";
 import { VERSION } from "../config";
 import type { AppContext } from "../context";
@@ -23,7 +23,7 @@ import { withStats } from "./notebooks";
 import { MEDIA_DIR } from "./studio";
 
 export interface NotebookExport {
-  format: "folio-notebook";
+  format: "quirenote-notebook";
   version: 1;
   app: string;
   exportedAt: string;
@@ -82,9 +82,9 @@ export async function exportNotebook(
   const messages: Message[] = [];
   for (const c of conversations) messages.push(...(await store.messages.list({ refId: c.id })));
   const data: NotebookExport = {
-    format: "folio-notebook",
+    format: "quirenote-notebook",
     version: 1,
-    app: `folio ${VERSION}`,
+    app: `quirenote ${VERSION}`,
     exportedAt: nowIso(),
     notebook,
     sources,
@@ -103,7 +103,7 @@ export async function exportNotebook(
   };
   const zip: Zippable = { "notebook.json": strToU8(JSON.stringify(data, null, 2)) };
   zip["README.md"] = strToU8(
-    `# ${notebook.title}\n\n${notebook.description}\n\n由 Folio 导出于 ${data.exportedAt}。\n\n- notebook.json：完整元数据（可用 POST /api/import 导入）\n- markdown/：笔记、资料全文与文本类生成物的 Markdown\n- files/：原始资料文件与生成的媒体\n`,
+    `# ${notebook.title}\n\n${notebook.description}\n\n由 Quirenote 导出于 ${data.exportedAt}。\n\n- notebook.json：完整元数据（可用 POST /api/import 导入）\n- markdown/：笔记、资料全文与文本类生成物的 Markdown\n- files/：原始资料文件与生成的媒体\n`,
   );
   data.notes.forEach((n, i) => {
     zip[`markdown/notes/${slug(n.title, i)}.md`] = strToU8(`# ${n.title}\n\n${n.markdown}\n`);
@@ -129,7 +129,7 @@ export async function exportNotebook(
     const bytes = await ctx.files.get(`${MEDIA_DIR}/${name}`);
     if (bytes) zip[`files/${MEDIA_DIR}/${name}`] = bytes;
   }
-  const filename = `${safeName(notebook.title).replace(/\s+/g, "-") || "notebook"}.folio.zip`;
+  const filename = `${safeName(notebook.title).replace(/\s+/g, "-") || "notebook"}.quirenote.zip`;
   return { zip: zipSync(zip, { level: 6 }), filename };
 }
 
@@ -170,7 +170,7 @@ function remapIds(raw: string, ids: string[]): { text: string; map: Map<string, 
 export async function importNotebook(
   ctx: AppContext,
   zipBytes: Uint8Array,
-): Promise<import("@folio/core").Notebook> {
+): Promise<import("@quirenote/core").Notebook> {
   let files: Record<string, Uint8Array>;
   try {
     files = unzipSync(zipBytes);
@@ -186,7 +186,7 @@ export async function importNotebook(
   } catch {
     throw badRequest("notebook.json 不是合法 JSON");
   }
-  if (parsed.format !== "folio-notebook") throw badRequest("不是 Folio 导出的 Notebook");
+  if (parsed.format !== "quirenote-notebook") throw badRequest("不是 Quirenote 导出的 Notebook");
   const { text, map } = remapIds(raw, collectIds(parsed));
   const data = JSON.parse(text) as NotebookExport;
   const { store } = ctx;
@@ -237,19 +237,19 @@ export async function backupAll(ctx: AppContext): Promise<{ zip: Uint8Array; fil
   const zip: Zippable = {
     "backup.json": strToU8(
       JSON.stringify(
-        { format: "folio-backup", version: 1, app: `folio ${VERSION}`, createdAt: nowIso() },
+        { format: "quirenote-backup", version: 1, app: `quirenote ${VERSION}`, createdAt: nowIso() },
         null,
         2,
       ),
     ),
-    "folio.db": await ctx.store.snapshot(),
+    "quirenote.db": await ctx.store.snapshot(),
   };
   for (const path of await ctx.files.list()) {
     const bytes = await ctx.files.get(path);
     if (bytes) zip[`files/${path}`] = bytes;
   }
   const stamp = nowIso().replace(/[:.]/g, "-");
-  return { zip: zipSync(zip, { level: 6 }), filename: `folio-backup-${stamp}.zip` };
+  return { zip: zipSync(zip, { level: 6 }), filename: `quirenote-backup-${stamp}.zip` };
 }
 
 export async function restoreAll(
@@ -263,10 +263,10 @@ export async function restoreAll(
     throw badRequest("不是有效的 zip 文件");
   }
   const meta = files["backup.json"];
-  const db = files["folio.db"];
-  if (!meta || !db) throw badRequest("不是 Folio 全量备份（缺少 backup.json 或 folio.db）");
+  const db = files["quirenote.db"];
+  if (!meta || !db) throw badRequest("不是 Quirenote 全量备份（缺少 backup.json 或 quirenote.db）");
   try {
-    if ((JSON.parse(strFromU8(meta)) as { format?: string }).format !== "folio-backup") throw new Error();
+    if ((JSON.parse(strFromU8(meta)) as { format?: string }).format !== "quirenote-backup") throw new Error();
   } catch {
     throw badRequest("backup.json 无效");
   }

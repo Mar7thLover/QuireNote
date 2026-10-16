@@ -10,7 +10,7 @@ const opt = Object.fromEntries(
     return [k, v.length ? v.join("=") : true];
   }),
 );
-const base = process.env.FOLIO_WEB ?? "http://localhost:5173";
+const base = process.env.QUIRENOTE_WEB ?? "http://localhost:5173";
 mkdirSync("e2e/.screens", { recursive: true });
 
 const browser = await chromium.launch();
@@ -30,7 +30,7 @@ page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => m.type() === "error" && errors.push(`console: ${m.text()}`));
 await page.addInitScript((dark) => {
   localStorage.setItem(
-    "folio.theme",
+    "quirenote.theme",
     JSON.stringify({ state: { mode: dark ? "dark" : "light" }, version: 1 }),
   );
 }, !!opt.dark);

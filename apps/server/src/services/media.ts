@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BinaryResult } from "@folio/ai";
+import type { BinaryResult } from "@quirenote/ai";
 import type { AppContext } from "../context";
 
 /** 跳过 ID3v2 标签，便于把多段 mp3 直接拼接。 */
@@ -162,7 +162,7 @@ function runFfmpeg(bin: string, args: string[], cwd: string): Promise<void> {
 }
 
 const FONT_CANDIDATES = [
-  process.env.FOLIO_FONT_FILE,
+  process.env.QUIRENOTE_FONT_FILE,
   "C:/Windows/Fonts/msyh.ttc",
   "C:/Windows/Fonts/simhei.ttf",
   "/System/Library/Fonts/PingFang.ttc",
@@ -185,7 +185,7 @@ export interface VideoSlide {
 
 /** 用 ffmpeg 把幻灯片（纯色背景 + 文字）与旁白合成为 mp4。 */
 export async function renderSlidesVideo(bin: string, slides: VideoSlide[]): Promise<Uint8Array> {
-  const dir = mkdtempSync(join(tmpdir(), "folio-video-"));
+  const dir = mkdtempSync(join(tmpdir(), "quirenote-video-"));
   try {
     const font = FONT_CANDIDATES.find((f) => f && existsSync(f));
     const fontOpt = font ? `fontfile='${escapeFilterPath(font)}':` : "";

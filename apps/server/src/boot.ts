@@ -24,19 +24,19 @@ export async function boot(config: ServerConfig, opts: BootOptions = {}): Promis
   const log = opts.log ?? (() => {});
   if (config.resetData) {
     resetDataDir(config.dataDir);
-    log(`[folio] 已清空数据目录 ${config.dataDir}`);
+    log(`[quirenote] 已清空数据目录 ${config.dataDir}`);
   }
   mkdirSync(config.dataDir, { recursive: true });
   const ctx = createContext(config, opts);
   registerJobHandlers(ctx);
-  if (opts.env) await bootstrapProvidersFromEnv(ctx, opts.env, (m) => log(`[folio] ${m}`));
+  if (opts.env) await bootstrapProvidersFromEnv(ctx, opts.env, (m) => log(`[quirenote] ${m}`));
   if (config.seed) {
     const seeded = await seedIfEmpty(ctx);
-    if (seeded) log(`[folio] 已创建示例 Notebook ${seeded}`);
+    if (seeded) log(`[quirenote] 已创建示例 Notebook ${seeded}`);
   }
   const resumed = await ctx.jobs.resume();
-  if (resumed) log(`[folio] 恢复了 ${resumed} 个未完成的任务`);
-  const app = createApp(ctx, { log, webDist: opts.env?.FOLIO_WEB_DIST });
+  if (resumed) log(`[quirenote] 恢复了 ${resumed} 个未完成的任务`);
+  const app = createApp(ctx, { log, webDist: opts.env?.QUIRENOTE_WEB_DIST });
   return {
     ctx,
     app,

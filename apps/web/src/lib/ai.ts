@@ -1,4 +1,4 @@
-import type { Citation } from "@folio/core";
+import type { Citation } from "@quirenote/core";
 import { create } from "zustand";
 import { streamSse } from "./api";
 

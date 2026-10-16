@@ -1,4 +1,4 @@
-import type { NoteInput } from "@folio/core";
+import type { NoteInput } from "@quirenote/core";
 import { api } from "@/lib/api";
 import { qk, queryClient, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";

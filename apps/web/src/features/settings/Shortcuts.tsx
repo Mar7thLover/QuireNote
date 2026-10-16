@@ -1,4 +1,4 @@
-import { Shortcut } from "@folio/ui";
+import { Shortcut } from "@quirenote/ui";
 import { useTranslation } from "@/i18n";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { SettingsSection } from "@/routes/settings";

@@ -1,4 +1,4 @@
-import type { RenderRule } from "@folio/core";
+import type { RenderRule } from "@quirenote/core";
 import { collectMatches, expandReplacement } from "./matcher";
 import type { ApplyOptions, MatchInfo, RenderResult, RuleError, Segment } from "./types";
 

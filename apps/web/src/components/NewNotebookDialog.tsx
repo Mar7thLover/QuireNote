@@ -8,7 +8,7 @@ import {
   TAG_COLOR_NAMES,
   Textarea,
   tagColor,
-} from "@folio/ui";
+} from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";

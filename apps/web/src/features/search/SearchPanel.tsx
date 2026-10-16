@@ -1,4 +1,4 @@
-import { Button, cn, EmptyState, Input, Tabs, TabsList, TabsTrigger, toast } from "@folio/ui";
+import { Button, cn, EmptyState, Input, Tabs, TabsList, TabsTrigger, toast } from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, Globe, Plus, Search, Telescope } from "lucide-react";
