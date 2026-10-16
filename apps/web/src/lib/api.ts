@@ -3,6 +3,7 @@ import type {
   Artifact,
   ArtifactData,
   ArtifactKind,
+  Capability,
   Chunk,
   Citation,
   Conversation,
@@ -11,13 +12,16 @@ import type {
   Job,
   Message,
   ModelAssignment,
+  ModelChoice,
   Note,
   Notebook,
   NotebookInput,
   NoteInput,
   PropertyDef,
   ProviderConfig,
+  ProviderHeadersPatch,
   ProviderInput,
+  ProviderModel,
   ReviewCard,
   Source,
   SourceContent,
@@ -170,9 +174,12 @@ export const api = {
 
   conversations: {
     list: (nb: string) => get<Conversation[]>(`/notebooks/${nb}/conversations`),
-    create: (nb: string, title?: string) => post<Conversation>(`/notebooks/${nb}/conversations`, { title }),
-    update: (id: string, input: { title?: string; activeLeafId?: string | null }) =>
-      patch<Conversation>(`/conversations/${id}`, input),
+    create: (nb: string, title?: string, model?: ModelChoice | null) =>
+      post<Conversation>(`/notebooks/${nb}/conversations`, { title, model }),
+    update: (
+      id: string,
+      input: { title?: string; activeLeafId?: string | null; model?: ModelChoice | null },
+    ) => patch<Conversation>(`/conversations/${id}`, input),
     remove: (id: string) => del(`/conversations/${id}`),
     messages: (id: string) => get<Message[]>(`/conversations/${id}/messages`),
   },
@@ -261,13 +268,18 @@ export const api = {
     catalog: () => get<ProviderCatalogEntry[]>("/providers/catalog"),
     list: () => get<ProviderConfig[]>("/providers"),
     create: (input: ProviderInput) => post<ProviderConfig>("/providers", input),
-    update: (id: string, input: Partial<ProviderInput>) => patch<ProviderConfig>(`/providers/${id}`, input),
+    update: (
+      id: string,
+      input: Partial<Omit<ProviderInput, "headers">> & { headers?: ProviderHeadersPatch | null },
+    ) => patch<ProviderConfig>(`/providers/${id}`, input),
     remove: (id: string) => del(`/providers/${id}`),
     test: (id: string) =>
       post<{ ok: boolean; latencyMs: number; error?: string; models?: string[] }>(`/providers/${id}/test`),
-    models: (id: string) => get<string[]>(`/providers/${id}/models`),
+    /** 向服务查询可用模型（附推测的用途），不改动已登记的列表。 */
+    remoteModels: (id: string) => get<ProviderModel[]>(`/providers/${id}/models`),
     assignments: () => get<ModelAssignment[]>("/models/assignments"),
     assign: (a: ModelAssignment) => put<ModelAssignment[]>("/models/assignments", a),
+    unassign: (cap: Capability) => del<ModelAssignment[]>(`/models/assignments/${cap}`),
   },
 
   jobs: (nb?: string) => get<Job[]>(`/jobs${nb ? `?notebookId=${nb}` : ""}`),

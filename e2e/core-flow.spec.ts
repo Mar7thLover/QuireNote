@@ -20,7 +20,7 @@ test.describe("核心流程", () => {
     await expect(row).toBeVisible();
     await expect(page.getByText(/PDF · 2 页/)).toBeVisible({ timeout: 30_000 });
 
-    // 提问（默认使用内置 local 模型，无需 Key）
+    // 提问（E2E 服务端接的是 e2e/fake-llm.ts 假模型，回答固定引用 [1]）
     const input = page.locator("[data-chat-input]");
     await input.fill("What did the Transformer remove?");
     await input.press("Enter");

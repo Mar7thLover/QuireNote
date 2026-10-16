@@ -92,7 +92,7 @@ describe("seeded demo notebook", () => {
     expect(new Set(chunks.map((c) => c.page))).toEqual(new Set([1, 2, 3]));
     const stats = await s.json<{ chunks: number; embedded: number; embeddingModel: string }>("/admin/stats");
     expect(stats.embedded).toBe(stats.chunks);
-    expect(stats.embeddingModel).toBe("local:hash-384");
+    expect(stats.embeddingModel).toMatch(/^prov_\w+:fake-embed$/);
   });
 
   it("hybrid retrieval returns ranked chunks with both ranks", async () => {
@@ -215,7 +215,8 @@ describe("notebooks, sources and notes", () => {
     const img = new FormData();
     img.append("file", new File([new Uint8Array([137, 80, 78, 71])], "scan.png", { type: "image/png" }));
     const image = await s.json<Source>(`/notebooks/${nb.id}/sources`, { method: "POST", body: img });
-    expect((await waitSource(image.id)).error).toMatch(/视觉|OCR/);
+    // 图片走对话模型的视觉能力做 OCR（测试里是假模型）。
+    expect((await waitSource(image.id)).status).toBe("ready");
     const audio = new FormData();
     audio.append("file", new File([new Uint8Array([1, 2, 3])], "talk.mp3", { type: "audio/mpeg" }));
     const au = await s.json<Source>(`/notebooks/${nb.id}/sources`, { method: "POST", body: audio });
@@ -498,17 +499,18 @@ describe("in-place AI", () => {
         noteIds: notes.map((n) => n.id),
       },
     });
-    expect(proposal.ops[0]!.op).toBe("create_table");
+    // 假模型总是提出 create_note（枚举第一项），足以走通 apply / undo。
+    expect(proposal.ops[0]!.op).toBe("create_note");
     const applied = await s.json<{ applied: { op: string; id: string }[]; undoToken: string }>("/ai/apply", {
       method: "POST",
       json: { notebookId: demo.id, proposal },
     });
-    const tableId = applied.applied[0]!.id;
-    expect((await s.json<Artifact>(`/artifacts/${tableId}`)).data?.kind).toBe("table");
+    const noteId = applied.applied[0]!.id;
+    expect((await s.request(`/notes/${noteId}`)).status).toBe(200);
     expect(await s.json("/ai/undo", { method: "POST", json: { undoToken: applied.undoToken } })).toEqual({
       ok: true,
     });
-    expect((await s.request(`/artifacts/${tableId}`)).status).toBe(404);
+    expect((await s.request(`/notes/${noteId}`)).status).toBe(404);
 
     const target = notes[0]!;
     const manual: AgentProposal = {
@@ -542,10 +544,11 @@ describe("in-place AI", () => {
 describe("providers and models", () => {
   let prov: ProviderConfig;
 
-  it("lists the catalog including local and Anthropic's embedding note", async () => {
+  it("lists the catalog without a built-in local provider", async () => {
     const cat =
       await s.json<{ kind: string; notes: string; models: Record<string, string[]> }[]>("/providers/catalog");
-    expect(cat.find((c) => c.kind === "local")).toBeTruthy();
+    expect(cat.find((c) => c.kind === "local")).toBeUndefined();
+    expect(cat.find((c) => c.kind === "anthropic-compatible")).toBeTruthy();
     const anthropic = cat.find((c) => c.kind === "anthropic")!;
     expect(anthropic.notes).toMatch(/没有 Embedding/);
     expect(anthropic.models.chat).toEqual(["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"]);
@@ -556,7 +559,9 @@ describe("providers and models", () => {
       method: "POST",
       json: { kind: "openai", name: "OpenAI", apiKey: "sk-test-SECRET-9876" },
     });
-    expect(prov).toMatchObject({ hasKey: true, keyHint: "…9876", enabled: true });
+    expect(prov).toMatchObject({ hasKey: true, keyHint: "…9876", enabled: true, headerNames: [] });
+    // 新建时预置目录里的示例模型。
+    expect(prov.models.find((m) => m.id === "text-embedding-3-small")?.capabilities).toEqual(["embedding"]);
     const listText = await (await s.request("/providers")).text();
     expect(listText).not.toContain("SECRET");
     expect(listText).not.toContain("keyEnc");
@@ -578,12 +583,91 @@ describe("providers and models", () => {
     await s.json(`/providers/${prov.id}`, { method: "PATCH", json: { apiKey: "sk-test-SECRET-9876" } });
   });
 
-  it("tests connections without leaking keys", async () => {
-    const local = await s.json<{ ok: boolean; models: string[] }>("/providers/local/test", {
-      method: "POST",
+  it("manages the provider's model list", async () => {
+    const updated = await s.json<ProviderConfig>(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: {
+        models: [
+          { id: "gpt-custom", label: "我的模型", capabilities: ["chat"] },
+          { id: "gpt-custom", capabilities: ["tts"] },
+          { id: "tts-x", capabilities: ["tts", "search"] },
+        ],
+      },
     });
-    expect(local.ok).toBe(true);
-    expect(await s.json<string[]>("/providers/local/models")).toContain("extractive");
+    // 同 ID 合并能力；该类型不支持的能力（OpenAI 不做搜索）被去掉。
+    expect(updated.models).toEqual([
+      { id: "gpt-custom", label: "我的模型", capabilities: ["chat", "tts"] },
+      { id: "tts-x", label: null, capabilities: ["tts"] },
+    ]);
+    const bad = await s.request(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { models: [{ id: "web", capabilities: ["search"] }] },
+    });
+    expect(bad.status).toBe(400);
+    // 早期记录没有 models 字段：按目录示例模型返回。
+    await s.ctx.store.providers.update(prov.id, { models: undefined });
+    const listed = (await s.json<ProviderConfig[]>("/providers")).find((p) => p.id === prov.id)!;
+    expect(listed.models.some((m) => m.id === "gpt-6.1-sol")).toBe(true);
+  });
+
+  it("stores custom headers encrypted and only returns their names", async () => {
+    const withHeaders = await s.json<ProviderConfig>(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { headers: { "X-Proxy-Token": "secret-header-value" } },
+    });
+    expect(withHeaders.headerNames).toEqual(["X-Proxy-Token"]);
+    expect(await (await s.request("/providers")).text()).not.toContain("secret-header-value");
+    const rec = await s.ctx.store.providers.get(prov.id);
+    expect(rec?.headersEnc).toMatch(/^v1:/);
+    expect((await s.ctx.models.runtime(prov.id)).headers).toEqual({ "X-Proxy-Token": "secret-header-value" });
+    const invalid = await s.request(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { headers: { "bad header": "x" } },
+    });
+    expect(invalid.status).toBe(400);
+    // 合并：新增一项、保留未提到的旧值；null 删除单项（名称不分大小写）。
+    const merged = await s.json<ProviderConfig>(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { headers: { "X-Extra": "1" } },
+    });
+    expect(merged.headerNames).toEqual(["X-Proxy-Token", "X-Extra"]);
+    expect((await s.ctx.models.runtime(prov.id)).headers).toEqual({
+      "X-Proxy-Token": "secret-header-value",
+      "X-Extra": "1",
+    });
+    const removed = await s.json<ProviderConfig>(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { headers: { "x-proxy-token": null } },
+    });
+    expect(removed.headerNames).toEqual(["X-Extra"]);
+    const cleared = await s.json<ProviderConfig>(`/providers/${prov.id}`, {
+      method: "PATCH",
+      json: { headers: null },
+    });
+    expect(cleared.headerNames).toEqual([]);
+    expect((await s.ctx.models.runtime(prov.id)).headers).toBeNull();
+  });
+
+  it("requires a base url for the compatible protocols", async () => {
+    for (const kind of ["openai-compatible", "anthropic-compatible"]) {
+      const res = await s.request("/providers", { method: "POST", json: { kind, name: kind } });
+      expect(res.status).toBe(400);
+    }
+    const ok = await s.json<ProviderConfig>("/providers", {
+      method: "POST",
+      json: { kind: "anthropic-compatible", name: "中转", baseUrl: "https://relay.example.com/v1" },
+    });
+    expect(ok.models.map((m) => m.id)).toEqual(["claude-sonnet-5-5"]);
+    await s.json(`/providers/${ok.id}`, { method: "DELETE" });
+  });
+
+  it("tests connections without leaking keys", async () => {
+    const fake = (await s.json<ProviderConfig[]>("/providers")).find((p) => p.kind === "openai-compatible")!;
+    const t = await s.json<{ ok: boolean }>(`/providers/${fake.id}/test`, { method: "POST" });
+    expect(t.ok).toBe(true);
+    const remote = await s.json<{ id: string; capabilities: string[] }[]>(`/providers/${fake.id}/models`);
+    expect(remote).toContainEqual({ id: "fake-chat", label: null, capabilities: ["chat"] });
+    expect(remote).toContainEqual({ id: "fake-embed", label: null, capabilities: ["embedding"] });
     const edge = await s.json<ProviderConfig>("/providers", {
       method: "POST",
       json: { kind: "edge-tts", name: "Edge" },
@@ -595,9 +679,9 @@ describe("providers and models", () => {
 
   it("manages model assignments with capability validation", async () => {
     const initial = await s.json<ModelAssignment[]>("/models/assignments");
-    expect(initial).toEqual([
-      { capability: "chat", providerId: "local", model: "extractive" },
-      { capability: "embedding", providerId: "local", model: "hash-384" },
+    expect(initial.map((a) => [a.capability, a.model])).toEqual([
+      ["chat", "fake-chat"],
+      ["embedding", "fake-embed"],
     ]);
     const bad = await s.request("/models/assignments", {
       method: "PUT",
@@ -629,6 +713,7 @@ describe("providers and models", () => {
     writeFileSync(keyFile, "  sk-ant-fake-key-ABCD \n");
     const logs: string[] = [];
     const s2 = await makeServer({
+      fakeAi: false,
       env: { ANTHROPIC_API_KEY_FILE: keyFile, TAVILY_API_KEY: "tvly-fake-WXYZ" },
     });
     try {
@@ -648,6 +733,67 @@ describe("providers and models", () => {
         "sk-ant-fake-key-ABCD",
       );
       expect(logs.join("\n")).not.toContain("sk-ant");
+      // Anthropic 没有 Embedding：不分配，检索只用关键词。
+      expect(a.find((x) => x.capability === "embedding")).toBeUndefined();
+    } finally {
+      await s2.dispose();
+    }
+  });
+
+  it("bootstraps an OpenAI-compatible endpoint with explicit models", async () => {
+    const s2 = await makeServer({
+      env: { OPENAI_COMPATIBLE_API_KEY: "sk-compat-KEY1", OPENAI_COMPATIBLE_CHAT_MODEL: "qwen3" },
+    });
+    try {
+      const fake = (await s2.json<ProviderConfig[]>("/providers")).find(
+        (p) => p.kind === "openai-compatible",
+      )!;
+      expect(fake).toMatchObject({ baseUrl: "http://fake-llm.test/v1", keyHint: "…KEY1" });
+      expect(fake.models.map((m) => [m.id, m.capabilities])).toEqual([
+        ["qwen3", ["chat"]],
+        ["fake-embed", ["embedding"]],
+      ]);
+      const a = await s2.json<ModelAssignment[]>("/models/assignments");
+      expect(a.map((x) => [x.capability, x.model])).toEqual([
+        ["chat", "qwen3"],
+        ["embedding", "fake-embed"],
+      ]);
+    } finally {
+      await s2.dispose();
+    }
+  });
+
+  it("drops assignments left over from the removed local provider", async () => {
+    const s2 = await makeServer({ fakeAi: false });
+    try {
+      await s2.ctx.store.assignments.set({ capability: "chat", providerId: "local", model: "extractive" });
+      await s2.ctx.store.assignments.set({ capability: "embedding", providerId: "local", model: "hash-384" });
+      expect(await s2.json<ModelAssignment[]>("/models/assignments")).toEqual([]);
+      // local 生成的旧向量（未分配时它是默认值，可能只有向量、没有分配记录）。
+      const nb0 = await s2.json<Notebook>("/notebooks", { method: "POST", json: { title: "legacy" } });
+      const src = await s2.json<Source>(`/notebooks/${nb0.id}/sources`, {
+        method: "POST",
+        json: { kind: "text", text: "旧向量测试。" },
+      });
+      await s2.ctx.jobs.idle();
+      const chunks = await s2.json<Chunk[]>(`/sources/${src.id}/chunks`);
+      await s2.ctx.store.chunks.upsertEmbeddings(
+        "local:hash-384",
+        chunks.map((c) => ({ chunkId: c.id, notebookId: nb0.id, vector: new Array(384).fill(0.05) })),
+      );
+      expect(await s2.ctx.store.chunks.embeddedCount({ model: "local:hash-384" })).toBe(chunks.length);
+      const { removeLegacyLocal } = await import("../services/providers");
+      expect(await removeLegacyLocal(s2.ctx)).toBe(true);
+      expect(await s2.ctx.store.assignments.list()).toEqual([]);
+      expect(await s2.ctx.store.chunks.embeddedCount({ model: "local:hash-384" })).toBe(0);
+      expect(await removeLegacyLocal(s2.ctx)).toBe(false);
+      const nb = await s2.json<Notebook>("/notebooks", { method: "POST", json: { title: "x" } });
+      const res = await s2.request("/ai/transform", {
+        method: "POST",
+        json: { notebookId: nb.id, action: "rewrite", text: "x" },
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error.code).toBe("model_not_configured");
     } finally {
       await s2.dispose();
     }

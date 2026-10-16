@@ -1,11 +1,12 @@
 /**
- * local Embedding：确定性的哈希字符 n-gram 向量。
+ * 文本相似度用的哈希向量（引用定位、抽取式摘要、测试用假模型），不是 Embedding 模型。
+ * 确定性的哈希字符 n-gram 向量：
  * - 中文：单字（低权重）+ 二元组 + 三元组
  * - 英文：词（去停用词）+ 带边界的字符三元组（容忍词形变化）
  * 特征经 FNV-1a 哈希到固定维度（signed hashing），tf 取 1+log，最后 L2 归一化。
  */
 
-export const LOCAL_EMBED_DIM = 384;
+export const TEXT_VECTOR_DIM = 384;
 
 const ZH_STOP = new Set("的了是在和与及或而也就都把被对从于以其之这那个们为着并".split(""));
 const EN_STOP = new Set(
@@ -51,7 +52,7 @@ export function features(text: string): Map<string, number> {
   return map;
 }
 
-export function localEmbed(text: string, dim = LOCAL_EMBED_DIM): number[] {
+export function textVector(text: string, dim = TEXT_VECTOR_DIM): number[] {
   const v = new Float64Array(dim);
   for (const [f, w] of features(text)) {
     const h = fnv1a(f);
@@ -66,10 +67,6 @@ export function localEmbed(text: string, dim = LOCAL_EMBED_DIM): number[] {
   const out = new Array<number>(dim);
   for (let i = 0; i < dim; i++) out[i] = norm > 0 ? v[i]! / norm : 0;
   return out;
-}
-
-export function localEmbedMany(texts: string[], dim = LOCAL_EMBED_DIM): number[][] {
-  return texts.map((t) => localEmbed(t, dim));
 }
 
 export function cosine(a: number[], b: number[]): number {

@@ -16,6 +16,7 @@ import type {
   Notebook,
   PropertyDef,
   ProviderKind,
+  ProviderModel,
   ReviewCard,
   Source,
 } from "@quirenote/core";
@@ -88,6 +89,11 @@ export interface ProviderRecord {
   /** AES-256-GCM 密文（见 crypto.ts），从不出现在接口响应里。 */
   keyEnc: string | null;
   keyHint: string | null;
+  /** 自定义请求头（JSON 对象）的密文；值可能是凭据，同样加密。早期记录没有此字段。 */
+  headersEnc?: string | null;
+  headerNames?: string[];
+  /** 登记的模型；早期记录没有此字段，按目录示例模型处理。 */
+  models?: ProviderModel[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
@@ -132,8 +138,9 @@ export interface ChunkRepo {
   ): Promise<void>;
   /** 向量检索，只返回由 model 生成的向量。 */
   vectorSearch(notebookId: string, model: string, vector: number[], limit: number): Promise<VectorHit[]>;
-  clearEmbeddings(filter?: { notebookId?: string; sourceId?: string }): Promise<void>;
-  embeddedCount(filter?: { model?: string; notebookId?: string }): Promise<number>;
+  /** model 为前缀匹配（如 "local:" 清掉某 provider 的全部向量）。 */
+  clearEmbeddings(filter?: { notebookId?: string; sourceId?: string; modelPrefix?: string }): Promise<void>;
+  embeddedCount(filter?: { model?: string; modelPrefix?: string; notebookId?: string }): Promise<number>;
   missingEmbeddings(model: string, filter?: { notebookId?: string; sourceId?: string }): Promise<Chunk[]>;
 }
 

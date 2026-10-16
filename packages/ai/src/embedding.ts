@@ -1,5 +1,4 @@
 import { embedMany } from "ai";
-import { LOCAL_EMBED_DIM, localEmbedMany } from "./local/embedding";
 import { embeddingModel, errorMessage } from "./sdk";
 import { AiError, type ModelRef } from "./types";
 
@@ -10,11 +9,6 @@ export async function embedTexts(
   abortSignal?: AbortSignal,
 ): Promise<number[][]> {
   if (!texts.length) return [];
-  if (ref.provider.kind === "local") {
-    const m = /(\d+)$/.exec(ref.model);
-    const dim = m ? Math.max(16, Math.min(4096, Number(m[1]))) : LOCAL_EMBED_DIM;
-    return localEmbedMany(texts, dim);
-  }
   const model = embeddingModel(ref.provider, ref.model);
   try {
     const out: number[][] = [];

@@ -14,13 +14,14 @@ export async function synthesizeSpeech(ref: ModelRef, text: string, voice?: stri
   const p = ref.provider;
   switch (p.kind) {
     case "openai":
+    case "openai-compatible":
     case "google": {
       try {
         const res = await generateSpeech({
           model: speechModel(p, ref.model),
           text,
           voice: voice ?? defaultVoices(ref).A,
-          ...(p.kind === "openai" ? { outputFormat: "mp3" } : {}),
+          ...(p.kind === "google" ? {} : { outputFormat: "mp3" }),
           maxRetries: 1,
         });
         return { data: res.audio.uint8Array, mediaType: res.audio.mediaType };
@@ -53,11 +54,13 @@ export interface TranscriptResult {
   language?: string;
 }
 
-/** 语音转写（OpenAI Whisper / gpt-4o-transcribe，Gemini transcribe）。 */
+/** 语音转写（OpenAI Whisper / gpt-4o-transcribe、OpenAI 兼容接口、Gemini transcribe）。 */
 export async function transcribeAudio(ref: ModelRef, audio: Uint8Array): Promise<TranscriptResult> {
   const p = ref.provider;
-  if (p.kind !== "openai" && p.kind !== "google") {
-    throw new UnsupportedError(`provider 类型 ${p.kind} 不支持语音转写，请使用 OpenAI 或 Gemini`);
+  if (p.kind !== "openai" && p.kind !== "openai-compatible" && p.kind !== "google") {
+    throw new UnsupportedError(
+      `provider 类型 ${p.kind} 不支持语音转写，请使用 OpenAI、OpenAI 兼容接口或 Gemini`,
+    );
   }
   try {
     const res = await transcribe({ model: transcriptionModel(p, ref.model), audio, maxRetries: 1 });

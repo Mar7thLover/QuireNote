@@ -1,6 +1,6 @@
-import { isHeadingLine, keywordOverlap, type Sentence, splitSentences, stripMarkdown } from "../text";
-import type { Passage } from "../types";
-import { cosine, localEmbed } from "./embedding";
+import { isHeadingLine, keywordOverlap, type Sentence, splitSentences, stripMarkdown } from "./text";
+import type { Passage } from "./types";
+import { cosine, textVector } from "./vector";
 
 export interface PassageSentence extends Sentence {
   /** 片段编号。 */
@@ -28,26 +28,10 @@ export function passageSentences(passages: Passage[]): PassageSentence[] {
       }
       const clean = stripMarkdown(s.text);
       if (clean.replace(/\s/g, "").length < 8) continue;
-      out.push({ ...s, n: p.n, passage: p, clean, heading, vec: localEmbed(clean), order: order++ });
+      out.push({ ...s, n: p.n, passage: p, clean, heading, vec: textVector(clean), order: order++ });
     }
   }
   return out;
-}
-
-export interface Scored<T> {
-  item: T;
-  score: number;
-}
-
-/** 按与问题的相关度排序：向量相似 + 关键词覆盖 + 片段排名的轻微加权。 */
-export function rankByQuery(query: string, items: PassageSentence[]): Scored<PassageSentence>[] {
-  const qv = localEmbed(query);
-  return items
-    .map((item) => ({
-      item,
-      score: cosine(qv, item.vec) + 0.6 * keywordOverlap(query, item.clean) + 0.03 / item.n,
-    }))
-    .sort((a, b) => b.score - a.score);
 }
 
 /**
@@ -59,7 +43,7 @@ export function pickRepresentative(items: PassageSentence[], k: number, query?: 
   const dim = items[0]!.vec.length;
   const centroid = new Array<number>(dim).fill(0);
   for (const it of items) for (let i = 0; i < dim; i++) centroid[i]! += it.vec[i]!;
-  const qv = query ? localEmbed(query) : null;
+  const qv = query ? textVector(query) : null;
   const base = items.map((it) => {
     let s = cosine(centroid, it.vec) + 0.08 / (1 + it.order);
     if (qv) s += cosine(qv, it.vec) + 0.5 * keywordOverlap(query!, it.clean);

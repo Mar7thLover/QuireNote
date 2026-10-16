@@ -4,7 +4,6 @@ import { z } from "zod";
 /**
  * 面向模型的结构化输出 schema（"草稿"）：字段全部必填、不带 id 和默认值，
  * 兼容各家 structured output 的严格模式。服务端再把草稿转成 core 里的正式数据（补 id）。
- * local provider 的启发式生成也产出同样的草稿。
  */
 
 export const MindmapDraft = z.object({
@@ -123,19 +122,3 @@ export const HighlightsDraft = z.object({
   highlights: z.array(z.object({ quote: z.string().describe("逐字摘录的原文句子"), note: z.string() })),
 });
 export type HighlightsDraft = z.infer<typeof HighlightsDraft>;
-
-export function emptyAgentOp(op: AgentOpDraft["op"]): AgentOpDraft {
-  return {
-    op,
-    noteId: null,
-    title: null,
-    markdown: null,
-    table: null,
-    artifactId: null,
-    parentId: null,
-    label: null,
-    elementType: null,
-    name: null,
-    definition: null,
-  };
-}

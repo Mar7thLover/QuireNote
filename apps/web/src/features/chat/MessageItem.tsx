@@ -16,6 +16,7 @@ import { CitationPreview, Markdown } from "@/components/Markdown";
 import { createNote } from "@/features/notes/actions";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
+import { describeModel, parseModelRef, useProviders } from "@/lib/models";
 import { DND_SNIPPET } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import type { PathItem } from "./tree";
@@ -165,13 +166,24 @@ export function MessageItem({
             <FilePlus2 />
           </Button>
         </Tooltip>
-        {m.model ? (
-          <span className="ml-auto text-[11px] text-fg-subtle opacity-0 group-hover:opacity-100">
-            {m.model}
-          </span>
-        ) : null}
+        {m.model ? <ModelTag modelRef={m.model} /> : null}
       </div>
     </div>
+  );
+}
+
+/** 回答所用模型：「提供方 · 模型」，提供方已删除时只显示模型名。 */
+function ModelTag({ modelRef }: { modelRef: string }) {
+  const providers = useProviders();
+  const choice = parseModelRef(modelRef);
+  const d = choice ? describeModel(providers.data, choice) : null;
+  return (
+    <span
+      className="ml-auto truncate text-[11px] text-fg-subtle opacity-0 group-hover:opacity-100"
+      title={modelRef}
+    >
+      {d ? (d.provider ? `${d.provider} · ${d.model}` : d.model) : modelRef}
+    </span>
   );
 }
 

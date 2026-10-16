@@ -53,7 +53,7 @@ describe("chat with citations", () => {
       expect(firstAnswer.content).toContain(`[${c.n}`);
     }
     expect(firstAnswer.status).toBe("done");
-    expect(firstAnswer.model).toBe("local:extractive");
+    expect(firstAnswer.model).toMatch(/^prov_\w+:fake-chat$/);
     const updated = await s.json<Conversation>(`/conversations/${conv.id}`);
     expect(updated.activeLeafId).toBe(firstAnswer.id);
     expect(updated.title).toContain("达特茅斯");
@@ -124,7 +124,7 @@ describe("chat with citations", () => {
     const events = await send({ content: "图灵测试", parentId: null, sourceIds: ["src_none"] });
     const done = events.at(-1)!.data as Message;
     expect(done.citations).toEqual([]);
-    expect(done.content).toMatch(/没有找到/);
+    expect(done.content).toMatch(/没有资料片段/);
     expect(sources.length).toBe(3);
   });
 
@@ -168,5 +168,56 @@ describe("chat with citations", () => {
     } finally {
       await s2.dispose();
     }
+  });
+});
+
+describe("switching models inside a conversation", () => {
+  it("uses the conversation's model, validates it, and falls back when its provider goes away", async () => {
+    const alt = await s.json<{ id: string }>("/providers", {
+      method: "POST",
+      json: {
+        kind: "openai-compatible",
+        name: "备用",
+        baseUrl: "http://fake-llm.test/v1",
+        models: [{ id: "fake-alt", capabilities: ["chat"] }],
+      },
+    });
+    const c = await s.json<Conversation>(`/notebooks/${nb.id}/conversations`, { method: "POST", json: {} });
+    expect(c.model).toBeNull();
+    const switched = await s.json<Conversation>(`/conversations/${c.id}`, {
+      method: "PATCH",
+      json: { model: { providerId: alt.id, model: "fake-alt" } },
+    });
+    expect(switched.model).toEqual({ providerId: alt.id, model: "fake-alt" });
+    const ask = async () => {
+      const res = await s.request(`/conversations/${c.id}/messages`, {
+        method: "POST",
+        json: { content: "图灵测试", parentId: null },
+      });
+      return (await readSse(res)).at(-1)!.data as Message;
+    };
+    expect((await ask()).model).toBe(`${alt.id}:fake-alt`);
+
+    // 不支持对话的 provider、不存在的 provider 都拒绝。
+    const search = await s.json<{ id: string }>("/providers", {
+      method: "POST",
+      json: { kind: "tavily", name: "搜索", apiKey: "tvly-x" },
+    });
+    for (const providerId of [search.id, "prov_missing"]) {
+      const bad = await s.request(`/conversations/${c.id}`, {
+        method: "PATCH",
+        json: { model: { providerId, model: "x" } },
+      });
+      expect(bad.status).toBe(400);
+    }
+
+    // provider 删除后退回全局对话分配。
+    await s.json(`/providers/${alt.id}`, { method: "DELETE" });
+    expect((await ask()).model).toMatch(/:fake-chat$/);
+    const reset = await s.json<Conversation>(`/conversations/${c.id}`, {
+      method: "PATCH",
+      json: { model: null },
+    });
+    expect(reset.model).toBeNull();
   });
 });

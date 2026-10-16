@@ -112,7 +112,7 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
       store.jobs.list(),
       ctx.models.embeddingKey(),
     ]);
-    const embedded = await store.chunks.embeddedCount({ model: embeddingModel });
+    const embedded = embeddingModel ? await store.chunks.embeddedCount({ model: embeddingModel }) : 0;
     return c.json({
       dbBytes,
       filesBytes,

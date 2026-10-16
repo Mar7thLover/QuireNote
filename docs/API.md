@@ -42,7 +42,7 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET / POST | `/notebooks/:nb/conversations` | POST `{title?}` |
-| PATCH / DELETE | `/conversations/:id` | PATCH `{title?, activeLeafId?}` |
+| PATCH / DELETE | `/conversations/:id` | PATCH `{title?, activeLeafId?, model?}` |
 | GET | `/conversations/:id/messages` | 全部消息（树，按 createdAt） |
 | POST | `/conversations/:id/messages` | SSE，见下 |
 
@@ -120,12 +120,13 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | --- | --- | --- |
 | GET | `/providers/catalog` | 各 provider 类型的能力、默认 baseUrl、示例模型、说明 |
 | GET / POST | `/providers` | `ProviderConfig[]` / body `ProviderInput`。**永不返回明文 Key** |
-| PATCH / DELETE | `/providers/:id` | |
+| PATCH / DELETE | `/providers/:id` | PATCH `{name?, baseUrl?, apiKey?, enabled?, models?, headers?}` |
 | POST | `/providers/:id/test` | `{ok, latencyMs, error?, models?}` |
-| GET | `/providers/:id/models` | `string[]` |
+| GET | `/providers/:id/models` | 向服务查询可用模型：`ProviderModel[]`（用途为推测值），不改动已登记的列表 |
 | GET / PUT | `/models/assignments` | `ModelAssignment[]` / body `ModelAssignment` |
+| DELETE | `/models/assignments/:capability` | 清除分配，返回完整列表 |
 
-内置 `local` provider（id 固定为 `local`）：无需 Key 的哈希 n-gram Embedding + 抽取式回答，用于离线演示和端到端测试。
+没有内置模型：AI 功能需要先添加 provider 并分配模型。未分配对话模型时相关接口返回 `400 model_not_configured`；未分配 Embedding 时检索只用关键词。
 
 ## 任务、设置、数据管理
 
@@ -175,12 +176,13 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 
 - `GET /conversations/:id` 补充：返回单个 `Conversation`。新建时 `title` 默认为 `"新对话"`，第一次提问后自动改为问题前 40 字。
 - `PATCH /conversations/:id` 的 `activeLeafId` 必须是该对话中的消息，否则 `400`。
+- `Conversation.model`：`{providerId, model} | null`，该对话使用的对话模型；`null` 跟随 `chat` 分配。创建（`POST /notebooks/:nb/conversations` 的 `model`）和 `PATCH` 时校验 provider 存在且支持对话，否则 `400`。provider 之后被删除或停用时，发送消息退回 `chat` 分配。
 - `POST /conversations/:id/messages`：参数错误（空内容、parentId 不属于该对话、`regenerateOf` 不是助手消息）在开始 SSE **之前**以普通 JSON 错误返回。
   - 重新生成时不发 `user` 事件，直接从 `start` 开始；其余事件顺序不变。
   - `delta` 是模型原始输出；`done` 中的 `content` 是校验后的最终文本（不存在的编号已从文本中删除，例如 `[1, 7]` → `[1]`、`[7]` → 删除）。前端应以 `done` 为准。
   - `Citation.quote/start/end` 指向资料全文中与该结论最匹配的**一句话**（不是整个分块），可直接用于跳转高亮；`page` 为该分块所在页。
   - 出错时：`error` 事件 `{message, messageId?}`，对应助手消息 `status: "error"`、保留已生成的部分内容。
-  - `Message.model` 形如 `"<providerId>:<model>"`，例如 `"local:extractive"`。
+  - `Message.model` 形如 `"<providerId>:<model>"`，例如 `"prov_xxx:claude-sonnet-5-5"`（模型名本身可能含冒号，按第一个冒号拆分）。
 
 ### Studio 生成物
 
@@ -223,13 +225,15 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 
 ### 模型与 Provider
 
-- `GET /providers/catalog` 元素：`{kind, label, capabilities, defaultBaseUrl, baseUrlRequired, requiresKey, models: {<capability>: string[]}（第一个为默认）, voices?: {A, B, options}, notes, docsUrl}`。包含 `kind: "local"` 一项。
-- 内置 `local` provider 不出现在 `GET /providers` 中（`ProviderKind` 不含 `local`），但可以用 id `local` 调用 `/providers/local/test`、`/providers/local/models`，并用于模型分配（chat → `extractive`，embedding → `hash-384`）。`PATCH/DELETE /providers/local` 返回 `400`。
-- `PATCH /providers/:id`：`{name?, baseUrl?, apiKey?, enabled?}`；`apiKey: ""` 或 `null` 表示清除 Key。`openai-compatible` 必须有 `baseUrl`。
+- `GET /providers/catalog` 元素：`{kind, label, capabilities, defaultBaseUrl, baseUrlRequired, requiresKey, models: {<capability>: string[]}（第一个为默认）, voices?: {A, B, options}, notes, docsUrl}`。
+- `ProviderKind` 新增 `anthropic-compatible`：兼容 Anthropic Messages API 的服务（中转、DeepSeek / Kimi / GLM 的 Anthropic 端点），必须有 `baseUrl`，Key 可选（以 `x-api-key` 发送）。`openai-compatible` 现在也支持 `tts` / `stt`（`/audio/speech`、`/audio/transcriptions`）。
+- `ProviderConfig` 新增 `models: ProviderModel[]`（`{id, label, capabilities}`，登记在该 provider 下的模型）与 `headerNames: string[]`（自定义请求头只回传名称）。新建时省略 `models` 则预置目录示例模型；早期记录没有该字段时同样按目录示例返回。保存时同 ID 合并用途、去掉该类型不支持的用途；某模型的用途全部不受支持时 `400`。
+- `PATCH /providers/:id`：`{name?, baseUrl?, apiKey?, enabled?, models?, headers?}`；`apiKey: ""` 或 `null` 表示清除 Key；`models` 整体替换；`headers` 按名称合并（不区分大小写），值为 `null` 删除该项，`headers: null` 清除全部。请求头与 Key 一样加密保存，值不回传。`openai-compatible` / `anthropic-compatible` 必须有 `baseUrl`。
 - `POST /providers/:id/test` 永远返回 200：`{ok, latencyMs, error?, models?}`；错误信息不包含 Key。fal 没有免费探测接口，只检查是否填写了 Key；Edge TTS 暂不支持（返回 `ok:false` 及说明）。
-- `GET /models/assignments` 返回**生效中**的分配（未设置的 chat / embedding 显示默认 local）。`PUT` 校验 provider 存在且支持该能力，返回更新后的完整列表。更换 Embedding 模型会自动排入全库 `reindex` 任务（期间检索退回关键词）。
-- 补充：`DELETE /models/assignments/:capability` 清除分配（chat / embedding 回到 local），返回完整列表。删除 provider 时，引用它的分配一并清除。
-- 启动时可从环境变量引导 provider（Docker 部署）：`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、`TAVILY_API_KEY`、`BRAVE_API_KEY`，以及对应的 `*_FILE`（文件路径，读取内容并 trim）。该类型尚无 provider 时才创建；chat 仍为 local 时改为 Anthropic `claude-sonnet-5-5`（没有 Anthropic Key 时依次用 OpenAI / Gemini 的默认模型）；search 未分配时用 Tavily / Brave。日志只输出 keyHint。
+- `GET /models/assignments` 只返回已分配的能力。`PUT` 校验 provider 存在且支持该能力，返回更新后的完整列表。更换 Embedding 模型会自动排入全库 `reindex` 任务（期间检索退回关键词）。
+- `DELETE /models/assignments/:capability` 清除分配（该能力回到未配置），返回完整列表。删除 provider 时，引用它的分配一并清除。
+- 早期版本的内置 `local` provider 已移除：启动时删除指向它的分配和它生成的向量（`local:*`）。
+- 启动时可从环境变量引导 provider（Docker 部署）：`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、`TAVILY_API_KEY`、`BRAVE_API_KEY`，以及对应的 `*_FILE`（文件路径，读取内容并 trim）；OpenAI 兼容接口用 `OPENAI_COMPATIBLE_BASE_URL`（必填）、`OPENAI_COMPATIBLE_API_KEY[_FILE]`、`OPENAI_COMPATIBLE_CHAT_MODEL`、`OPENAI_COMPATIBLE_EMBEDDING_MODEL`。该类型（兼容接口按 baseUrl）尚无 provider 时才创建。未分配的能力补上分配：chat 依次用 Anthropic `claude-sonnet-5-5` / OpenAI / Gemini 的默认模型 / 兼容接口指定的对话模型；embedding 依次用 OpenAI / Gemini / 兼容接口指定的 Embedding 模型；search 用 Tavily / Brave。日志只输出 keyHint。
 
 ### 任务与事件
 
@@ -240,7 +244,7 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 ### 设置与数据管理
 
 - `GET /settings/:key` 未设置时返回 `null`；`key` 只允许 `[a-zA-Z0-9_.-]{1,64}`。`PUT` 返回保存的值。
-- `GET /admin/stats` 中 `embedded` 为当前 Embedding 模型已生成向量的分块数，`embeddingModel` 形如 `"local:hash-384"`。
+- `GET /admin/stats` 中 `embedded` 为当前 Embedding 模型已生成向量的分块数，`embeddingModel` 形如 `"prov_xxx:text-embedding-3-small"`，未配置时为 `null`（`embedded` 为 0）。
 - `POST /admin/reindex` 清除范围内的旧向量后用当前模型重建。
 - `GET /admin/backup`：zip 内含 `backup.json`、`quirenote.db`（SQLite 快照，含向量与全文索引）、`files/**`。**不含** `secret.key`：在另一台机器恢复时需要相同的 `QUIRENOTE_SECRET` / `secret.key`，否则需重新填写 provider Key。
 - `POST /admin/restore`：有后台任务运行时 `409 busy`；成功返回 `{ok: true, files: number}`。

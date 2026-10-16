@@ -14,7 +14,8 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: "v1" }}
+      // 接口数据结构变化时递增 buster，丢弃旧的离线缓存（v2：提供方新增 models / headerNames）。
+      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: "v2" }}
       onSuccess={() => queryClient.resumePausedMutations()}
     >
       <RouterProvider router={router} />

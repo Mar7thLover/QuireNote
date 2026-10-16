@@ -2,6 +2,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  createFakeOpenAI,
+  FAKE_BASE_URL,
+  FAKE_CHAT_MODEL,
+  FAKE_EMBEDDING_MODEL,
+} from "@quirenote/ai/testing";
 import { strToU8, zipSync } from "fflate";
 import { boot, type Server } from "../boot";
 import type { ServerConfig } from "../config";
@@ -13,12 +19,35 @@ export interface TestServer extends Server {
   dispose(): Promise<void>;
 }
 
+/** 让测试服务通过环境变量引导出假 OpenAI 兼容 provider，并分配为对话与 Embedding 模型。 */
+export const FAKE_AI_ENV: NodeJS.ProcessEnv = {
+  OPENAI_COMPATIBLE_BASE_URL: FAKE_BASE_URL,
+  OPENAI_COMPATIBLE_CHAT_MODEL: FAKE_CHAT_MODEL,
+  OPENAI_COMPATIBLE_EMBEDDING_MODEL: FAKE_EMBEDDING_MODEL,
+};
+
+const fakeOpenAI = createFakeOpenAI();
+
+/** 发往假模型地址的请求交给假模型，其余交给测试自己的 mock（没有时报错，避免误连外网）。 */
+function routeAiFetch(custom?: typeof fetch): typeof fetch {
+  return ((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith(FAKE_BASE_URL)) return fakeOpenAI(input, init);
+    if (custom) return custom(input, init);
+    return Promise.reject(new TypeError(`测试中不允许访问 ${url}`));
+  }) as typeof fetch;
+}
+
 export async function makeServer(
   opts: {
     seed?: boolean;
+    /** 测试自己的 AI 请求 mock；发往假模型的请求不经过它。 */
     aiFetch?: typeof fetch;
     fetch?: typeof fetch;
+    /** 额外的环境变量（与 FAKE_AI_ENV 合并）。 */
     env?: NodeJS.ProcessEnv;
+    /** false：不配置任何模型，用于测试未配置时的行为。 */
+    fakeAi?: boolean;
     dir?: string;
   } = {},
 ): Promise<TestServer> {
@@ -31,10 +60,11 @@ export async function makeServer(
     jobConcurrency: 2,
     seed: opts.seed ?? false,
   };
+  const env = { ...(opts.fakeAi === false ? {} : FAKE_AI_ENV), ...opts.env };
   const server = await boot(config, {
-    ...(opts.aiFetch ? { aiFetch: opts.aiFetch } : {}),
+    aiFetch: routeAiFetch(opts.aiFetch),
     ...(opts.fetch ? { fetch: opts.fetch } : {}),
-    ...(opts.env ? { env: opts.env } : {}),
+    env,
   });
   const request = (path: string, init: RequestInit & { json?: unknown } = {}) => {
     const { json, ...rest } = init;

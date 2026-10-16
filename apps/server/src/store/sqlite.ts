@@ -516,9 +516,15 @@ class SqliteChunkRepo implements ChunkRepo {
       .map((r) => ({ chunkId: r.chunk_id, distance: r.distance }));
   }
 
-  async clearEmbeddings(filter: { notebookId?: string; sourceId?: string } = {}): Promise<void> {
+  async clearEmbeddings(
+    filter: { notebookId?: string; sourceId?: string; modelPrefix?: string } = {},
+  ): Promise<void> {
     let sql = `SELECT chunk_id FROM chunk_embeddings WHERE owner_id = ?`;
     const params: unknown[] = [this.s.ownerId];
+    if (filter.modelPrefix) {
+      sql += " AND substr(model, 1, ?) = ?";
+      params.push(filter.modelPrefix.length, filter.modelPrefix);
+    }
     if (filter.notebookId) {
       sql += " AND notebook_id = ?";
       params.push(filter.notebookId);
@@ -531,12 +537,18 @@ class SqliteChunkRepo implements ChunkRepo {
     this.db.transaction(() => this.deleteVectors(ids))();
   }
 
-  async embeddedCount(filter: { model?: string; notebookId?: string } = {}): Promise<number> {
+  async embeddedCount(
+    filter: { model?: string; modelPrefix?: string; notebookId?: string } = {},
+  ): Promise<number> {
     let sql = `SELECT COUNT(*) c FROM chunk_embeddings WHERE owner_id = ?`;
     const params: unknown[] = [this.s.ownerId];
     if (filter.model) {
       sql += " AND model = ?";
       params.push(filter.model);
+    }
+    if (filter.modelPrefix) {
+      sql += " AND substr(model, 1, ?) = ?";
+      params.push(filter.modelPrefix.length, filter.modelPrefix);
     }
     if (filter.notebookId) {
       sql += " AND notebook_id = ?";

@@ -89,7 +89,7 @@ export async function runChat(
     await emit("user", user);
   }
 
-  const chat = await ctx.models.chat();
+  const chat = await ctx.models.chat(conv.model ?? null);
   const sources = await activeSources(ctx, conv.notebookId, input.sourceIds);
   // 短追问（"为什么？"）结合上一轮提问检索。
   const prevUser = [...history].reverse().find((m) => m.role === "user");
@@ -128,7 +128,6 @@ export async function runChat(
     for await (const delta of streamChat(chat, {
       system: buildCitationSystemPrompt(passages, user.content),
       messages: turns,
-      passages,
       ...(signal ? { abortSignal: signal } : {}),
     })) {
       if (signal?.aborted) break;

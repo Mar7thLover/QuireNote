@@ -61,11 +61,23 @@ const openaiCompletion = (content: string) =>
     usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 },
   });
 
+const anthropicMessage = (text: string) =>
+  json({
+    id: "msg_1",
+    type: "message",
+    role: "assistant",
+    model: "claude-sonnet-5-5",
+    content: [{ type: "text", text }],
+    stop_reason: "end_turn",
+    stop_sequence: null,
+    usage: { input_tokens: 1, output_tokens: 3 },
+  });
+
 describe("chat adapters", () => {
   it("openai: builds a chat completions request and parses the answer", async () => {
     const m = mockFetch(() => openaiCompletion("你好 [1]"));
     const ref: ModelRef = { provider: rt("openai", m.fetch), model: "gpt-6.1-sol" };
-    const text = await generateChatText(ref, { system: "sys", prompt: "hi", localText: () => "" });
+    const text = await generateChatText(ref, { system: "sys", prompt: "hi" });
     expect(text).toBe("你好 [1]");
     const c = m.calls[0]!;
     expect(c.url).toBe("https://api.openai.com/v1/chat/completions");
@@ -125,7 +137,7 @@ describe("chat adapters", () => {
       }),
     );
     const ref: ModelRef = { provider: rt("anthropic", m.fetch), model: "claude-sonnet-5-5" };
-    const text = await generateChatText(ref, { system: "be brief", prompt: "hi", localText: () => "" });
+    const text = await generateChatText(ref, { system: "be brief", prompt: "hi" });
     expect(text).toBe("Claude says hi");
     const c = m.calls[0]!;
     expect(c.url).toBe("https://api.anthropic.com/v1/messages");
@@ -143,9 +155,7 @@ describe("chat adapters", () => {
       }),
     );
     const ref: ModelRef = { provider: rt("google", m.fetch), model: "gemini-3.8-flash" };
-    expect(await generateChatText(ref, { system: "s", prompt: "hi", localText: () => "" })).toBe(
-      "Gemini here",
-    );
+    expect(await generateChatText(ref, { system: "s", prompt: "hi" })).toBe("Gemini here");
     expect(m.calls[0]!.url).toContain("/v1beta/models/gemini-3.8-flash:generateContent");
     expect(m.calls[0]!.headers["x-goog-api-key"]).toBe("test-key-1234");
   });
@@ -153,9 +163,7 @@ describe("chat adapters", () => {
   it("ollama: uses the OpenAI-compatible endpoint on localhost without a key", async () => {
     const m = mockFetch(() => openaiCompletion("local llama"));
     const ref: ModelRef = { provider: rt("ollama", m.fetch, { apiKey: null }), model: "qwen3" };
-    expect(await generateChatText(ref, { system: "s", prompt: "hi", localText: () => "" })).toBe(
-      "local llama",
-    );
+    expect(await generateChatText(ref, { system: "s", prompt: "hi" })).toBe("local llama");
     expect(m.calls[0]!.url).toBe("http://localhost:11434/v1/chat/completions");
     expect(m.calls[0]!.headers.authorization).toBeUndefined();
   });
@@ -168,7 +176,6 @@ describe("chat adapters", () => {
       name: "items",
       system: "s",
       prompt: "p",
-      local: () => ({ items: [] }),
     });
     expect(out.items).toEqual(["a", "b"]);
     const body = JSON.parse(m.calls[0]!.body!);
@@ -181,9 +188,7 @@ describe("chat adapters", () => {
       provider: rt("anthropic", m.fetch, { apiKey: null }),
       model: "claude-sonnet-5-5",
     };
-    await expect(generateChatText(ref, { system: "s", prompt: "p", localText: () => "" })).rejects.toThrow(
-      /API Key/,
-    );
+    await expect(generateChatText(ref, { system: "s", prompt: "p" })).rejects.toThrow(/API Key/);
     expect(m.calls).toHaveLength(0);
   });
 });
@@ -223,13 +228,6 @@ describe("embedding adapters", () => {
   it("anthropic has no embedding API", async () => {
     const ref: ModelRef = { provider: rt("anthropic", mockFetch(() => json({})).fetch), model: "x" };
     await expect(embedTexts(ref, ["a"])).rejects.toThrow(/Anthropic 没有 Embedding/);
-  });
-
-  it("local: deterministic vectors with dimension from the model name", async () => {
-    const ref: ModelRef = { provider: { id: "local", kind: "local" }, model: "hash-384" };
-    const [a, b] = await embedTexts(ref, ["图灵", "图灵"]);
-    expect(a).toHaveLength(384);
-    expect(a).toEqual(b);
   });
 });
 
@@ -456,15 +454,86 @@ describe("connection test & model listing", () => {
     expect(await listModels(rt("google", m.fetch))).toEqual(["gemini-4-argon"]);
   });
 
-  it("local: always ok", async () => {
-    const res = await testConnection({ id: "local", kind: "local" });
-    expect(res.ok).toBe(true);
-    expect(res.models).toContain("hash-384");
+  it("anthropic-compatible: lists models from the custom base url", async () => {
+    const m = mockFetch(() => json({ data: [{ id: "deepseek-chat" }] }));
+    const p = rt("anthropic-compatible", m.fetch, { baseUrl: "https://api.example.com/anthropic/v1" });
+    expect(await listModels(p)).toEqual(["deepseek-chat"]);
+    expect(m.calls[0]!.url).toBe("https://api.example.com/anthropic/v1/models?limit=100");
   });
 
   it("search providers are tested with a tiny query", async () => {
     const m = mockFetch(() => json({ results: [] }));
     expect((await testConnection(rt("tavily", m.fetch))).ok).toBe(true);
     expect(m.calls[0]!.url).toBe("https://api.tavily.com/search");
+  });
+});
+
+describe("compatible protocols and custom headers", () => {
+  it("anthropic-compatible: messages API on the custom base url, with custom headers", async () => {
+    const m = mockFetch(() => anthropicMessage("relay ok"));
+    const ref: ModelRef = {
+      provider: rt("anthropic-compatible", m.fetch, {
+        baseUrl: "https://relay.example.com/v1/",
+        headers: { authorization: "Bearer relay-token", "x-tenant": "t1" },
+      }),
+      model: "claude-sonnet-5-5",
+    };
+    expect(await generateChatText(ref, { system: "s", prompt: "hi" })).toBe("relay ok");
+    const c = m.calls[0]!;
+    expect(c.url).toBe("https://relay.example.com/v1/messages");
+    expect(c.headers.authorization).toBe("Bearer relay-token");
+    expect(c.headers["x-tenant"]).toBe("t1");
+    expect(c.headers["x-api-key"]).toBe("test-key-1234");
+  });
+
+  it("anthropic-compatible works without a key when headers carry the credentials", async () => {
+    const m = mockFetch(() => anthropicMessage("ok"));
+    const ref: ModelRef = {
+      provider: rt("anthropic-compatible", m.fetch, {
+        apiKey: null,
+        baseUrl: "https://relay.example.com/v1",
+        headers: { authorization: "Bearer t" },
+      }),
+      model: "m",
+    };
+    expect(await generateChatText(ref, { system: "s", prompt: "hi" })).toBe("ok");
+  });
+
+  it("custom headers override defaults on plain HTTP adapters too", async () => {
+    const m = mockFetch(() => json({ results: [] }));
+    await webSearch(
+      { provider: rt("tavily", m.fetch, { headers: { "x-proxy-auth": "abc" } }), model: "basic" },
+      "q",
+    );
+    expect(m.calls[0]!.headers["x-proxy-auth"]).toBe("abc");
+  });
+
+  it("openai-compatible: speech goes to /audio/speech on the custom base url", async () => {
+    const m = mockFetch(
+      () => new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "audio/mpeg" } }),
+    );
+    const out = await synthesizeSpeech(
+      {
+        provider: rt("openai-compatible", m.fetch, { apiKey: null, baseUrl: "http://127.0.0.1:5050/v1" }),
+        model: "tts-1",
+      },
+      "你好",
+      "alloy",
+    );
+    expect(out.data).toEqual(new Uint8Array([1, 2, 3]));
+    expect(m.calls[0]!.url).toBe("http://127.0.0.1:5050/v1/audio/speech");
+  });
+
+  it("openai-compatible: transcription goes to /audio/transcriptions", async () => {
+    const m = mockFetch(() => json({ text: "hello", segments: [] }));
+    const out = await transcribeAudio(
+      {
+        provider: rt("openai-compatible", m.fetch, { baseUrl: "http://127.0.0.1:5050/v1" }),
+        model: "whisper-1",
+      },
+      new Uint8Array([1, 2, 3]),
+    );
+    expect(out.text).toBe("hello");
+    expect(m.calls[0]!.url).toBe("http://127.0.0.1:5050/v1/audio/transcriptions");
   });
 });

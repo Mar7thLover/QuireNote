@@ -1,14 +1,13 @@
 import type { Capability, ProviderKind } from "@quirenote/core";
 
-/** 内置 `local` provider 的 kind；不在 core 的 ProviderKind 枚举里，单独处理。 */
-export type ProviderKindOrLocal = ProviderKind | "local";
-
 /** 调用某个 provider 所需的运行时信息（Key 已解密，只在服务端内存中存在）。 */
 export interface ProviderRuntime {
   id: string;
-  kind: ProviderKindOrLocal;
+  kind: ProviderKind;
   baseUrl?: string | null;
   apiKey?: string | null;
+  /** 用户自定义的请求头，附加到该 provider 的每个请求上。 */
+  headers?: Record<string, string> | null;
   /** 可注入的 fetch，测试时用来 mock。 */
   fetch?: typeof fetch;
 }
@@ -53,7 +52,7 @@ export class UnsupportedError extends AiError {
 }
 
 export interface CatalogEntry {
-  kind: ProviderKindOrLocal;
+  kind: ProviderKind;
   label: string;
   capabilities: Capability[];
   defaultBaseUrl: string | null;

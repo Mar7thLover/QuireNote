@@ -25,7 +25,8 @@ export function registerJobHandlers(ctx: AppContext): void {
     const n = await embedMissing(ctx, notebookId ? { notebookId } : {}, (done, total) =>
       progress(done / Math.max(1, total), `Embedding ${done}/${total}`),
     );
-    return `已为 ${n} 个分块重建向量（${await ctx.models.embeddingKey()}）`;
+    const key = await ctx.models.embeddingKey();
+    return key ? `已为 ${n} 个分块重建向量（${key}）` : "未配置 Embedding 模型，检索只用关键词";
   });
 
   jobs.register("artifact", async (p, { progress }) =>

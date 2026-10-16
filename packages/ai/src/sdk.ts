@@ -18,14 +18,28 @@ export function requireKey(p: ProviderRuntime): string {
   return p.apiKey;
 }
 
+/** 用户自定义请求头（SDK 会把它们合并在鉴权头之后，同名时覆盖）。 */
+function extraHeaders(p: ProviderRuntime): Record<string, string> | undefined {
+  return p.headers && Object.keys(p.headers).length ? p.headers : undefined;
+}
+
 function anthropic(p: ProviderRuntime) {
-  return createAnthropic({ baseURL: baseUrlOf(p), apiKey: requireKey(p), fetch: p.fetch });
+  // 兼容接口可能只认自定义请求头里的凭据，没有 Key 时不强制。
+  const apiKey = p.kind === "anthropic-compatible" ? (p.apiKey ?? "") : requireKey(p);
+  return createAnthropic({ baseURL: baseUrlOf(p), apiKey, headers: extraHeaders(p), fetch: p.fetch });
 }
 function openai(p: ProviderRuntime) {
-  return createOpenAI({ baseURL: baseUrlOf(p), apiKey: requireKey(p), fetch: p.fetch });
+  // OpenAI 兼容接口复用 OpenAI 的语音接口；本地服务通常不校验 Key，但 SDK 需要一个值（否则会读宿主环境变量）。
+  const apiKey = p.kind === "openai" ? requireKey(p) : p.apiKey || "no-key";
+  return createOpenAI({ baseURL: baseUrlOf(p), apiKey, headers: extraHeaders(p), fetch: p.fetch });
 }
 function google(p: ProviderRuntime) {
-  return createGoogle({ baseURL: baseUrlOf(p), apiKey: requireKey(p), fetch: p.fetch });
+  return createGoogle({
+    baseURL: baseUrlOf(p),
+    apiKey: requireKey(p),
+    headers: extraHeaders(p),
+    fetch: p.fetch,
+  });
 }
 function compatible(p: ProviderRuntime) {
   return createOpenAICompatible({
@@ -33,6 +47,7 @@ function compatible(p: ProviderRuntime) {
     baseURL: baseUrlOf(p),
     // Ollama 不校验 Key，但 SDK 需要一个值才会带 Authorization 头；没有 Key 时不传。
     apiKey: p.apiKey || undefined,
+    headers: extraHeaders(p),
     fetch: p.fetch,
     supportsStructuredOutputs: p.kind !== "ollama",
   });
@@ -41,6 +56,7 @@ function compatible(p: ProviderRuntime) {
 export function languageModel(p: ProviderRuntime, model: string): LanguageModel {
   switch (p.kind) {
     case "anthropic":
+    case "anthropic-compatible":
       return anthropic(p)(model);
     case "openai":
       return openai(p).chat(model);
@@ -64,8 +80,9 @@ export function embeddingModel(p: ProviderRuntime, model: string): EmbeddingMode
     case "openai-compatible":
       return compatible(p).embeddingModel(model);
     case "anthropic":
+    case "anthropic-compatible":
       throw new UnsupportedError(
-        "Anthropic 没有 Embedding 接口，请另选 OpenAI / Gemini / Ollama / local 做 Embedding",
+        "Anthropic 没有 Embedding 接口，请另选 OpenAI / Gemini / Ollama / OpenAI 兼容接口做 Embedding",
       );
     default:
       throw new UnsupportedError(`provider 类型 ${p.kind} 不支持 Embedding`);
@@ -88,6 +105,7 @@ export function imageModel(p: ProviderRuntime, model: string): ImageModel {
 export function speechModel(p: ProviderRuntime, model: string): SpeechModel {
   switch (p.kind) {
     case "openai":
+    case "openai-compatible":
       return openai(p).speech(model);
     case "google":
       return google(p).speech(model);
@@ -99,6 +117,7 @@ export function speechModel(p: ProviderRuntime, model: string): SpeechModel {
 export function transcriptionModel(p: ProviderRuntime, model: string): TranscriptionModel {
   switch (p.kind) {
     case "openai":
+    case "openai-compatible":
       return openai(p).transcription(model);
     case "google":
       return google(p).transcription(model);

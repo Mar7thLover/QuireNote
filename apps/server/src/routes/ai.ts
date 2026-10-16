@@ -1,5 +1,12 @@
-import { LOCAL_PROVIDER_ID, listCatalog, listModels, testConnection, transformStream } from "@quirenote/ai";
-import { AgentProposal, Capability, ModelAssignment, ProviderInput } from "@quirenote/core";
+import { guessCapabilities, listCatalog, listModels, testConnection, transformStream } from "@quirenote/ai";
+import {
+  AgentProposal,
+  Capability,
+  ModelAssignment,
+  ProviderHeadersPatch,
+  ProviderInput,
+  ProviderModel,
+} from "@quirenote/core";
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
@@ -131,7 +138,6 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.patch("/providers/:id", async (c) => {
-    if (c.req.param("id") === LOCAL_PROVIDER_ID) throw badRequest("内置 local provider 不可修改");
     const patch = await readJson(
       c,
       z.object({
@@ -139,20 +145,21 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
         baseUrl: z.string().nullable().optional(),
         apiKey: z.string().nullable().optional(),
         enabled: z.boolean().optional(),
+        models: z.array(ProviderModel).max(500).optional(),
+        headers: ProviderHeadersPatch.nullable().optional(),
       }),
     );
     return c.json(publicProvider(await updateProvider(ctx, c.req.param("id"), patch)));
   });
 
   api.delete("/providers/:id", async (c) => {
-    if (c.req.param("id") === LOCAL_PROVIDER_ID) throw badRequest("内置 local provider 不可删除");
     must((await deleteProvider(ctx, c.req.param("id"))) || null, "Provider");
     return c.json({ ok: true });
   });
 
   api.post("/providers/:id/test", async (c) => {
     const id = c.req.param("id");
-    if (id !== LOCAL_PROVIDER_ID) must(await store.providers.get(id), "Provider");
+    must(await store.providers.get(id), "Provider");
     let rt: Awaited<ReturnType<typeof ctx.models.runtime>>;
     try {
       rt = await ctx.models.runtime(id);
@@ -162,11 +169,13 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
     return c.json(await testConnection(rt));
   });
 
+  /** 向服务查询可用模型并推测用途（用于「从服务拉取」），不改动已登记的模型列表。 */
   api.get("/providers/:id/models", async (c) => {
     const id = c.req.param("id");
-    if (id !== LOCAL_PROVIDER_ID) must(await store.providers.get(id), "Provider");
+    const p = must(await store.providers.get(id), "Provider");
     try {
-      return c.json(await listModels(await ctx.models.runtime(id)));
+      const ids = await listModels(await ctx.models.runtime(id));
+      return c.json(ids.map((m) => ({ id: m, label: null, capabilities: guessCapabilities(p.kind, m) })));
     } catch (err) {
       throw new ApiError(502, "list_models_failed", errorMessageOf(err));
     }
@@ -187,7 +196,7 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
     return c.json(await effectiveAssignments(ctx));
   });
 
-  /** 补充：清除某能力的分配（chat / embedding 回到 local）。 */
+  /** 清除某能力的分配（回到未配置）。 */
   api.delete("/models/assignments/:capability", async (c) => {
     const cap = Capability.safeParse(c.req.param("capability"));
     if (!cap.success) throw badRequest("未知能力");

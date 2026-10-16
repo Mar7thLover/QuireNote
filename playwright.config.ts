@@ -27,9 +27,24 @@ export default defineConfig({
     ? undefined
     : [
         {
+          // 假 OpenAI 兼容模型，替代真实模型服务（不需要 Key、结果确定）。
+          command: "pnpm --filter @quirenote/server exec tsx ../../e2e/fake-llm.ts",
+          url: "http://localhost:8798/v1/models",
+          env: { PORT: "8798" },
+          reuseExistingServer: false,
+          timeout: 60_000,
+        },
+        {
           command: "pnpm --filter @quirenote/server start",
           url: "http://localhost:8799/api/health",
-          env: { PORT: "8799", QUIRENOTE_DATA_DIR: dataDir, QUIRENOTE_RESET_DATA: "1" },
+          env: {
+            PORT: "8799",
+            QUIRENOTE_DATA_DIR: dataDir,
+            QUIRENOTE_RESET_DATA: "1",
+            OPENAI_COMPATIBLE_BASE_URL: "http://localhost:8798/v1",
+            OPENAI_COMPATIBLE_CHAT_MODEL: "fake-chat",
+            OPENAI_COMPATIBLE_EMBEDDING_MODEL: "fake-embed",
+          },
           reuseExistingServer: false,
           timeout: 120_000,
         },

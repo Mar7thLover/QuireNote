@@ -1,12 +1,11 @@
-import { PROVIDER_CATALOG } from "./catalog";
+import { catalogModels, PROVIDER_CATALOG } from "./catalog";
 import { requestJson } from "./http";
 import { baseUrlOf, errorMessage, requireKey } from "./sdk";
 import { webSearch } from "./search";
 import { AiError, type ConnectionResult, type ProviderRuntime, UnsupportedError } from "./types";
 
-function catalogModels(p: ProviderRuntime): string[] {
-  const models = PROVIDER_CATALOG[p.kind].models;
-  return [...new Set(Object.values(models).flat())];
+function exampleModels(p: ProviderRuntime): string[] {
+  return catalogModels(p.kind).map((m) => m.id);
 }
 
 function bearer(p: ProviderRuntime): Record<string, string> {
@@ -16,8 +15,6 @@ function bearer(p: ProviderRuntime): Record<string, string> {
 /** 列出 provider 可用的模型。没有列模型接口的 provider 返回目录中的示例模型。 */
 export async function listModels(p: ProviderRuntime): Promise<string[]> {
   switch (p.kind) {
-    case "local":
-      return catalogModels(p);
     case "openai":
     case "openai-compatible":
     case "ollama": {
@@ -30,11 +27,13 @@ export async function listModels(p: ProviderRuntime): Promise<string[]> {
       );
       return (data.data ?? []).map((m) => m.id).sort();
     }
-    case "anthropic": {
+    case "anthropic":
+    case "anthropic-compatible": {
+      const key = p.kind === "anthropic" ? requireKey(p) : p.apiKey;
       const data = await requestJson<{ data?: { id: string }[] }>(
         p,
         `${baseUrlOf(p)}/models?limit=100`,
-        { headers: { "x-api-key": requireKey(p), "anthropic-version": "2023-06-01" } },
+        { headers: { ...(key ? { "x-api-key": key } : {}), "anthropic-version": "2023-06-01" } },
         15_000,
       );
       return (data.data ?? []).map((m) => m.id);
@@ -68,7 +67,7 @@ export async function listModels(p: ProviderRuntime): Promise<string[]> {
       return Array.isArray(names) ? names.map(String) : [];
     }
     default:
-      return catalogModels(p);
+      return exampleModels(p);
   }
 }
 
@@ -93,12 +92,12 @@ export async function testConnection(p: ProviderRuntime): Promise<ConnectionResu
             maxResults: 1,
           },
         );
-        return done({ ok: true, models: catalogModels(p) });
+        return done({ ok: true, models: exampleModels(p) });
       }
       case "fal": {
         // fal 没有免费的探测接口：只校验 Key 已配置。
         requireKey(p);
-        return done({ ok: true, models: catalogModels(p) });
+        return done({ ok: true, models: exampleModels(p) });
       }
       case "replicate": {
         await requestJson(
@@ -107,11 +106,11 @@ export async function testConnection(p: ProviderRuntime): Promise<ConnectionResu
           { headers: { authorization: `Bearer ${requireKey(p)}` } },
           15_000,
         );
-        return done({ ok: true, models: catalogModels(p) });
+        return done({ ok: true, models: exampleModels(p) });
       }
       case "comfyui": {
         await requestJson(p, `${baseUrlOf(p)}/system_stats`, {}, 15_000);
-        const models = await listModels(p).catch(() => catalogModels(p));
+        const models = await listModels(p).catch(() => exampleModels(p));
         return done({ ok: true, models });
       }
       default: {

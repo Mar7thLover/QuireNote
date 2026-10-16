@@ -3,9 +3,9 @@ import {
   cosine,
   isHeadingLine,
   keywordOverlap,
-  localEmbed,
   splitSentences,
   stripMarkdown,
+  textVector,
 } from "@quirenote/ai";
 import type { Chunk, Citation } from "@quirenote/core";
 
@@ -66,12 +66,12 @@ export function bestQuote(chunk: Chunk, claims: string[]): { quote: string; star
   );
   if (!sents.length) return { quote: chunk.text.trim().slice(0, 300), start: chunk.start, end: chunk.end };
   const claimText = claims.join(" ");
-  const cv = claimText ? localEmbed(claimText) : null;
+  const cv = claimText ? textVector(claimText) : null;
   let best = sents[0]!;
   let bestScore = Number.NEGATIVE_INFINITY;
   if (cv) {
     for (const s of sents) {
-      const score = cosine(cv, localEmbed(s.text)) + 0.5 * keywordOverlap(claimText, s.text);
+      const score = cosine(cv, textVector(s.text)) + 0.5 * keywordOverlap(claimText, s.text);
       if (score > bestScore) {
         bestScore = score;
         best = s;

@@ -1,4 +1,4 @@
-import { type Conversation, newId, nowIso } from "@quirenote/core";
+import { type Conversation, ModelChoice, newId, nowIso } from "@quirenote/core";
 import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import {
   prepareSend,
   runChat,
 } from "../services/chat";
+import { validateModelChoice } from "../services/providers";
 import { must, readJson } from "./util";
 
 const SendInput = z.object({
@@ -32,7 +33,11 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
   api.post("/notebooks/:nb/conversations", async (c) => {
     const nb = c.req.param("nb");
     must(await store.notebooks.get(nb), "Notebook");
-    const input = await readJson(c, z.object({ title: z.string().optional() }));
+    const input = await readJson(
+      c,
+      z.object({ title: z.string().optional(), model: ModelChoice.nullable().optional() }),
+    );
+    if (input.model) await validateModelChoice(ctx, "chat", input.model.providerId, input.model.model);
     const ts = nowIso();
     const conv: Conversation = {
       id: newId("conv"),
@@ -40,6 +45,7 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
       notebookId: nb,
       title: input.title?.trim() || DEFAULT_CONVERSATION_TITLE,
       activeLeafId: null,
+      model: input.model ?? null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -56,8 +62,14 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
     must(await store.conversations.get(id), "对话");
     const patch = await readJson(
       c,
-      z.object({ title: z.string().min(1).optional(), activeLeafId: z.string().nullable().optional() }),
+      z.object({
+        title: z.string().min(1).optional(),
+        activeLeafId: z.string().nullable().optional(),
+        /** 切换该对话使用的模型；null 表示跟随全局对话分配。 */
+        model: ModelChoice.nullable().optional(),
+      }),
     );
+    if (patch.model) await validateModelChoice(ctx, "chat", patch.model.providerId, patch.model.model);
     if (patch.activeLeafId !== undefined)
       assertLeafInConversation(await store.messages.list({ refId: id }), patch.activeLeafId);
     return c.json(must(await store.conversations.update(id, patch), "对话"));

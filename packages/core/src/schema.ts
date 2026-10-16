@@ -141,12 +141,21 @@ export const Message = z.object({
 });
 export type Message = z.infer<typeof Message>;
 
+/** 指定一个具体模型（对话里临时切换模型等）。 */
+export const ModelChoice = z.object({
+  providerId: z.string().min(1),
+  model: z.string().trim().min(1),
+});
+export type ModelChoice = z.infer<typeof ModelChoice>;
+
 export const Conversation = z.object({
   ...base,
   notebookId: z.string(),
   title: z.string(),
   /** 当前显示的叶子节点，决定可见分支。 */
   activeLeafId: z.string().nullable(),
+  /** 该对话使用的对话模型；null 表示跟随「设置 → 模型」里的对话分配。 */
+  model: ModelChoice.nullable().default(null),
 });
 export type Conversation = z.infer<typeof Conversation>;
 
@@ -336,6 +345,7 @@ export type Capability = z.infer<typeof Capability>;
 
 export const ProviderKind = z.enum([
   "anthropic",
+  "anthropic-compatible",
   "openai",
   "google",
   "ollama",
@@ -351,6 +361,25 @@ export const ProviderKind = z.enum([
 ]);
 export type ProviderKind = z.infer<typeof ProviderKind>;
 
+/** 提供方下登记的一个模型：模型 ID、可选显示名、可用于哪些能力。 */
+export const ProviderModel = z.object({
+  id: z.string().trim().min(1).max(200),
+  label: z.string().max(100).nullable().default(null),
+  capabilities: z.array(Capability).min(1),
+});
+export type ProviderModel = z.infer<typeof ProviderModel>;
+
+const HeaderName = z.string().regex(/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/, "请求头名称不合法");
+const HeaderValue = z.string().regex(/^[^\r\n]*$/, "请求头的值不能包含换行");
+
+/** 自定义请求头：名称为 HTTP token，值不含换行。 */
+export const ProviderHeaders = z.record(HeaderName, HeaderValue);
+export type ProviderHeaders = z.infer<typeof ProviderHeaders>;
+
+/** 修改自定义请求头：按名称合并，值为 null 表示删除该项；未提到的保持不变（值从不回传给前端）。 */
+export const ProviderHeadersPatch = z.record(HeaderName, HeaderValue.nullable());
+export type ProviderHeadersPatch = z.infer<typeof ProviderHeadersPatch>;
+
 export const ProviderConfig = z.object({
   id: z.string(),
   kind: ProviderKind,
@@ -359,6 +388,9 @@ export const ProviderConfig = z.object({
   /** 只告诉前端有没有 Key 及末四位，绝不回传明文。 */
   hasKey: z.boolean(),
   keyHint: z.string().nullable(),
+  /** 自定义请求头只回传名称（值可能是凭据）。 */
+  headerNames: z.array(z.string()),
+  models: z.array(ProviderModel),
   enabled: z.boolean(),
   createdAt: z.string(),
 });
@@ -370,6 +402,9 @@ export const ProviderInput = z.object({
   baseUrl: z.string().nullable().optional(),
   apiKey: z.string().optional(),
   enabled: z.boolean().optional(),
+  /** 省略时使用该类型目录里的示例模型。 */
+  models: z.array(ProviderModel).max(500).optional(),
+  headers: ProviderHeaders.optional(),
 });
 export type ProviderInput = z.infer<typeof ProviderInput>;
 

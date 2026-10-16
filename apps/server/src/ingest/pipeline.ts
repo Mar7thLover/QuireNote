@@ -3,7 +3,7 @@ import {
   describeImage,
   embeddingKey,
   embedTexts,
-  localSummary,
+  extractiveSummary,
   summarizeText,
   transcribeAudio,
 } from "@quirenote/ai";
@@ -128,9 +128,11 @@ export async function embedMissing(
   onProgress?: (done: number, total: number) => Promise<void> | void,
 ): Promise<number> {
   const ref = await ctx.models.embedding();
+  // 未配置 Embedding：不生成向量，检索只用关键词。
+  if (!ref) return 0;
   const key = embeddingKey(ref);
   const missing = await ctx.store.chunks.missingEmbeddings(key, filter);
-  const batch = ref.provider.kind === "local" ? 256 : 32;
+  const batch = 32;
   for (let i = 0; i < missing.length; i += batch) {
     const part = missing.slice(i, i + batch);
     const vectors = await embedTexts(
@@ -155,8 +157,8 @@ export interface ProcessOptions {
   /** 跳过解析，直接用已保存的全文重新分块（导入 / 重建时）。 */
   reuseContent?: boolean;
   progress?: (p: number, message: string) => Promise<void>;
-  /** 不调用对话模型生成摘要（种子数据用 local 摘要即可）。 */
-  localSummary?: boolean;
+  /** 不调用对话模型，直接用抽取式摘要（种子数据）。 */
+  extractiveSummary?: boolean;
 }
 
 export async function processSource(
@@ -209,11 +211,12 @@ export async function processSource(
     await progress(0.9, "生成摘要");
     let summary = "";
     try {
-      summary = opts.localSummary
-        ? localSummary(doc.text, 2)
+      summary = opts.extractiveSummary
+        ? extractiveSummary(doc.text, 2)
         : (await summarizeText(await ctx.models.chat(), doc.text, src.title)).trim();
     } catch {
-      summary = localSummary(doc.text, 2);
+      // 未配置对话模型或调用失败时退回抽取式摘要。
+      summary = extractiveSummary(doc.text, 2);
     }
     const titleIsPlaceholder = !src.title.trim() || src.title === src.url || src.props?.autoTitle === true;
     const patch: Partial<Source> = {

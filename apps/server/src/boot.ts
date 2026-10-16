@@ -6,7 +6,7 @@ import { resetDataDir, type ServerConfig } from "./config";
 import { type AppContext, type ContextOptions, createContext } from "./context";
 import { registerJobHandlers } from "./handlers";
 import { seedIfEmpty } from "./seed";
-import { bootstrapProvidersFromEnv } from "./services/providers";
+import { bootstrapProvidersFromEnv, removeLegacyLocal } from "./services/providers";
 
 export interface BootOptions extends ContextOptions {
   /** 用于引导 provider 的环境变量；不传则不引导（测试默认不读真实环境）。 */
@@ -29,6 +29,7 @@ export async function boot(config: ServerConfig, opts: BootOptions = {}): Promis
   mkdirSync(config.dataDir, { recursive: true });
   const ctx = createContext(config, opts);
   registerJobHandlers(ctx);
+  if (await removeLegacyLocal(ctx)) log("[quirenote] 内置 local 模型已移除，原先分配给它的能力改为未配置");
   if (opts.env) await bootstrapProvidersFromEnv(ctx, opts.env, (m) => log(`[quirenote] ${m}`));
   if (config.seed) {
     const seeded = await seedIfEmpty(ctx);

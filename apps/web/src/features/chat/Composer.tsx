@@ -12,12 +12,15 @@ export function Composer({
   streaming,
   onStop,
   onSubmit,
+  modelPicker,
 }: {
   notebookId: string;
   onlySource?: string;
   streaming: boolean;
   onStop: () => void;
   onSubmit: (content: string, sourceIds: string[]) => void;
+  /** 底栏左侧的模型切换。 */
+  modelPicker?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const sources = useSources(notebookId);
@@ -142,6 +145,7 @@ export function Composer({
             <BookOpen className="size-3.5" />
             {t("chat.sourcesUsed", { count: scope.length })}
           </span>
+          {modelPicker}
           <div className="flex-1" />
           <span className="hidden text-[11px] text-fg-subtle sm:inline">
             <Shortcut keys="Enter" /> 发送 · Shift+Enter 换行

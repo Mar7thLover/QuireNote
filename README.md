@@ -18,7 +18,7 @@
 | 数据库视图 | 笔记 / 资料 / 生成物 / 元素都可用表格、看板、画廊、日历查看，支持自定义属性、筛选、排序、分组 |
 | 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP）；内置 7 套模板；`.quirenote-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景） |
 | 联网搜索 | Tavily / Brave / SearXNG，快速搜索结果一键加入资料；深度研究多轮检索后自动导入并出报告 |
-| 模型 | Claude、OpenAI、Gemini、Ollama、OpenAI 兼容、ElevenLabs、fal、Replicate、ComfyUI 等；按能力（对话 / Embedding / 搜索 / TTS / STT / 图像 / 视频）分别指定；内置无需 Key 的 Local 模型用于离线演示 |
+| 模型 | Claude、OpenAI、Gemini、Ollama、OpenAI 兼容、ElevenLabs、fal、Replicate、ComfyUI 等；按能力（对话 / Embedding / 搜索 / TTS / STT / 图像 / 视频）分别指定；每个提供方可登记自己的模型列表、自定义请求头；对话里可随时切换模型 |
 | 工作区 | dockview 可拆分、拖拽、浮动的面板与标签页；布局预设（研究 / 写作 / 学习 / 专注）和自定义预设；专注模式；移动端底部导航 + 推入式详情页 |
 | 离线 | 查询缓存持久化到 IndexedDB，离线可浏览；连接恢复后自动同步 |
 
@@ -31,7 +31,7 @@ apps/mobile      Capacitor 壳（iOS / Android）
 packages/core    共享 zod schema 与类型、示例数据
 packages/ui      设计系统：tokens、组件、动效
 packages/render  正则规则引擎、模板渲染、HTML/CSS 清洗、.quirenote-theme
-packages/ai      基于 Vercel AI SDK 的多 Provider 抽象与内置 Local 模型
+packages/ai      基于 Vercel AI SDK 的多 Provider 抽象（含测试用的假 OpenAI 兼容模型）
 e2e/             Playwright 端到端测试
 docs/API.md      前后端接口契约
 ```
@@ -47,8 +47,9 @@ pnpm dev
 
 - 前端：http://localhost:5173（`/api` 自动代理到 8787）
 - 服务端：http://localhost:8787/api/health
-- 首次启动会创建一个示例 Notebook「人工智能简史」。不配置任何 Key 也能完整体验：内置 Local 模型提供哈希 Embedding 和抽取式带引用回答。
-- 在「设置 → 模型与服务」添加 Claude / OpenAI / Gemini / Ollama 等，并为每种能力分配模型。Anthropic 没有 Embedding 接口，Embedding 请选 OpenAI、Gemini、Ollama 或 Local。
+- 首次启动会创建一个示例 Notebook「人工智能简史」。阅读、笔记、检索不需要模型；对话、Studio 等 AI 功能需要先配置模型。
+- 在「设置 → 模型与服务」添加 Claude / OpenAI / Gemini / Ollama，或任意 OpenAI 兼容、Anthropic 兼容接口（中转、DeepSeek、硅基流动、vLLM 等）；在提供方下手动添加或「从服务拉取」模型，再为每种能力分配。对话输入框左下角可以给单个对话切换模型。
+- Anthropic 没有 Embedding 接口。没有配置 Embedding 时检索只用关键词；需要向量检索时选 OpenAI、Gemini、Ollama 或兼容接口的 Embedding 模型。
 
 ### Docker 一键部署
 
@@ -70,8 +71,9 @@ docker compose up -d --build
 | `pnpm dev` | 同时启动 web 与 server |
 | `pnpm lint` / `pnpm format` | Biome 检查 / 自动修复 |
 | `pnpm typecheck` | 全部包的 TypeScript 严格模式检查 |
-| `pnpm test` | Vitest 单元测试 |
-| `pnpm e2e` | Playwright 端到端测试（自动启动独立的服务端和前端，数据目录 `data-e2e`） |
+| `pnpm test` | Vitest 单元测试（AI 调用走假的 OpenAI 兼容模型，确定、离线、不花钱） |
+| `pnpm test:live` | 真实模型测试：用 Claude Haiku 检验提示词、引用规则和结构化输出。需要 `ANTHROPIC_API_KEY` 或 `ANTHROPIC_API_KEY_FILE`，没有时整组跳过；`QUIRENOTE_LIVE_MODEL` 可换模型 |
+| `pnpm e2e` | Playwright 端到端测试（自动启动独立的服务端、前端和假模型服务 `e2e/fake-llm.ts`，数据目录 `data-e2e`） |
 | `node scripts/tour.mjs [--dark]` | 对运行中的开发服务器做界面巡检截图，输出到 `e2e/.screens/` |
 
 首次运行 E2E 前需要 `pnpm exec playwright install chromium`。

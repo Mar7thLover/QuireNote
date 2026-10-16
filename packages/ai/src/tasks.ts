@@ -1,5 +1,5 @@
 /**
- * 面向业务的 AI 任务：每个任务都有「真实模型」与「local 启发式」两条路径，输出统一的 core 数据结构。
+ * 面向业务的 AI 任务：组织提示词、调用模型，输出统一的 core 数据结构。
  */
 import {
   AgentOp,
@@ -11,7 +11,7 @@ import {
   MARKDOWN_ARTIFACTS,
   newId,
 } from "@quirenote/core";
-import { generateChatText, generateStructured, isLocal, streamChat } from "./chat";
+import { generateChatText, generateStructured, streamChat } from "./chat";
 import {
   AgentDraft,
   type AgentOpDraft,
@@ -28,28 +28,7 @@ import {
   TableDraft,
   TimelineDraft,
 } from "./drafts";
-import {
-  type AgentNote,
-  localAgent,
-  localElements,
-  localEnrich,
-  localFlashcards,
-  localHighlights,
-  localImagePrompt,
-  localMarkdownArtifact,
-  localMindmap,
-  localPodcast,
-  localQuiz,
-  localResearchQueries,
-  localSlides,
-  localSummary,
-  localTable,
-  localTimeline,
-  localTransform,
-  type TransformAction,
-  topicOf,
-} from "./local/structured";
-import { isChinese, keywordOverlap, truncate } from "./text";
+import { isChinese, truncate } from "./text";
 import type { ModelRef, Passage } from "./types";
 
 // ───────────── 提示词工具 ─────────────
@@ -244,32 +223,6 @@ function normalizeMindmap(d: MindmapDraft) {
   });
 }
 
-function localArtifactDraft(input: ArtifactInput): unknown {
-  const { passages, title, instructions } = input;
-  const query = instructions?.trim() || undefined;
-  switch (input.kind) {
-    case "mindmap":
-      return localMindmap(passages, { title, query });
-    case "flashcards":
-      return localFlashcards(passages, { query });
-    case "quiz":
-      return localQuiz(passages, { query });
-    case "timeline":
-      return localTimeline(passages, { query });
-    case "table":
-      return localTable(passages, { query });
-    case "slides":
-    case "video":
-      return localSlides(passages, { title, query });
-    case "audio":
-      return localPodcast(passages, { title });
-    case "image":
-      return { prompt: localImagePrompt(passages, { title, instructions }) };
-    default:
-      return localMarkdownArtifact(input.kind, passages, { title, instructions });
-  }
-}
-
 const DRAFT_SCHEMA = {
   mindmap: MindmapDraft,
   flashcards: FlashcardsDraft,
@@ -290,7 +243,6 @@ export async function generateArtifactData(ref: ModelRef, input: ArtifactInput):
     const md = await generateChatText(ref, {
       system: `${system}\n直接输出 Markdown 正文，不要用代码块包裹。`,
       prompt,
-      localText: () => localArtifactDraft(input) as string,
     });
     return { kind: "markdown", markdown: stripFence(md) };
   }
@@ -300,7 +252,6 @@ export async function generateArtifactData(ref: ModelRef, input: ArtifactInput):
     name: input.kind,
     system,
     prompt,
-    local: () => localArtifactDraft(input) as never,
   });
   return draftToArtifactData(input.kind, draft);
 }
@@ -380,7 +331,6 @@ export async function refineArtifactData(ref: ModelRef, input: RefineInput): Pro
     const md = await generateChatText(ref, {
       system: `${system}\n输出修改后的完整 Markdown 正文，不要用代码块包裹。`,
       prompt,
-      localText: () => localRefineMarkdown(input.data.kind === "markdown" ? input.data.markdown : "", input),
     });
     return { kind: "markdown", markdown: stripFence(md) };
   }
@@ -391,140 +341,12 @@ export async function refineArtifactData(ref: ModelRef, input: RefineInput): Pro
     name: kind,
     system,
     prompt,
-    local: () => localRefineDraft(input, current) as never,
   });
   const next = draftToArtifactData(input.kind, draft);
   // 保留媒体地址（脚本改动后由服务端决定是否重新合成）。
   if (next.kind === "audio" && input.data.kind === "audio") next.audioUrl = null;
   if (next.kind === "image" && input.data.kind === "image") next.imageUrl = input.data.imageUrl;
   return next;
-}
-
-function wantsShorter(instr: string): boolean {
-  return /精简|简洁|缩短|压缩|删减|shorter|concise|shorten|trim/i.test(instr);
-}
-
-function relatedSentences(input: RefineInput, max: number): string[] {
-  const md = localMarkdownArtifact("report", input.passages, { instructions: input.instruction });
-  return md
-    .split("\n")
-    .filter((l) => l.startsWith("- "))
-    .map((l) => l.slice(2))
-    .filter((l) => keywordOverlap(input.instruction, l) > 0 || true)
-    .slice(0, max);
-}
-
-function localRefineMarkdown(markdown: string, input: RefineInput): string {
-  const sel = input.selection?.trim();
-  if (sel && markdown.includes(sel)) {
-    let replacement: string;
-    if (wantsShorter(input.instruction)) replacement = localSummary(sel, 1);
-    else {
-      const extra = relatedSentences(input, 2).filter((s) => !markdown.includes(s));
-      replacement = extra.length ? `${sel}\n\n${extra.map((s) => `- ${s}`).join("\n")}` : sel;
-    }
-    return markdown.replace(sel, replacement);
-  }
-  if (wantsShorter(input.instruction)) {
-    return markdown
-      .split("\n")
-      .filter(
-        (l, i, arr) => !(l.startsWith("- ") && arr[i - 1]?.startsWith("- ") && arr[i - 2]?.startsWith("- ")),
-      )
-      .join("\n");
-  }
-  const extra = relatedSentences(input, 4).filter((s) => !markdown.includes(s));
-  const heading = truncate(input.instruction, 30);
-  return `${markdown.trim()}\n\n## ${heading}\n\n${(extra.length ? extra : [localSummary(markdown, 2)]).map((s) => `- ${s}`).join("\n")}`;
-}
-
-function localRefineDraft(input: RefineInput, current: unknown): unknown {
-  const q = `${input.instruction} ${input.selection ?? ""}`.trim();
-  switch (input.data.kind) {
-    case "mindmap": {
-      const draft = current as MindmapDraft;
-      const sel = input.selection?.trim();
-      const target =
-        draft.nodes.find((n) => sel && (n.label === sel || n.key === sel)) ??
-        draft.nodes.find((n) => !n.parentKey);
-      const fresh = localMindmap(input.passages, { query: q }).nodes.filter((n) => n.parentKey !== null);
-      const labels = new Set(draft.nodes.map((n) => n.label));
-      const additions = fresh
-        .filter((n) => !labels.has(n.label) && keywordOverlap(q, `${n.label} ${n.note}`) > 0)
-        .slice(0, 4);
-      const picked = additions.length ? additions : fresh.filter((n) => !labels.has(n.label)).slice(0, 2);
-      return {
-        nodes: [
-          ...draft.nodes,
-          ...picked.map((n, i) => ({
-            key: `r${i}_${n.key}`,
-            label: n.label,
-            note: n.note,
-            parentKey: target?.key ?? null,
-          })),
-        ],
-      };
-    }
-    case "flashcards": {
-      const draft = current as FlashcardsDraft;
-      if (wantsShorter(input.instruction))
-        return { cards: draft.cards.slice(0, Math.max(1, Math.ceil(draft.cards.length / 2))) };
-      const fronts = new Set(draft.cards.map((c) => c.front));
-      const extra = localFlashcards(input.passages, { query: q }).cards.filter((c) => !fronts.has(c.front));
-      return { cards: [...draft.cards, ...extra.slice(0, 5)] };
-    }
-    case "quiz": {
-      const draft = current as QuizDraft;
-      if (wantsShorter(input.instruction))
-        return { questions: draft.questions.slice(0, Math.max(1, Math.ceil(draft.questions.length / 2))) };
-      const qs = new Set(draft.questions.map((x) => x.question));
-      const extra = localQuiz(input.passages, { query: q }).questions.filter((x) => !qs.has(x.question));
-      return { questions: [...draft.questions, ...extra.slice(0, 3)] };
-    }
-    case "timeline": {
-      const draft = current as TimelineDraft;
-      const seen = new Set(draft.events.map((e) => `${e.date}|${e.title}`));
-      const extra = localTimeline(input.passages, { query: q }).events.filter(
-        (e) => !seen.has(`${e.date}|${e.title}`),
-      );
-      return {
-        events: [...draft.events, ...extra.slice(0, 5)].sort(
-          (a, b) => (Number(a.date) || 0) - (Number(b.date) || 0),
-        ),
-      };
-    }
-    case "table": {
-      const draft = current as TableDraft;
-      const extra = localTable(input.passages, { query: q });
-      const firstCol = new Set(draft.rows.map((r) => r[0]));
-      const rows = extra.rows
-        .filter((r) => !firstCol.has(r[0]))
-        .map((r) => draft.columns.map((_, i) => r[i] ?? ""))
-        .slice(0, 5);
-      return { columns: draft.columns, rows: [...draft.rows, ...rows] };
-    }
-    case "slides":
-    case "video": {
-      const draft = current as SlidesDraft;
-      const sel = input.selection?.trim();
-      const idx = draft.slides.findIndex((s) => sel && s.title === sel);
-      const fresh = localSlides(input.passages, { query: q }).slides[0];
-      if (idx >= 0 && fresh) {
-        const slides = [...draft.slides];
-        slides[idx] = { ...slides[idx]!, bullets: [...slides[idx]!.bullets, ...fresh.bullets].slice(0, 6) };
-        return { slides };
-      }
-      return {
-        slides: [...draft.slides, ...(fresh ? [{ ...fresh, title: truncate(input.instruction, 40) }] : [])],
-      };
-    }
-    case "audio":
-      return current;
-    case "image":
-      return { prompt: `${(current as { prompt: string }).prompt} ${input.instruction}`.trim() };
-    default:
-      return current;
-  }
 }
 
 // ───────────── 元素 ─────────────
@@ -539,7 +361,6 @@ export async function extractElements(ref: ModelRef, passages: Passage[]): Promi
       langHint(passages),
     ].join("\n"),
     prompt: formatPassages(passages),
-    local: () => localElements(passages),
   });
 }
 
@@ -562,11 +383,16 @@ export async function enrichElement(
     ]
       .filter(Boolean)
       .join("\n\n"),
-    local: () => localEnrich(input.name, input.passages),
   });
 }
 
 // ───────────── Agent 命令 ─────────────
+
+export interface AgentNote {
+  id: string;
+  title: string;
+  markdown: string;
+}
 
 export interface AgentInput {
   instruction: string;
@@ -643,7 +469,6 @@ export async function proposeAgentOps(ref: ModelRef, input: AgentInput): Promise
     ]
       .filter(Boolean)
       .join("\n\n"),
-    local: () => localAgent(input.instruction, input.notes, input.passages, input.selection),
   });
   const noteIds = new Set(input.notes.map((n) => n.id));
   const ops = draft.ops
@@ -654,6 +479,16 @@ export async function proposeAgentOps(ref: ModelRef, input: AgentInput): Promise
 }
 
 // ───────────── 就地 AI ─────────────
+
+export type TransformAction =
+  | "explain"
+  | "rewrite"
+  | "expand"
+  | "translate"
+  | "summarize"
+  | "find_source"
+  | "quiz"
+  | "custom";
 
 export interface TransformInput {
   action: TransformAction;
@@ -692,12 +527,6 @@ export function transformStream(ref: ModelRef, input: TransformInput): AsyncGene
   return streamChat(ref, {
     system,
     messages: [{ role: "user", content: user }],
-    passages: input.passages,
-    localText: () =>
-      localTransform(input.action, input.text, input.passages, {
-        instruction: input.instruction,
-        targetLang: input.targetLang,
-      }),
   });
 }
 
@@ -707,13 +536,11 @@ export async function autoHighlights(
   ref: ModelRef,
   text: string,
 ): Promise<{ start: number; end: number; note: string }[]> {
-  if (isLocal(ref)) return localHighlights(text);
   const draft = await generateStructured(ref, {
     schema: HighlightsDraft,
     name: "highlights",
     system: `标注资料中的 3–8 个最关键的句子。quote 必须逐字摘录原文中的一整句，note 用几个字说明为什么重要。${langHint([], text)}`,
     prompt: text.slice(0, 30_000),
-    local: () => ({ highlights: [] }),
   });
   const out: { start: number; end: number; note: string }[] = [];
   for (const h of draft.highlights) {
@@ -722,14 +549,13 @@ export async function autoHighlights(
     const start = text.indexOf(q);
     if (start >= 0) out.push({ start, end: start + q.length, note: h.note });
   }
-  return out.length ? out : localHighlights(text);
+  return out;
 }
 
 export async function summarizeText(ref: ModelRef, text: string, title?: string): Promise<string> {
   return generateChatText(ref, {
     system: `用 2–3 句话概括这份资料的主要内容，不要使用列表或标题。${langHint([], text)}`,
     prompt: `${title ? `标题：${title}\n\n` : ""}${text.slice(0, 16_000)}`,
-    localText: () => localSummary(text, 2),
   });
 }
 
@@ -748,16 +574,7 @@ export async function researchQueries(
       .slice(0, 20)
       .map((g) => `- ${g.title}: ${truncate(g.snippet, 160)}`)
       .join("\n")}`,
-    local: () => ({
-      queries: localResearchQueries(
-        question,
-        round,
-        gathered.map((g) => `${g.title} ${g.snippet}`),
-      ),
-    }),
   });
   const qs = draft.queries.map((q) => q.trim()).filter(Boolean);
   return qs.length ? qs.slice(0, 3) : [question];
 }
-
-export { topicOf };

@@ -52,7 +52,7 @@ export async function seedIfEmpty(ctx: AppContext): Promise<string | null> {
       text: doc.text,
       pageOffsets: doc.pageOffsets,
     });
-    await processSource(ctx, src.id, { reuseContent: true, localSummary: true });
+    await processSource(ctx, src.id, { reuseContent: true, extractiveSummary: true });
   }
   for (const n of DEMO_NOTES) {
     const ts = nowIso();

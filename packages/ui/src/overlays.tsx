@@ -415,11 +415,12 @@ export function Select({
   ariaLabel?: string;
 }) {
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onValueChange}>
+    // 始终受控：未选时传空字符串显示 placeholder，避免 uncontrolled → controlled 警告。
+    <SelectPrimitive.Root value={value ?? ""} onValueChange={onValueChange}>
       <SelectPrimitive.Trigger
         aria-label={ariaLabel}
         className={cn(
-          "inline-flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-2.5 text-sm",
+          "inline-flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-surface px-2.5 text-sm whitespace-nowrap [&>span]:truncate",
           "hover:border-border-strong focus-ring data-[placeholder]:text-fg-subtle",
           className,
         )}

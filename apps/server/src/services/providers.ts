@@ -1,20 +1,30 @@
-/** Provider 管理：Key 加密入库，对外只暴露 hasKey / keyHint。 */
+/** Provider 管理：Key 与自定义请求头加密入库，对外只暴露 hasKey / keyHint / headerNames。 */
 import { readFileSync } from "node:fs";
-import { defaultModel, LOCAL_PROVIDER_ID, supportsCapability } from "@quirenote/ai";
+import { catalogEntry, catalogModels, defaultModel, supportsCapability } from "@quirenote/ai";
 import {
   type Capability,
   type ModelAssignment,
   newId,
   nowIso,
   type ProviderConfig,
+  type ProviderHeaders,
+  type ProviderHeadersPatch,
   type ProviderInput,
   type ProviderKind,
+  type ProviderModel,
 } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { keyHint } from "../crypto";
 import { badRequest, notFound } from "../errors";
-import { DEFAULT_ASSIGNMENTS } from "../models";
+import { CAP_LABEL, LEGACY_LOCAL_PROVIDER_ID } from "../models";
 import type { ProviderRecord } from "../store/types";
+
+const CAP_ORDER: Capability[] = ["chat", "embedding", "search", "tts", "stt", "image", "video"];
+
+/** 登记的模型；早期记录没有 models 字段时用目录里的示例模型。 */
+export function providerModels(p: ProviderRecord): ProviderModel[] {
+  return p.models ?? catalogModels(p.kind);
+}
 
 export function publicProvider(p: ProviderRecord): ProviderConfig {
   return {
@@ -24,9 +34,54 @@ export function publicProvider(p: ProviderRecord): ProviderConfig {
     baseUrl: p.baseUrl,
     hasKey: !!p.keyEnc,
     keyHint: p.keyEnc ? p.keyHint : null,
+    headerNames: p.headersEnc ? (p.headerNames ?? []) : [],
+    models: providerModels(p),
     enabled: p.enabled,
     createdAt: p.createdAt,
   };
+}
+
+/** 去重（同 ID 合并能力）、去掉该类型不支持的能力；能力为空的模型视为错误。 */
+export function normalizeModels(kind: ProviderKind, models: ProviderModel[]): ProviderModel[] {
+  const byId = new Map<string, ProviderModel>();
+  for (const m of models) {
+    const id = m.id.trim();
+    const caps = m.capabilities.filter((c) => supportsCapability(kind, c));
+    if (!caps.length) {
+      throw badRequest(
+        `模型 ${id} 的用途（${m.capabilities.map((c) => CAP_LABEL[c]).join("、")}）不是 ${catalogEntry(kind).label} 支持的能力`,
+      );
+    }
+    const cur = byId.get(id);
+    if (cur) cur.capabilities = [...new Set([...cur.capabilities, ...caps])];
+    else byId.set(id, { id, label: m.label?.trim() || null, capabilities: [...new Set(caps)] });
+  }
+  for (const m of byId.values()) m.capabilities.sort((a, b) => CAP_ORDER.indexOf(a) - CAP_ORDER.indexOf(b));
+  return [...byId.values()];
+}
+
+function encodeHeaders(
+  ctx: AppContext,
+  headers: ProviderHeaders | null | undefined,
+): Pick<ProviderRecord, "headersEnc" | "headerNames"> {
+  const entries = Object.entries(headers ?? {})
+    .map(([k, v]) => [k.trim(), v.trim()] as const)
+    .filter(([k]) => k);
+  if (!entries.length) return { headersEnc: null, headerNames: [] };
+  return {
+    headersEnc: ctx.cipher.encrypt(JSON.stringify(Object.fromEntries(entries))),
+    headerNames: entries.map(([k]) => k),
+  };
+}
+
+function decodeHeaders(ctx: AppContext, p: ProviderRecord): ProviderHeaders {
+  return p.headersEnc ? (JSON.parse(ctx.cipher.decrypt(p.headersEnc)) as ProviderHeaders) : {};
+}
+
+function checkBaseUrl(kind: ProviderKind, baseUrl: string | null): void {
+  const entry = catalogEntry(kind);
+  if (entry.baseUrlRequired && !entry.defaultBaseUrl && !baseUrl)
+    throw badRequest(`${entry.label}需要填写 baseUrl`);
 }
 
 export async function createProvider(ctx: AppContext, input: ProviderInput): Promise<ProviderRecord> {
@@ -39,25 +94,40 @@ export async function createProvider(ctx: AppContext, input: ProviderInput): Pro
     baseUrl: input.baseUrl?.trim() || null,
     keyEnc: key ? ctx.cipher.encrypt(key) : null,
     keyHint: key ? keyHint(key) : null,
+    ...encodeHeaders(ctx, input.headers),
+    models: normalizeModels(input.kind, input.models ?? catalogModels(input.kind)),
     enabled: input.enabled ?? true,
     createdAt: ts,
     updatedAt: ts,
   };
-  if (rec.kind === "openai-compatible" && !rec.baseUrl) throw badRequest("OpenAI 兼容接口需要填写 baseUrl");
+  checkBaseUrl(rec.kind, rec.baseUrl);
   await ctx.store.providers.insert(rec);
   return rec;
+}
+
+export interface ProviderPatch {
+  name?: string;
+  baseUrl?: string | null;
+  apiKey?: string | null;
+  enabled?: boolean;
+  models?: ProviderModel[];
+  /** 按名称合并（值为 null 删除该项）；整个字段为 null 表示清除全部自定义请求头。 */
+  headers?: ProviderHeadersPatch | null;
 }
 
 export async function updateProvider(
   ctx: AppContext,
   id: string,
-  patch: { name?: string; baseUrl?: string | null; apiKey?: string | null; enabled?: boolean },
+  patch: ProviderPatch,
 ): Promise<ProviderRecord> {
   const cur = await ctx.store.providers.get(id);
   if (!cur) throw notFound("Provider");
   const next: Partial<ProviderRecord> = {};
   if (patch.name !== undefined) next.name = patch.name.trim() || cur.name;
-  if (patch.baseUrl !== undefined) next.baseUrl = patch.baseUrl?.trim() || null;
+  if (patch.baseUrl !== undefined) {
+    next.baseUrl = patch.baseUrl?.trim() || null;
+    checkBaseUrl(cur.kind, next.baseUrl);
+  }
   if (patch.enabled !== undefined) next.enabled = patch.enabled;
   if (patch.apiKey !== undefined) {
     const key = patch.apiKey?.trim();
@@ -65,40 +135,66 @@ export async function updateProvider(
     next.keyEnc = key ? ctx.cipher.encrypt(key) : null;
     next.keyHint = key ? keyHint(key) : null;
   }
+  if (patch.models !== undefined) next.models = normalizeModels(cur.kind, patch.models);
+  if (patch.headers !== undefined) {
+    const merged: ProviderHeaders = patch.headers === null ? {} : decodeHeaders(ctx, cur);
+    for (const [k, v] of Object.entries(patch.headers ?? {})) {
+      // 名称大小写不敏感：同名的旧值先删掉。
+      for (const old of Object.keys(merged)) if (old.toLowerCase() === k.toLowerCase()) delete merged[old];
+      if (v !== null) merged[k] = v;
+    }
+    Object.assign(next, encodeHeaders(ctx, merged));
+  }
   return (await ctx.store.providers.update(id, next))!;
 }
 
 export async function deleteProvider(ctx: AppContext, id: string): Promise<boolean> {
   const ok = await ctx.store.providers.delete(id);
   if (ok) {
-    // 引用该 provider 的分配回退为默认值。
+    // 引用该 provider 的分配一并清除（该能力回到未配置）。
     for (const a of await ctx.store.assignments.list())
       if (a.providerId === id) await ctx.store.assignments.delete(a.capability);
   }
   return ok;
 }
 
-/** 当前生效的分配（含 chat / embedding 的默认 local）。 */
+/** 当前生效的分配（未分配的能力不出现）。 */
 export async function effectiveAssignments(ctx: AppContext): Promise<ModelAssignment[]> {
-  const stored = await ctx.store.assignments.list();
-  const caps = new Set(stored.map((a) => a.capability));
-  const defaults = Object.values(DEFAULT_ASSIGNMENTS).filter(
-    (a): a is ModelAssignment => !!a && !caps.has(a.capability),
-  );
-  const order: Capability[] = ["chat", "embedding", "search", "tts", "stt", "image", "video"];
-  return [...stored, ...defaults].sort((a, b) => order.indexOf(a.capability) - order.indexOf(b.capability));
+  return (await ctx.store.assignments.list())
+    .filter((a) => a.providerId !== LEGACY_LOCAL_PROVIDER_ID)
+    .sort((a, b) => CAP_ORDER.indexOf(a.capability) - CAP_ORDER.indexOf(b.capability));
 }
 
-export async function validateAssignment(ctx: AppContext, a: ModelAssignment): Promise<void> {
-  if (!a.model.trim()) throw badRequest("model 不能为空");
-  if (a.providerId === LOCAL_PROVIDER_ID) {
-    if (!supportsCapability("local", a.capability)) throw badRequest(`local provider 不支持 ${a.capability}`);
-    return;
-  }
-  const p = await ctx.store.providers.get(a.providerId);
-  if (!p) throw badRequest(`provider ${a.providerId} 不存在`);
-  if (!supportsCapability(p.kind, a.capability))
-    throw badRequest(`${p.name}（${p.kind}）不支持 ${a.capability} 能力`);
+/** 校验「某 provider + 模型」可用于某能力。 */
+export async function validateModelChoice(
+  ctx: AppContext,
+  cap: Capability,
+  providerId: string,
+  model: string,
+): Promise<void> {
+  if (!model.trim()) throw badRequest("model 不能为空");
+  const p = await ctx.store.providers.get(providerId);
+  if (!p) throw badRequest(`provider ${providerId} 不存在`);
+  if (!supportsCapability(p.kind, cap)) throw badRequest(`${p.name}（${p.kind}）不支持${CAP_LABEL[cap]}`);
+}
+
+export function validateAssignment(ctx: AppContext, a: ModelAssignment): Promise<void> {
+  return validateModelChoice(ctx, a.capability, a.providerId, a.model);
+}
+
+/**
+ * 早期版本内置的 local provider 已移除：删掉指向它的分配和它生成的向量
+ * （它是未分配时的默认值，所以即使没有分配记录，也可能留有向量）。返回是否做了清理。
+ */
+export async function removeLegacyLocal(ctx: AppContext): Promise<boolean> {
+  const prefix = `${LEGACY_LOCAL_PROVIDER_ID}:`;
+  const legacy = (await ctx.store.assignments.list()).filter(
+    (a) => a.providerId === LEGACY_LOCAL_PROVIDER_ID,
+  );
+  for (const a of legacy) await ctx.store.assignments.delete(a.capability);
+  const vectors = await ctx.store.chunks.embeddedCount({ modelPrefix: prefix });
+  if (vectors) await ctx.store.chunks.clearEmbeddings({ modelPrefix: prefix });
+  return legacy.length > 0 || vectors > 0;
 }
 
 // ───────────── 从环境变量引导 provider ─────────────
@@ -111,7 +207,22 @@ const ENV_PROVIDERS: { env: string; kind: ProviderKind; name: string }[] = [
   { env: "BRAVE_API_KEY", kind: "brave", name: "Brave Search" },
 ];
 
-export const BOOTSTRAP_ENV_VARS = ENV_PROVIDERS.flatMap((p) => [p.env, `${p.env}_FILE`]);
+/** OpenAI 兼容接口：以 BASE_URL 为准（Key 可选），模型名分别指定。 */
+const COMPAT_ENV = {
+  baseUrl: "OPENAI_COMPATIBLE_BASE_URL",
+  key: "OPENAI_COMPATIBLE_API_KEY",
+  chat: "OPENAI_COMPATIBLE_CHAT_MODEL",
+  embedding: "OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+};
+
+export const BOOTSTRAP_ENV_VARS = [
+  ...ENV_PROVIDERS.flatMap((p) => [p.env, `${p.env}_FILE`]),
+  COMPAT_ENV.baseUrl,
+  COMPAT_ENV.key,
+  `${COMPAT_ENV.key}_FILE`,
+  COMPAT_ENV.chat,
+  COMPAT_ENV.embedding,
+];
 
 /** 读取 `NAME` 或 `NAME_FILE`（Docker secrets：文件路径，读取内容并 trim）。出错时不回显内容。 */
 export function readEnvSecret(
@@ -132,10 +243,42 @@ export function readEnvSecret(
   return env[name]?.trim() || null;
 }
 
+async function bootstrapCompatible(
+  ctx: AppContext,
+  env: NodeJS.ProcessEnv,
+  existing: ProviderRecord[],
+  log: (msg: string) => void,
+): Promise<ProviderRecord | null> {
+  const baseUrl = env[COMPAT_ENV.baseUrl]?.trim().replace(/\/+$/, "");
+  if (!baseUrl) return null;
+  const found = existing.find(
+    (p) => p.kind === "openai-compatible" && p.baseUrl?.replace(/\/+$/, "") === baseUrl,
+  );
+  if (found) return found;
+  const chat = env[COMPAT_ENV.chat]?.trim();
+  const embedding = env[COMPAT_ENV.embedding]?.trim();
+  const models: ProviderModel[] = [
+    ...(chat ? [{ id: chat, label: null, capabilities: ["chat" as const] }] : []),
+    ...(embedding ? [{ id: embedding, label: null, capabilities: ["embedding" as const] }] : []),
+  ];
+  const key = readEnvSecret(env, COMPAT_ENV.key, log);
+  const rec = await createProvider(ctx, {
+    kind: "openai-compatible",
+    name: "OpenAI 兼容接口（环境变量）",
+    baseUrl,
+    ...(key ? { apiKey: key } : {}),
+    ...(models.length ? { models } : {}),
+    enabled: true,
+  });
+  log(`已从环境变量 ${COMPAT_ENV.baseUrl} 创建 provider「${rec.name}」（${baseUrl}）`);
+  return rec;
+}
+
 /**
- * 启动时从环境变量创建 provider（该 kind 尚无 provider 时）。
- * chat 仍为 local 时改用 Anthropic claude-sonnet-5-5（没有 Anthropic Key 时依次尝试 OpenAI / Gemini）；
- * search 未分配时用 Tavily / Brave。日志只输出 keyHint。
+ * 启动时从环境变量创建 provider（该 kind 尚无 provider 时），并为未分配的能力补上分配：
+ * 对话依次用 Anthropic claude-sonnet-5-5 / OpenAI / Gemini / OpenAI 兼容接口；
+ * Embedding 用 OpenAI / Gemini / 指定了 Embedding 模型的 OpenAI 兼容接口；
+ * 联网搜索用 Tavily / Brave。日志只输出 keyHint。
  */
 export async function bootstrapProvidersFromEnv(
   ctx: AppContext,
@@ -160,29 +303,39 @@ export async function bootstrapProvidersFromEnv(
     created.push(rec.id);
     log(`已从环境变量 ${spec.env} 创建 provider「${rec.name}」（Key ${rec.keyHint}）`);
   }
+  const compat = await bootstrapCompatible(ctx, env, existing, log);
+  if (compat && !existing.includes(compat)) created.push(compat.id);
+
   const usable = (kind: ProviderKind) => {
     const p = byKind.get(kind);
     return p?.enabled && p.keyEnc ? p : null;
   };
-  const chat = await ctx.store.assignments.get("chat");
-  if (!chat || chat.providerId === LOCAL_PROVIDER_ID) {
+  // 只用环境变量明确指定的模型，不拿目录示例模型去猜。
+  const compatModel = (cap: "chat" | "embedding") =>
+    compat?.enabled ? env[cap === "chat" ? COMPAT_ENV.chat : COMPAT_ENV.embedding]?.trim() || null : null;
+  const assign = async (cap: Capability, p: ProviderRecord, model: string) => {
+    await ctx.store.assignments.set({ capability: cap, providerId: p.id, model });
+    log(`${CAP_LABEL[cap]}模型已分配为 ${p.name} / ${model}`);
+  };
+
+  if (!(await ctx.models.assignment("chat"))) {
     const pick = (["anthropic", "openai", "google"] as const).map((k) => usable(k)).find((p) => p);
-    if (pick) {
-      const model = pick.kind === "anthropic" ? "claude-sonnet-5-5" : (defaultModel(pick.kind, "chat") ?? "");
-      await ctx.store.assignments.set({ capability: "chat", providerId: pick.id, model });
-      log(`对话模型已分配为 ${pick.name} / ${model}`);
-    }
+    if (pick)
+      await assign(
+        "chat",
+        pick,
+        pick.kind === "anthropic" ? "claude-sonnet-5-5" : (defaultModel(pick.kind, "chat") ?? ""),
+      );
+    else if (compat && compatModel("chat")) await assign("chat", compat, compatModel("chat")!);
   }
-  if (!(await ctx.store.assignments.get("search"))) {
+  if (!(await ctx.models.assignment("embedding"))) {
+    const pick = (["openai", "google"] as const).map((k) => usable(k)).find((p) => p);
+    if (pick) await assign("embedding", pick, defaultModel(pick.kind, "embedding") ?? "");
+    else if (compat && compatModel("embedding")) await assign("embedding", compat, compatModel("embedding")!);
+  }
+  if (!(await ctx.models.assignment("search"))) {
     const pick = usable("tavily") ?? usable("brave");
-    if (pick) {
-      await ctx.store.assignments.set({
-        capability: "search",
-        providerId: pick.id,
-        model: defaultModel(pick.kind, "search") ?? "",
-      });
-      log(`联网搜索已分配为 ${pick.name}`);
-    }
+    if (pick) await assign("search", pick, defaultModel(pick.kind, "search") ?? "");
   }
   return created;
 }

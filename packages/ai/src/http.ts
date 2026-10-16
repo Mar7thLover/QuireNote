@@ -4,6 +4,14 @@ export function fetchOf(p: ProviderRuntime): typeof fetch {
   return p.fetch ?? globalThis.fetch;
 }
 
+/** 合并用户自定义请求头（同名时覆盖调用方给的头）。 */
+function withExtraHeaders(p: ProviderRuntime, headers: HeadersInit | undefined): HeadersInit | undefined {
+  if (!p.headers || !Object.keys(p.headers).length) return headers;
+  const merged = new Headers(headers);
+  for (const [k, v] of Object.entries(p.headers)) merged.set(k, v);
+  return merged;
+}
+
 async function errorText(res: Response): Promise<string> {
   const body = await res.text().catch(() => "");
   try {
@@ -27,7 +35,11 @@ export async function request(
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetchOf(p)(url, { ...init, signal: init.signal ?? ctrl.signal });
+    res = await fetchOf(p)(url, {
+      ...init,
+      headers: withExtraHeaders(p, init.headers),
+      signal: init.signal ?? ctrl.signal,
+    });
   } catch (err) {
     clearTimeout(timer);
     const msg = err instanceof Error ? err.message : String(err);

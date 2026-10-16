@@ -1,27 +1,11 @@
-import type { Capability } from "@quirenote/core";
-import type { CatalogEntry, ProviderKindOrLocal } from "./types";
-
-export const LOCAL_PROVIDER_ID = "local";
-export const LOCAL_CHAT_MODEL = "extractive";
-export const LOCAL_EMBEDDING_MODEL = "hash-384";
+import type { Capability, ProviderKind, ProviderModel } from "@quirenote/core";
+import type { CatalogEntry } from "./types";
 
 /**
  * 各 provider 类型的能力、默认地址、示例模型与说明。
  * 模型名取自 @ai-sdk/* 类型定义中最新的条目；用户可以填任意模型名。
  */
-export const PROVIDER_CATALOG: Record<ProviderKindOrLocal, CatalogEntry> = {
-  local: {
-    kind: "local",
-    label: "Local（内置）",
-    capabilities: ["chat", "embedding"],
-    defaultBaseUrl: null,
-    baseUrlRequired: false,
-    requiresKey: false,
-    models: { chat: [LOCAL_CHAT_MODEL], embedding: [LOCAL_EMBEDDING_MODEL] },
-    notes:
-      "内置离线 provider，无需 Key：Embedding 为确定性的哈希字符 n-gram 向量（384 维）；对话为抽取式回答，直接摘录资料原句并带 [n] 引用；结构化生成使用启发式规则。适合离线演示与测试，效果远不如真实模型。",
-    docsUrl: null,
-  },
+export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   anthropic: {
     kind: "anthropic",
     label: "Anthropic Claude",
@@ -31,8 +15,20 @@ export const PROVIDER_CATALOG: Record<ProviderKindOrLocal, CatalogEntry> = {
     requiresKey: true,
     models: { chat: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"] },
     notes:
-      "Anthropic 没有 Embedding 接口，请另选 OpenAI / Gemini / Ollama / local 做 Embedding。Claude 支持图片输入，可用于图片 OCR。",
+      "Anthropic 没有 Embedding 接口，可另选 OpenAI / Gemini / Ollama / OpenAI 兼容接口做 Embedding；不配置时检索只用关键词。Claude 支持图片输入，可用于图片 OCR。",
     docsUrl: "https://docs.anthropic.com/en/docs/about-claude/models",
+  },
+  "anthropic-compatible": {
+    kind: "anthropic-compatible",
+    label: "Anthropic 兼容接口",
+    capabilities: ["chat"],
+    defaultBaseUrl: null,
+    baseUrlRequired: true,
+    requiresKey: false,
+    models: { chat: ["claude-sonnet-5-5"] },
+    notes:
+      "兼容 Anthropic Messages API（/v1/messages）的服务：Claude 中转、DeepSeek / Kimi / GLM 等提供的 Anthropic 端点。baseUrl 需包含 /v1。Key 以 x-api-key 发送；服务要求 Authorization: Bearer 时，在自定义请求头里添加。",
+    docsUrl: null,
   },
   openai: {
     kind: "openai",
@@ -108,13 +104,19 @@ export const PROVIDER_CATALOG: Record<ProviderKindOrLocal, CatalogEntry> = {
   "openai-compatible": {
     kind: "openai-compatible",
     label: "OpenAI 兼容接口",
-    capabilities: ["chat", "embedding", "image"],
+    capabilities: ["chat", "embedding", "tts", "stt", "image"],
     defaultBaseUrl: null,
     baseUrlRequired: true,
     requiresKey: false,
-    models: { chat: ["deepseek-chat", "moonshot-v1-8k"], embedding: ["text-embedding-3-small"] },
+    models: {
+      chat: ["deepseek-chat", "moonshot-v1-8k"],
+      embedding: ["text-embedding-3-small"],
+      tts: ["tts-1"],
+      stt: ["whisper-1"],
+    },
+    voices: { A: "alloy", B: "nova", options: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] },
     notes:
-      "DeepSeek、Moonshot、OpenRouter、vLLM、LM Studio 等任何兼容 /v1/chat/completions 的服务。baseUrl 需包含 /v1。",
+      "DeepSeek、Moonshot、OpenRouter、硅基流动、vLLM、LM Studio 等任何兼容 /v1/chat/completions 的服务；语音合成 / 转写走 /v1/audio/speech 与 /v1/audio/transcriptions。baseUrl 需包含 /v1。",
     docsUrl: null,
   },
   tavily: {
@@ -181,7 +183,7 @@ export const PROVIDER_CATALOG: Record<ProviderKindOrLocal, CatalogEntry> = {
     requiresKey: false,
     models: { tts: ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural"] },
     notes:
-      "暂不支持：Edge 在线 TTS 需要 WebSocket 与动态签名令牌，协议不公开且经常变动。请改用 OpenAI / Gemini / ElevenLabs，或自建一个兼容 OpenAI /v1/audio/speech 的 Edge TTS 代理并以 openai 类型接入。",
+      "暂不支持：Edge 在线 TTS 需要 WebSocket 与动态签名令牌，协议不公开且经常变动。请改用 OpenAI / Gemini / ElevenLabs，或自建一个兼容 OpenAI /v1/audio/speech 的 Edge TTS 代理并以「OpenAI 兼容接口」接入。",
     docsUrl: null,
   },
   fal: {
@@ -225,23 +227,55 @@ export const PROVIDER_CATALOG: Record<ProviderKindOrLocal, CatalogEntry> = {
   },
 };
 
-export function catalogEntry(kind: ProviderKindOrLocal): CatalogEntry {
+export function catalogEntry(kind: ProviderKind): CatalogEntry {
   return PROVIDER_CATALOG[kind];
 }
 
-export function supportsCapability(kind: ProviderKindOrLocal, cap: Capability): boolean {
+export function supportsCapability(kind: ProviderKind, cap: Capability): boolean {
   return PROVIDER_CATALOG[kind].capabilities.includes(cap);
 }
 
-export function defaultModel(kind: ProviderKindOrLocal, cap: Capability): string | null {
+export function defaultModel(kind: ProviderKind, cap: Capability): string | null {
   return PROVIDER_CATALOG[kind].models[cap]?.[0] ?? null;
 }
 
-export function defaultBaseUrl(kind: ProviderKindOrLocal): string | null {
+export function defaultBaseUrl(kind: ProviderKind): string | null {
   return PROVIDER_CATALOG[kind].defaultBaseUrl;
 }
 
 /** 目录数组，按固定顺序，供 GET /providers/catalog 返回。 */
 export function listCatalog(): CatalogEntry[] {
   return Object.values(PROVIDER_CATALOG);
+}
+
+/** 新建 provider 时预置的模型列表：目录里的示例模型，同名模型合并能力。 */
+export function catalogModels(kind: ProviderKind): ProviderModel[] {
+  const byId = new Map<string, ProviderModel>();
+  for (const [cap, ids] of Object.entries(PROVIDER_CATALOG[kind].models) as [Capability, string[]][]) {
+    for (const id of ids) {
+      const m = byId.get(id);
+      if (m) m.capabilities.push(cap);
+      else byId.set(id, { id, label: null, capabilities: [cap] });
+    }
+  }
+  return [...byId.values()];
+}
+
+const CAP_PATTERNS: [Capability, RegExp][] = [
+  ["embedding", /embed|bge|e5-|gte-|m3e/i],
+  ["stt", /whisper|transcri|asr|paraformer|sensevoice/i],
+  ["tts", /tts|speech|voice|eleven_/i],
+  ["video", /veo|video|kling|sora|wan-?2|hunyuan-?video/i],
+  ["image", /image|dall-?e|flux|imagen|stable-?diffusion|sdxl|nano-?banana|kolors|seedream/i],
+];
+
+/** 根据模型 ID 推测用途（从服务拉取模型列表时预填），只返回该 provider 类型支持的能力。 */
+export function guessCapabilities(kind: ProviderKind, modelId: string): Capability[] {
+  const supported = PROVIDER_CATALOG[kind].capabilities;
+  const known = catalogModels(kind).find((m) => m.id === modelId);
+  if (known) return known.capabilities;
+  const hit = CAP_PATTERNS.find(([cap, re]) => supported.includes(cap) && re.test(modelId));
+  if (hit) return [hit[0]];
+  if (supported.includes("chat")) return ["chat"];
+  return [supported[0]!];
 }

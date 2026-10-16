@@ -1,4 +1,4 @@
-import type { Conversation, Message } from "@quirenote/core";
+import type { Conversation, Message, ModelChoice } from "@quirenote/core";
 import {
   Button,
   cn,
@@ -22,6 +22,7 @@ import { relativeTime } from "@/lib/format";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { Composer } from "./Composer";
 import { ChatEmpty, MessageItem, StreamingItem } from "./MessageItem";
+import { ModelPicker } from "./ModelPicker";
 import { latestLeaf, visiblePath } from "./tree";
 import { useChatStream } from "./useChatStream";
 
@@ -58,9 +59,21 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
     if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [path.length, streaming?.text, conv?.id]);
 
+  // 还没有对话时选的模型，创建对话时一并带上。
+  const [draftModel, setDraftModel] = useState<ModelChoice | null>(null);
+  const model = conv ? (conv.model ?? null) : draftModel;
+  const changeModel = (next: ModelChoice | null) => {
+    if (!conv) return setDraftModel(next);
+    upsertInList(qk.conversations(notebookId), { ...conv, model: next });
+    api.conversations.update(conv.id, { model: next }).catch((e: Error) => {
+      upsertInList(qk.conversations(notebookId), conv);
+      toast.error(e.message);
+    });
+  };
+
   const ensureConversation = async (firstLine: string): Promise<Conversation> => {
     if (conv) return conv;
-    const c = await api.conversations.create(notebookId, firstLine.slice(0, 40));
+    const c = await api.conversations.create(notebookId, firstLine.slice(0, 40), draftModel);
     upsertInList(qk.conversations(notebookId), c);
     queryClient.setQueryData(qk.messages(c.id), []);
     setActiveId(c.id);
@@ -153,6 +166,7 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
           streaming={!!streaming}
           onStop={stop}
           onSubmit={submit}
+          modelPicker={<ModelPicker value={model} onChange={changeModel} />}
         />
       </div>
     </PanelShell>
