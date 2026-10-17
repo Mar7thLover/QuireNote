@@ -26,6 +26,8 @@ jobs:
         with:
           name: quirenote-android-debug
           path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
+          # 私有仓库的产物共用账户存储额度，只留两周，避免堆满。
+          retention-days: 14
 
   ios:
     runs-on: macos-latest
