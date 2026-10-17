@@ -11,6 +11,7 @@ import {
   MARKDOWN_ARTIFACTS,
   newId,
 } from "@quirenote/core";
+import { z } from "zod";
 import { generateChatText, generateStructured, streamChat } from "./chat";
 import {
   AgentDraft,
@@ -585,6 +586,8 @@ export type TransformAction =
   | "summarize"
   | "find_source"
   | "quiz"
+  | "continue"
+  | "outline"
   | "custom";
 
 export interface TransformInput {
@@ -593,6 +596,10 @@ export interface TransformInput {
   passages: Passage[];
   instruction?: string;
   targetLang?: string;
+  /** Notebook 的 AI 说明、触发的知识书与默认风格（写小说时续写要用）。 */
+  notebook?: NotebookContext;
+  /** 额外背景，例如前文提要和本章大纲。 */
+  background?: string;
 }
 
 const ACTION_PROMPT: Record<TransformAction, string> = {
@@ -603,12 +610,15 @@ const ACTION_PROMPT: Record<TransformAction, string> = {
   summarize: "用 1–3 句话总结下面这段文字。",
   find_source: "在资料片段中找出支持或涉及下面这段文字的出处，逐条列出并引用编号。",
   quiz: "根据下面这段文字出 3 道单选题，附答案。",
+  continue:
+    "接着下面这段文字往下写，保持原有的文风、人称和时态，情节自然衔接。只输出新写的内容，不要重复已有的文字，也不要加标题或说明。",
+  outline: "为下面的内容整理一份层级清楚的大纲（Markdown 列表）。只输出大纲。",
   custom: "按用户指令处理下面这段文字。",
 };
 
 export function transformStream(ref: ModelRef, input: TransformInput): AsyncGenerator<string> {
   const target = input.targetLang ? `目标语言：${input.targetLang}。` : "";
-  const system = [
+  const base = [
     "你是嵌在编辑器里的写作助手。",
     ACTION_PROMPT[input.action],
     target,
@@ -618,6 +628,9 @@ export function transformStream(ref: ModelRef, input: TransformInput): AsyncGene
   ]
     .filter(Boolean)
     .join("\n");
+  const system = [withNotebook(base, input.notebook), input.background?.trim() ?? ""]
+    .filter(Boolean)
+    .join("\n\n");
   const user = [input.instruction ? `指令：${input.instruction}` : "", `文字：\n${input.text}`]
     .filter(Boolean)
     .join("\n\n");
@@ -696,4 +709,75 @@ export async function expandQuery(ref: ModelRef, query: string, titles: string[]
     .map((q) => q.trim())
     .filter((q) => q.length >= 2 && !seen.has(q.toLowerCase()) && seen.add(q.toLowerCase()))
     .slice(0, 8);
+}
+
+// ───────────── 小说写作 ─────────────
+
+export interface ChapterInput {
+  /** 章节标题。 */
+  title: string;
+  /** 本章大纲：梗概与场景节拍。 */
+  outline: string;
+  /** 前文提要等背景。 */
+  background?: string;
+  /** 本章已经写下的内容（可能为空）。 */
+  existing?: string;
+  notebook?: NotebookContext;
+}
+
+/** 按大纲起草一章（流式）。已有内容时接着写。 */
+export function draftChapterStream(ref: ModelRef, input: ChapterInput): AsyncGenerator<string> {
+  const base = [
+    "你是小说的写作搭档。按给定的本章大纲起草正文：用场景和细节推进情节，人物言行符合设定，保持前文的文风、人称和时态。",
+    "只输出正文，不要输出标题、大纲或任何说明。",
+    langHint([], `${input.outline}\n${input.existing ?? ""}`),
+  ].join("\n");
+  const system = [withNotebook(base, input.notebook), input.background?.trim() ?? ""]
+    .filter(Boolean)
+    .join("\n\n");
+  const prompt = [
+    `# 本章：${input.title}`,
+    `## 大纲\n\n${input.outline}`,
+    input.existing?.trim() ? `## 已经写下的部分（接着往下写）\n\n${input.existing.slice(-6000)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  return streamChat(ref, { system, messages: [{ role: "user", content: prompt }] });
+}
+
+export const ConsistencyIssues = z.object({
+  issues: z
+    .array(
+      z.object({
+        /** 正文里有问题的原句（逐字摘录）。 */
+        quote: z.string(),
+        /** 和哪条设定或前文冲突、为什么。 */
+        problem: z.string(),
+        suggestion: z.string(),
+      }),
+    )
+    .max(20),
+});
+export type ConsistencyIssues = z.infer<typeof ConsistencyIssues>;
+
+/** 对照知识书、AI 说明和前文提要，找出本章与设定或前文矛盾的地方。没有问题时返回空列表。 */
+export async function checkConsistency(
+  ref: ModelRef,
+  input: ChapterInput & { text: string },
+): Promise<ConsistencyIssues> {
+  const system = [
+    withNotebook(
+      `你是小说编辑。对照下面的设定（知识书、作者的要求）和前文提要，检查这一章正文里与设定或前文矛盾的地方：人物外貌性格、称呼、时间线、地点、能力规则等。只报告确实矛盾的地方；quote 必须逐字摘录正文里的一句。没有矛盾时返回空列表。${langHint([], input.text)}`,
+      input.notebook,
+    ),
+    input.background?.trim() ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  return generateStructured(ref, {
+    schema: ConsistencyIssues,
+    name: "consistency",
+    system,
+    prompt: `# 本章：${input.title}\n\n${input.text.slice(0, 40_000)}`,
+  });
 }

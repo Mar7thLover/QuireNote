@@ -66,6 +66,7 @@ export function QuireNoteEditor({
   className,
   autofocus,
   scope = "note",
+  noteId,
 }: {
   notebookId: string;
   initialDoc: unknown;
@@ -75,6 +76,8 @@ export function QuireNoteEditor({
   autofocus?: boolean;
   /** 正则规则的作用范围：笔记或生成物。 */
   scope?: "note" | "artifact";
+  /** 正在编辑的笔记 id（就地 AI 续写时带上设定和章节背景）。 */
+  noteId?: string;
 }) {
   const { t } = useTranslation();
   const [ai, setAi] = useState<AiRequest | null>(null);
@@ -262,6 +265,7 @@ export function QuireNoteEditor({
       />
       {ai ? (
         <AiDraft
+          noteId={noteId}
           key={`${ai.action}-${ai.from}-${ai.label}`}
           editor={editor}
           notebookId={notebookId}

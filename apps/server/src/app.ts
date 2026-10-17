@@ -15,6 +15,7 @@ import { shareRoutes } from "./routes/shares";
 import { studioRoutes } from "./routes/studio";
 import { systemRoutes } from "./routes/system";
 import { templateRoutes } from "./routes/templates";
+import { writingRoutes } from "./routes/writing";
 import { shareMeta } from "./services/shares";
 
 /** 只允许本机来源：http(s)://localhost / 127.0.0.1 / [::1]（任意端口）与 Capacitor。 */
@@ -63,6 +64,7 @@ export function createApp(
   pluginRoutes(api, ctx);
   presetRoutes(api, ctx);
   templateRoutes(api, ctx);
+  writingRoutes(api, ctx);
   shareRoutes(api, ctx);
   app.route("/api", api);
 

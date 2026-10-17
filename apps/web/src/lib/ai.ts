@@ -19,6 +19,8 @@ export type TransformAction =
 export async function transform(
   input: {
     notebookId: string;
+    /** 正在编辑的笔记：续写时带上设定，章节还带前文提要和大纲。 */
+    noteId?: string;
     action: TransformAction;
     text: string;
     instruction?: string;

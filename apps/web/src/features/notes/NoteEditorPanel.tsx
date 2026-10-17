@@ -156,6 +156,7 @@ function NoteEditor({ notebookId, note }: { notebookId: string; note: Note }) {
           />
           <QuireNoteEditor
             notebookId={notebookId}
+            noteId={note.id}
             initialDoc={note.doc}
             initialMarkdown={note.markdown}
             onChange={onChange}

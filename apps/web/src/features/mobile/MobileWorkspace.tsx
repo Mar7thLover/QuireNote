@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   MessagesSquare,
   NotebookPen,
+  PenLine,
   Repeat,
   Search,
   Settings,
@@ -33,6 +34,7 @@ const TABS: { kind: PanelKind; icon: LucideIcon }[] = [
 ];
 
 const MORE: { kind: PanelKind; icon: LucideIcon }[] = [
+  { kind: "writing", icon: PenLine },
   { kind: "elements", icon: Boxes },
   { kind: "review", icon: Repeat },
   { kind: "database", icon: Database },

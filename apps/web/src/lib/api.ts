@@ -17,6 +17,7 @@ import type {
   LorebookSettings,
   LoreEntry,
   LoreEntryInput,
+  Manuscript,
   Message,
   ModelAssignment,
   ModelChoice,
@@ -293,6 +294,7 @@ export const api = {
         aiInstructions?: string;
         render?: RenderPack;
         defaultPresetId?: string | null;
+        manuscript?: Manuscript;
       },
     ) => patch<Notebook>(`/notebooks/${id}`, input),
     remove: (id: string) => del(`/notebooks/${id}`),
@@ -446,6 +448,34 @@ export const api = {
     },
     exportUrl: (id: string, format: "quire" | "sillytavern", lang: string) =>
       `${apiBase()}/presets/${encodeURIComponent(id)}/export?format=${format}&lang=${lang}`,
+  },
+  writing: {
+    /** 按本章大纲起草（流式）；onDelta 收到累计文本。 */
+    draft: async (nb: string, noteId: string, onDelta: (full: string) => void, signal?: AbortSignal) => {
+      let text = "";
+      await streamSse(
+        `/notebooks/${nb}/writing/draft`,
+        { noteId },
+        (e) => {
+          if (e.event === "delta") {
+            text += (e.data as { text: string }).text;
+            onDelta(text);
+          } else if (e.event === "error") throw new Error((e.data as { message: string }).message);
+        },
+        signal,
+      );
+      return text;
+    },
+    check: (nb: string, noteId: string) =>
+      post<{ issues: { quote: string; problem: string; suggestion: string }[] }>(
+        `/notebooks/${nb}/writing/check`,
+        {
+          noteId,
+        },
+      ),
+    summary: (noteId: string) => post<{ summary: string }>(`/notes/${noteId}/summary`),
+    exportUrl: (nb: string, format: "md" | "docx" | "epub", lang: string) =>
+      `${apiBase()}/notebooks/${nb}/manuscript/export?format=${format}&lang=${lang}`,
   },
   notebookTemplates: {
     list: (lang: string) => get<NotebookTemplateInfo[]>(`/notebook-templates?lang=${lang}`),

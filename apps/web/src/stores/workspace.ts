@@ -14,7 +14,8 @@ export type PanelKind =
   | "database"
   | "review"
   | "search"
-  | "lorebook";
+  | "lorebook"
+  | "writing";
 
 export interface PanelSpec {
   kind: PanelKind;
@@ -44,6 +45,7 @@ const ZONE: Record<PanelKind, "left" | "center" | "right"> = {
   database: "center",
   review: "center",
   lorebook: "center",
+  writing: "center",
   chat: "right",
   studio: "right",
 };

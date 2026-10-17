@@ -32,11 +32,25 @@ import {
   validateAssignment,
 } from "../services/providers";
 import { searchWeb } from "../services/research";
+import { writingContext } from "../services/writing";
 import { must, readJson } from "./util";
 
 const TransformInput = z.object({
   notebookId: z.string(),
-  action: z.enum(["explain", "rewrite", "expand", "translate", "summarize", "find_source", "quiz", "custom"]),
+  action: z.enum([
+    "explain",
+    "rewrite",
+    "expand",
+    "translate",
+    "summarize",
+    "find_source",
+    "quiz",
+    "continue",
+    "outline",
+    "custom",
+  ]),
+  /** 正在编辑的笔记：续写、改写、扩写时带上这本 Notebook 的设定；章节还带前文提要和本章大纲。 */
+  noteId: z.string().optional(),
   text: z.string().min(1),
   instruction: z.string().optional(),
   targetLang: z.string().optional(),
@@ -63,6 +77,10 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
           fill: false,
         })
       : { passages: [], citable: [] };
+    const writing =
+      input.noteId && ["continue", "rewrite", "expand", "custom"].includes(input.action)
+        ? await writingContext(ctx, input.notebookId, input.noteId, input.text)
+        : null;
     const abort = new AbortController();
     return streamSSE(c, async (stream) => {
       stream.onAbort(() => abort.abort());
@@ -71,7 +89,11 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
       };
       let text = "";
       try {
-        for await (const d of transformStream(chat, { ...input, passages })) {
+        for await (const d of transformStream(chat, {
+          ...input,
+          passages,
+          ...(writing ? { notebook: writing.notebook, background: writing.background } : {}),
+        })) {
           if (abort.signal.aborted) break;
           text += d;
           await emit("delta", { text: d });

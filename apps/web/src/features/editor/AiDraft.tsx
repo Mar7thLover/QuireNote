@@ -57,11 +57,13 @@ export function linkCitations(editor: Editor, from: number, to: number, citation
 export function AiDraft({
   editor,
   notebookId,
+  noteId,
   request,
   onClose,
 }: {
   editor: Editor;
   notebookId: string;
+  noteId?: string;
   request: AiRequest;
   onClose: () => void;
 }) {
@@ -87,6 +89,7 @@ export function AiDraft({
     transform(
       {
         notebookId,
+        ...(noteId ? { noteId } : {}),
         action: req.action,
         text: req.text,
         instruction: req.instruction,
