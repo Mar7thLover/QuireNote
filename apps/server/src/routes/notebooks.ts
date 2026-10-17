@@ -1,4 +1,5 @@
 import {
+  Manuscript,
   type Note,
   NotebookInput,
   NoteInput,
@@ -26,6 +27,8 @@ import { download, must, readJson, readUpload } from "./util";
 const NotebookPatch = patchOf(NotebookInput).extend({
   pinned: z.boolean().optional(),
   aiInstructions: z.string().max(50_000).optional(),
+  defaultPresetId: z.string().nullable().optional(),
+  manuscript: Manuscript.optional(),
   render: RenderPack.optional(),
 });
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { LorebookSettings, RenderPack, UsedLore } from "./card";
 import { CardTemplate, RenderRule } from "./render-schema";
+import { Manuscript } from "./writing";
 
 /** 通用字段：所有条目预留 ownerId，便于以后切到多用户。 */
 const base = {
@@ -26,6 +27,10 @@ export const Notebook = z.object({
   pinned: z.boolean().default(false),
   /** 和这本 Notebook 对话时附加给 AI 的说明（相当于角色卡的 system_prompt）。 */
   aiInstructions: z.string().max(50_000).optional(),
+  /** 新对话默认使用的对话预设。 */
+  defaultPresetId: z.string().nullable().optional(),
+  /** 小说稿件（卷与章）；写作面板用。 */
+  manuscript: Manuscript.optional(),
   /** 知识书的整本设置；条目单独存储。 */
   lorebook: LorebookSettings.optional(),
   /** 只对这本 Notebook 生效的渲染包（导入卡片时带来，可以手动设为全局）。 */
@@ -166,6 +171,8 @@ export const Conversation = z.object({
   activeLeafId: z.string().nullable(),
   /** 该对话使用的对话模型；null 表示跟随「设置 → 模型」里的对话分配。 */
   model: ModelChoice.nullable().default(null),
+  /** 该对话使用的对话预设；null 表示跟随 Notebook 的默认预设。 */
+  presetId: z.string().nullable().default(null),
 });
 export type Conversation = z.infer<typeof Conversation>;
 

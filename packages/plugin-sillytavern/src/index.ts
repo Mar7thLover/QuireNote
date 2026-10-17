@@ -5,3 +5,4 @@
 export * from "./convert";
 export { PLUGIN_ID, sillytavernImporter } from "./importer";
 export { type StMessages, stMessages } from "./messages";
+export * from "./presets";

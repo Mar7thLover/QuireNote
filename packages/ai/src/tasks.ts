@@ -58,6 +58,22 @@ export interface NotebookContext {
   /** 触发的知识书条目：放在资料片段之前 / 之后。 */
   loreBefore?: string;
   loreAfter?: string;
+  /** 当前对话预设的回答风格；与作者的要求冲突时以作者为准。 */
+  style?: { instructions?: string; format?: string };
+  /** 预设的附加片段：系统提示开头 / 资料之后。 */
+  snippetStart?: string;
+  snippetAfterSources?: string;
+}
+
+/** 对话预设的回答风格。 */
+function styleSection(style: NotebookContext["style"]): string {
+  const parts = [
+    style?.instructions?.trim(),
+    style?.format?.trim() ? `回答格式：${style.format.trim()}` : "",
+  ].filter(Boolean);
+  return parts.length
+    ? `# 回答风格\n\n${parts.join("\n\n")}\n\n（与下方作者的要求冲突时，以作者的要求为准；引用编号的规则不受影响。）`
+    : "";
 }
 
 /** Notebook 作者的说明：语言、语气、角色、格式都按它来（优先于自动判断的回答语言），只有引用编号的规则不变。 */
@@ -112,15 +128,22 @@ export function buildCitationPrompt(
           langHint(passages, question),
         ]
   ).join("\n");
-  const parts = [rules];
+  const parts = [context.snippetStart?.trim() ?? "", rules].filter(Boolean);
+  const style = styleSection(context.style);
+  if (style) parts.push(style);
   if (context.instructions?.trim()) parts.push(authorSection(context.instructions));
   if (context.loreBefore?.trim()) parts.push(`# 知识书参考\n\n${LORE_NOTE}\n\n${context.loreBefore.trim()}`);
   // 片段总量由调用方控制（检索命中，或资料不多时的整份资料），这里不再截断。
   if (passages.length) parts.push(`# 资料片段\n\n${formatPassages(passages, Number.POSITIVE_INFINITY)}`);
   else if (!backgroundOnly) parts.push("（当前没有可用的资料片段。）");
-  const tail = context.loreAfter?.trim()
-    ? `# 知识书参考${context.loreBefore?.trim() ? "（续）" : ""}\n\n${LORE_NOTE}\n\n${context.loreAfter.trim()}`
-    : "";
+  const tail = [
+    context.loreAfter?.trim()
+      ? `# 知识书参考${context.loreBefore?.trim() ? "（续）" : ""}\n\n${LORE_NOTE}\n\n${context.loreAfter.trim()}`
+      : "",
+    context.snippetAfterSources?.trim() ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   return { system: parts.join("\n\n"), tail };
 }
 
@@ -141,6 +164,7 @@ function withNotebook(system: string, nb?: NotebookContext): string {
   const lore = [nb.loreBefore, nb.loreAfter].filter((s) => s?.trim()).join("\n\n");
   return [
     system,
+    styleSection(nb.style),
     nb.instructions?.trim() ? authorSection(nb.instructions) : "",
     lore ? `# 知识书参考\n\n${LORE_NOTE}\n\n${lore}` : "",
   ]

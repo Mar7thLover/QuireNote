@@ -16,7 +16,7 @@ import {
 } from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Download, MoreHorizontal, Pin, PinOff, Share2, Trash2 } from "lucide-react";
+import { Download, LayoutTemplate, MoreHorizontal, Pin, PinOff, Share2, Trash2 } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
@@ -61,6 +61,20 @@ export function NotebookCard({ nb }: { nb: Notebook }) {
       >
         <Share2 />
         {t("cards.menuShare")}
+      </Item>
+      <Item
+        onSelect={() =>
+          api.notebookTemplates
+            .saveFrom(nb.id)
+            .then((tpl) => {
+              queryClient.invalidateQueries({ queryKey: ["notebookTemplates"] });
+              toast.success(t("templates.savedNotebook", { name: tpl.name }));
+            })
+            .catch((e: Error) => toast.error(e.message))
+        }
+      >
+        <LayoutTemplate />
+        {t("templates.saveAsTemplate")}
       </Item>
       <Sep />
       <Item danger onSelect={onDelete}>

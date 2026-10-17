@@ -9,10 +9,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
+  toast,
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, CreditCard, FileText, MoreHorizontal, Pin, Share2, Trash2, X } from "lucide-react";
+import {
+  Check,
+  Copy,
+  CreditCard,
+  FileText,
+  LayoutTemplate,
+  MoreHorizontal,
+  Pin,
+  Share2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { customNoteTemplates, saveNoteTemplates } from "@/features/templates/useTemplates";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
@@ -266,6 +279,28 @@ function NoteMenu({ notebookId, note }: { notebookId: string; note: Note }) {
         >
           <Share2 />
           {t("cards.menuShare")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={async () => {
+            const cur = queryClient.getQueryData<Note>(qk.note(note.id)) ?? note;
+            const list = await customNoteTemplates();
+            await saveNoteTemplates([
+              ...list,
+              {
+                id: `tpl_${Date.now().toString(36)}`,
+                name: cur.title || t("common.untitled"),
+                description: "",
+                icon: "📝",
+                markdown: cur.markdown,
+                kind: cur.kind,
+                builtin: false,
+              },
+            ]);
+            toast.success(t("templates.savedNote", { name: cur.title || t("common.untitled") }));
+          }}
+        >
+          <LayoutTemplate />
+          {t("templates.saveAsTemplate")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem danger onSelect={() => confirm(t("notes.deleteConfirm")) && remove.mutate()}>

@@ -24,6 +24,9 @@ const DataSettings = lazy(() =>
 const SharingSettings = lazy(() =>
   import("@/features/settings/Sharing").then((m) => ({ default: m.SharingSettings })),
 );
+const PresetSettings = lazy(() =>
+  import("@/features/settings/Presets").then((m) => ({ default: m.PresetSettings })),
+);
 const PluginSettings = lazy(() =>
   import("@/features/settings/Plugins").then((m) => ({ default: m.PluginSettings })),
 );
@@ -42,6 +45,7 @@ export function SettingsPage({ section }: { section: string }) {
       data: DataSettings,
       sharing: SharingSettings,
       plugins: PluginSettings,
+      presets: PresetSettings,
       shortcuts: ShortcutSettings,
       about: About,
     }[section] ?? ModelSettings;

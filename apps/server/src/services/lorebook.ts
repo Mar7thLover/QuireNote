@@ -14,6 +14,7 @@ import {
 } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { notFound } from "../errors";
+import { getPreset } from "./presets";
 
 export async function lorebookSettings(ctx: AppContext, notebookId: string): Promise<LorebookSettings> {
   const nb = await ctx.store.notebooks.get(notebookId);
@@ -172,13 +173,22 @@ export async function notebookContextFor(
   ctx: AppContext,
   notebookId: string,
   text: string,
-): Promise<{ instructions?: string; loreBefore?: string; loreAfter?: string }> {
+): Promise<{
+  instructions?: string;
+  loreBefore?: string;
+  loreAfter?: string;
+  style?: { instructions?: string; format?: string };
+}> {
   const nb = await ctx.store.notebooks.get(notebookId);
+  const preset = nb?.defaultPresetId ? await getPreset(ctx, nb.defaultPresetId) : null;
   const settings = { ...DEFAULT_LOREBOOK, ...(nb?.lorebook ?? {}) };
   const entries = settings.enabled ? (await listLore(ctx, notebookId)).filter((e) => e.enabled) : [];
   const act = entries.length ? activateLore({ settings, entries, messages: [text] }) : null;
   return {
     ...(nb?.aiInstructions?.trim() ? { instructions: nb.aiInstructions } : {}),
+    ...(preset && (preset.instructions.trim() || preset.format.trim())
+      ? { style: { instructions: preset.instructions, format: preset.format } }
+      : {}),
     ...(act?.before ? { loreBefore: act.before } : {}),
     ...(act
       ? { loreAfter: [act.after, ...act.atDepth.map((d) => d.content)].filter(Boolean).join("\n\n") }

@@ -2,7 +2,7 @@
  * 导入卡片：先让服务端解析出预览（封面、作者、包含什么、常驻条目、会被停用的规则），
  * 用户看过再决定导入到新 Notebook 还是已有的 Notebook。
  */
-import { Button, Dialog, DialogContent, Select, Skeleton, toast } from "@quirenote/ui";
+import { Button, cn, Dialog, DialogContent, Select, Skeleton, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
@@ -40,11 +40,24 @@ export function ImportCardDialog({
   });
   const notebooks = useQuery({ queryKey: qk.notebooks, queryFn: api.notebooks.list, enabled: !!file });
   const [target, setTarget] = useState(NEW);
+  const [as, setAs] = useState<"notebook" | "preset">("notebook");
 
   useEffect(() => {
     if (!request) return;
     setTarget(request.notebookId ?? NEW);
+    setAs("notebook");
   }, [request]);
+
+  const asPreset = useMutation({
+    mutationFn: () => api.cards.importAsPreset(file!, lang),
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ["presets"] });
+      toast.success(t("presets.addedStyle", { name: r.preset.name }));
+      for (const w of r.warnings) toast.warning(w);
+      onClose();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
 
   const run = useMutation({
     mutationFn: () => api.cards.import(file!, lang, target === NEW ? null : target),
@@ -101,7 +114,33 @@ export function ImportCardDialog({
         </div>
 
         <div className="flex shrink-0 flex-col gap-4 border-t border-border px-5 pt-4 pb-5">
-          {p ? (
+          {p?.format.startsWith("st-card") ? (
+            <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={t("presets.importAs")}>
+              <span className="text-[13px] font-medium text-fg-muted">{t("presets.importAs")}</span>
+              <div className="grid grid-cols-2 gap-2">
+                {(["notebook", "preset"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={as === k}
+                    onClick={() => setAs(k)}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5 rounded-xl border px-3 py-2 text-left transition-colors focus-ring",
+                      as === k ? "border-fg bg-surface" : "border-border hover:border-border-strong",
+                    )}
+                  >
+                    <span className="text-[13.5px] font-medium">
+                      {t(k === "notebook" ? "presets.importAsNotebook" : "presets.importAsPreset")}
+                    </span>
+                    <span className="text-[11.5px] leading-snug text-fg-subtle">
+                      {t(k === "notebook" ? "presets.importAsNotebookHint" : "presets.importAsPresetHint")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {p && as === "notebook" ? (
             <label className="flex flex-col gap-1.5">
               <span className="text-[13px] font-medium text-fg-muted">{t("cards.importTo")}</span>
               <Select
@@ -123,7 +162,12 @@ export function ImportCardDialog({
             <Button variant="ghost" onClick={onClose}>
               {t("common.cancel")}
             </Button>
-            <Button variant="primary" onClick={() => run.mutate()} loading={run.isPending} disabled={!p}>
+            <Button
+              variant="primary"
+              onClick={() => (as === "preset" ? asPreset.mutate() : run.mutate())}
+              loading={run.isPending || asPreset.isPending}
+              disabled={!p}
+            >
               {t("cards.import")}
             </Button>
           </div>

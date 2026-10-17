@@ -12,7 +12,8 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useTranslation } from "@/i18n";
+import { useNotebookTemplates } from "@/features/templates/useTemplates";
+import { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk, upsertInList } from "@/lib/query";
 import { useUi } from "@/stores/ui";
@@ -47,16 +48,40 @@ export function NewNotebookDialog() {
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("📓");
   const [color, setColor] = useState("indigo");
+  // 模板：空白，或内置 / 自定义的 Notebook 模板（选中时外观先跟着模板）
+  const templates = useNotebookTemplates();
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const pickTemplate = (id: string | null) => {
+    setTemplateId(id);
+    const tpl = templates.data?.find((x) => x.id === id);
+    setIcon(tpl?.icon ?? "📓");
+    setColor(tpl?.color ?? "indigo");
+  };
 
   const create = useMutation({
     mutationFn: () =>
-      api.notebooks.create({ title: title.trim() || t("common.untitled"), description, icon, color }),
+      templateId
+        ? api.notebookTemplates.create({
+            templateId,
+            ...(title.trim() ? { title: title.trim() } : {}),
+            description,
+            icon,
+            color,
+            lang: currentLang(),
+          })
+        : api.notebooks.create({ title: title.trim() || t("common.untitled"), description, icon, color }),
     onSuccess: (nb) => {
       upsertInList(qk.notebooks, nb);
       set({ newNotebookOpen: false });
       setTitle("");
       setDescription("");
-      navigate({ to: "/n/$notebookId", params: { notebookId: nb.id } });
+      setTemplateId(null);
+      // 带稿件的模板（小说项目）直接打开写作面板
+      navigate({
+        to: "/n/$notebookId",
+        params: { notebookId: nb.id },
+        ...(nb.manuscript?.volumes.length ? { search: { panel: "writing" } } : {}),
+      });
     },
   });
 
@@ -70,6 +95,27 @@ export function NewNotebookDialog() {
             create.mutate();
           }}
         >
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("templates.templateLabel")}>
+            {[{ id: null, icon: "", name: t("templates.blankNotebook") }, ...(templates.data ?? [])].map(
+              (x) => (
+                <button
+                  key={x.id ?? "blank"}
+                  type="button"
+                  aria-pressed={templateId === x.id}
+                  onClick={() => pickTemplate(x.id)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] transition-colors focus-ring",
+                    templateId === x.id
+                      ? "border-fg bg-surface text-fg"
+                      : "border-border text-fg-muted hover:border-border-strong hover:text-fg",
+                  )}
+                >
+                  {x.icon ? <span aria-hidden>{x.icon}</span> : null}
+                  {x.name}
+                </button>
+              ),
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <div
               className="grid size-12 shrink-0 place-items-center rounded-xl text-2xl transition-colors"

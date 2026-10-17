@@ -6,6 +6,7 @@ import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";
 import { loreForChat } from "./lorebook";
 import { activeSources, gatherPassages } from "./passages";
+import { presetFor } from "./presets";
 
 export const DEFAULT_CONVERSATION_TITLE = "新对话";
 
@@ -148,10 +149,30 @@ export async function runChat(
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   turns.push({ role: "user", content: user.content });
   insertAtDepth(turns, lore.atDepth);
+  // 对话预设：回答风格进系统提示，附加片段按位置放，生成参数传给模型
+  const preset = await presetFor(ctx, conv);
+  const snippets = (pos: string) =>
+    (preset?.snippets ?? [])
+      .filter((s) => s.position === pos && s.content.trim())
+      .map((s) => s.content.trim())
+      .join("\n\n");
+  insertAtDepth(
+    turns,
+    (preset?.snippets ?? [])
+      .filter((s) => s.position === "before_question" && s.content.trim())
+      .map((s) => ({ depth: 0, role: s.role, content: s.content.trim() })),
+  );
   const prompt = buildCitationPrompt(passages, user.content, {
     instructions: nb?.aiInstructions,
     loreBefore: lore.before,
     loreAfter: lore.after,
+    ...(preset
+      ? {
+          style: { instructions: preset.instructions, format: preset.format },
+          snippetStart: snippets("system_start"),
+          snippetAfterSources: snippets("after_sources"),
+        }
+      : {}),
   });
 
   let text = "";
@@ -161,6 +182,9 @@ export async function runChat(
       ...(prompt.tail ? { systemTail: prompt.tail } : {}),
       messages: turns,
       ...(signal ? { abortSignal: signal } : {}),
+      temperature: preset?.temperature ?? null,
+      topP: preset?.topP ?? null,
+      maxOutputTokens: preset?.maxTokens ?? null,
     })) {
       if (signal?.aborted) break;
       text += delta;

@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { Markdown } from "@/components/Markdown";
 import { PanelShell, PanelTitle } from "@/components/Panel";
 import { VirtualList } from "@/components/VirtualList";
+import { NewFromTemplate } from "@/features/templates/NewFromTemplate";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { plainPreview, relativeTime } from "@/lib/format";
@@ -63,12 +64,20 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
               {view === "list" ? <LayoutGrid /> : <List />}
             </Button>
           </Tooltip>
-          <Tooltip content={t("notes.new")} shortcut={SHORTCUTS.newNote}>
-            <Button variant="soft" size="sm" onClick={() => createNote(notebookId)}>
-              <FilePlus2 />
-              {t("common.create")}
-            </Button>
-          </Tooltip>
+          <div className="flex">
+            <Tooltip content={t("notes.new")} shortcut={SHORTCUTS.newNote}>
+              <Button
+                variant="soft"
+                size="sm"
+                className="rounded-r-none"
+                onClick={() => createNote(notebookId)}
+              >
+                <FilePlus2 />
+                {t("common.create")}
+              </Button>
+            </Tooltip>
+            <NewFromTemplate notebookId={notebookId} />
+          </div>
         </>
       }
     >

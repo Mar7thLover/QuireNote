@@ -10,9 +10,11 @@ import { chatRoutes } from "./routes/chat";
 import { contentRoutes } from "./routes/content";
 import { notebookRoutes } from "./routes/notebooks";
 import { pluginRoutes } from "./routes/plugins";
+import { presetRoutes } from "./routes/presets";
 import { shareRoutes } from "./routes/shares";
 import { studioRoutes } from "./routes/studio";
 import { systemRoutes } from "./routes/system";
+import { templateRoutes } from "./routes/templates";
 import { shareMeta } from "./services/shares";
 
 /** 只允许本机来源：http(s)://localhost / 127.0.0.1 / [::1]（任意端口）与 Capacitor。 */
@@ -59,6 +61,8 @@ export function createApp(
   aiRoutes(api, ctx);
   contentRoutes(api, ctx);
   pluginRoutes(api, ctx);
+  presetRoutes(api, ctx);
+  templateRoutes(api, ctx);
   shareRoutes(api, ctx);
   app.route("/api", api);
 

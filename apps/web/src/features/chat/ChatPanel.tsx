@@ -17,6 +17,7 @@ import { AlertTriangle, ChevronDown, History, MessageSquareDashed, Plus, Trash2 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { markAsked } from "@/components/GettingStarted";
 import { PanelShell } from "@/components/Panel";
+import { PresetPicker } from "@/features/presets/PresetPicker";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -74,9 +75,29 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
     });
   };
 
+  // 回答风格：同上，还没有对话时先记着；null 表示跟随 Notebook 的默认预设
+  const nb = useQuery({ queryKey: qk.notebook(notebookId), queryFn: () => api.notebooks.get(notebookId) });
+  const [draftPreset, setDraftPreset] = useState<string | null>(null);
+  const presetId = conv ? (conv.presetId ?? null) : draftPreset;
+  const changePreset = (next: string | null) => {
+    if (!conv) return setDraftPreset(next);
+    upsertInList(qk.conversations(notebookId), { ...conv, presetId: next });
+    api.conversations.update(conv.id, { presetId: next }).catch((e: Error) => {
+      upsertInList(qk.conversations(notebookId), conv);
+      toast.error(e.message);
+    });
+  };
+  const makeDefaultPreset = (id: string) => {
+    if (nb.data) queryClient.setQueryData(qk.notebook(notebookId), { ...nb.data, defaultPresetId: id });
+    api.notebooks
+      .update(notebookId, { defaultPresetId: id })
+      .then(() => changePreset(null))
+      .catch((e: Error) => toast.error(e.message));
+  };
+
   const ensureConversation = async (firstLine: string): Promise<Conversation> => {
     if (conv) return conv;
-    const c = await api.conversations.create(notebookId, firstLine.slice(0, 40), draftModel);
+    const c = await api.conversations.create(notebookId, firstLine.slice(0, 40), draftModel, draftPreset);
     upsertInList(qk.conversations(notebookId), c);
     queryClient.setQueryData(qk.messages(c.id), []);
     setActiveId(c.id);
@@ -175,6 +196,14 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
           onStop={stop}
           onSubmit={submit}
           modelPicker={<ModelPicker value={model} onChange={changeModel} />}
+          presetPicker={
+            <PresetPicker
+              value={presetId}
+              notebookDefault={nb.data?.defaultPresetId ?? null}
+              onChange={changePreset}
+              onMakeDefault={makeDefaultPreset}
+            />
+          }
         />
       </div>
     </PanelShell>

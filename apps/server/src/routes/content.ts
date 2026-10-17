@@ -1,7 +1,7 @@
 /** 笔记资源、链接预览、知识书、Quire 卡的导入导出。 */
 import { CardError, cardToZip, parseCardFile } from "@quirenote/card";
 import { LorebookSettingsPatch, LoreEntryInput } from "@quirenote/core";
-import { lorebookToWorldInfo, PLUGIN_ID as ST } from "@quirenote/plugin-sillytavern";
+import { characterToPreset, lorebookToWorldInfo, PLUGIN_ID as ST } from "@quirenote/plugin-sillytavern";
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";
@@ -26,6 +26,7 @@ import {
   updateLorebookSettings,
   updateLoreEntry,
 } from "../services/lorebook";
+import { createPreset } from "../services/presets";
 import { download, fileResponse, must, readJson, readUpload, safeFilename } from "./util";
 
 const flag = (v: string | undefined, d: boolean) => (v === undefined ? d : v === "1" || v === "true");
@@ -177,6 +178,14 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
 
   api.post("/cards/import", async (c) => {
     const { parsed, form } = await parseUpload(ctx, c);
+    // 角色卡也可以导入为问答风格（对话预设），在任何 Notebook 的对话里切换使用
+    if (form.as === "preset") {
+      if (parsed.importer !== ST || !parsed.format.startsWith("st-card"))
+        throw badRequest("只有角色卡可以导入为问答风格", "not_character");
+      const raw = parsed.card.data.extensions.sillytavern as Record<string, unknown>;
+      const preset = await createPreset(ctx, characterToPreset(raw, String(form.lang ?? "zh")));
+      return c.json({ preset, warnings: parsed.warnings }, 201);
+    }
     const target = typeof form.notebookId === "string" && form.notebookId ? form.notebookId : null;
     return c.json(
       await importCard(ctx, parsed, { notebookId: target, lang: String(form.lang ?? "zh") }),

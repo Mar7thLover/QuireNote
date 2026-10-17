@@ -11,6 +11,7 @@ import {
   prepareSend,
   runChat,
 } from "../services/chat";
+import { getPreset } from "../services/presets";
 import { validateModelChoice } from "../services/providers";
 import { must, readJson } from "./util";
 
@@ -35,9 +36,14 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
     must(await store.notebooks.get(nb), "Notebook");
     const input = await readJson(
       c,
-      z.object({ title: z.string().optional(), model: ModelChoice.nullable().optional() }),
+      z.object({
+        title: z.string().optional(),
+        model: ModelChoice.nullable().optional(),
+        presetId: z.string().nullable().optional(),
+      }),
     );
     if (input.model) await validateModelChoice(ctx, "chat", input.model.providerId, input.model.model);
+    if (input.presetId) must(await getPreset(ctx, input.presetId), "预设");
     const ts = nowIso();
     const conv: Conversation = {
       id: newId("conv"),
@@ -46,6 +52,7 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
       title: input.title?.trim() || DEFAULT_CONVERSATION_TITLE,
       activeLeafId: null,
       model: input.model ?? null,
+      presetId: input.presetId ?? null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -67,8 +74,11 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
         activeLeafId: z.string().nullable().optional(),
         /** 切换该对话使用的模型；null 表示跟随全局对话分配。 */
         model: ModelChoice.nullable().optional(),
+        /** 切换对话预设；null 表示跟随 Notebook 的默认预设。 */
+        presetId: z.string().nullable().optional(),
       }),
     );
+    if (patch.presetId) must(await getPreset(ctx, patch.presetId), "预设");
     if (patch.model) await validateModelChoice(ctx, "chat", patch.model.providerId, patch.model.model);
     if (patch.activeLeafId !== undefined)
       assertLeafInConversation(await store.messages.list({ refId: id }), patch.activeLeafId);

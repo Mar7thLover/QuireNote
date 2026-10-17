@@ -14,6 +14,7 @@ export function Composer({
   onStop,
   onSubmit,
   modelPicker,
+  presetPicker,
 }: {
   notebookId: string;
   onlySource?: string;
@@ -22,6 +23,7 @@ export function Composer({
   onSubmit: (content: string, sourceIds: string[]) => void;
   /** 底栏左侧的模型切换。 */
   modelPicker?: React.ReactNode;
+  presetPicker?: React.ReactNode;
 }) {
   const { t } = useTranslation();
   const sources = useSources(notebookId);
@@ -158,6 +160,7 @@ export function Composer({
             <span className="hidden @xs:inline">{t("chat.sourcesUsed", { count: scope.length })}</span>
             <span className="@xs:hidden">{scope.length}</span>
           </span>
+          {presetPicker}
           {modelPicker}
           <div className="flex-1" />
           {streaming ? (

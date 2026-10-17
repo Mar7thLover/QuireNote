@@ -5,6 +5,9 @@ import type {
   ArtifactKind,
   Asset,
   Capability,
+  ChatPreset,
+  ChatPresetInput,
+  ChatPresetPatch,
   Chunk,
   Citation,
   Conversation,
@@ -20,6 +23,7 @@ import type {
   Note,
   Notebook,
   NotebookInput,
+  NotebookTemplateInfo,
   NoteInput,
   PropertyDef,
   ProviderConfig,
@@ -284,7 +288,12 @@ export const api = {
     create: (input: NotebookInput) => post<Notebook>("/notebooks", input),
     update: (
       id: string,
-      input: Partial<NotebookInput> & { pinned?: boolean; aiInstructions?: string; render?: RenderPack },
+      input: Partial<NotebookInput> & {
+        pinned?: boolean;
+        aiInstructions?: string;
+        render?: RenderPack;
+        defaultPresetId?: string | null;
+      },
     ) => patch<Notebook>(`/notebooks/${id}`, input),
     remove: (id: string) => del(`/notebooks/${id}`),
     exportUrl: (id: string) => `${apiBase()}/notebooks/${id}/export`,
@@ -336,11 +345,16 @@ export const api = {
 
   conversations: {
     list: (nb: string) => get<Conversation[]>(`/notebooks/${nb}/conversations`),
-    create: (nb: string, title?: string, model?: ModelChoice | null) =>
-      post<Conversation>(`/notebooks/${nb}/conversations`, { title, model }),
+    create: (nb: string, title?: string, model?: ModelChoice | null, presetId?: string | null) =>
+      post<Conversation>(`/notebooks/${nb}/conversations`, { title, model, presetId }),
     update: (
       id: string,
-      input: { title?: string; activeLeafId?: string | null; model?: ModelChoice | null },
+      input: {
+        title?: string;
+        activeLeafId?: string | null;
+        model?: ModelChoice | null;
+        presetId?: string | null;
+      },
     ) => patch<Conversation>(`/conversations/${id}`, input),
     remove: (id: string) => del(`/conversations/${id}`),
     messages: (id: string) => get<Message[]>(`/conversations/${id}/messages`),
@@ -395,6 +409,14 @@ export const api = {
       if (notebookId) fd.append("notebookId", notebookId);
       return post<CardImportResult>("/cards/import", fd);
     },
+    /** 角色卡导入为问答风格（对话预设）。 */
+    importAsPreset: (file: File, lang: string) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      fd.append("as", "preset");
+      return post<{ preset: ChatPreset; warnings: string[] }>("/cards/import", fd);
+    },
   },
   shares: {
     list: () => get<ShareLink[]>("/shares"),
@@ -410,6 +432,37 @@ export const api = {
       `${apiBase()}/public/shares/${encodeURIComponent(token)}/assets/${encodeURIComponent(id)}`,
   },
   usage: () => get<UsageSummary>("/usage/summary"),
+  presets: {
+    list: (lang: string) => get<ChatPreset[]>(`/presets?lang=${lang}`),
+    create: (input: ChatPresetInput) => post<ChatPreset>("/presets", input),
+    update: (id: string, input: ChatPresetPatch) =>
+      patch<ChatPreset>(`/presets/${encodeURIComponent(id)}`, input),
+    remove: (id: string) => del(`/presets/${encodeURIComponent(id)}`),
+    importFile: (file: File, lang: string) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      return post<{ preset: ChatPreset; warnings: string[] }>("/presets/import", fd);
+    },
+    exportUrl: (id: string, format: "quire" | "sillytavern", lang: string) =>
+      `${apiBase()}/presets/${encodeURIComponent(id)}/export?format=${format}&lang=${lang}`,
+  },
+  notebookTemplates: {
+    list: (lang: string) => get<NotebookTemplateInfo[]>(`/notebook-templates?lang=${lang}`),
+    create: (input: {
+      templateId: string;
+      title?: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      lang?: string;
+    }) => post<Notebook>("/notebooks/from-template", input),
+    saveFrom: (nb: string, input: { name?: string; description?: string } = {}) =>
+      post<NotebookTemplateInfo>(`/notebooks/${nb}/save-template`, input),
+    rename: (id: string, input: { name?: string; description?: string }) =>
+      patch<NotebookTemplateInfo>(`/notebook-templates/${encodeURIComponent(id)}`, input),
+    remove: (id: string) => del(`/notebook-templates/${encodeURIComponent(id)}`),
+  },
   plugins: {
     list: () => get<PluginState[]>("/plugins"),
     set: (id: string, enabled: boolean) =>

@@ -25,8 +25,9 @@ import type { AppContext } from "../context";
 import { badRequest, notFound } from "../errors";
 import { fetchWithTimeout, UA } from "../ingest/parsers";
 import { ASSET_MAX_BYTES, assetIdsIn, readAsset, saveAsset } from "./assets";
-import { exportLorebook, importLorebook } from "./lorebook";
+import { exportLorebook, importLorebook, updateLorebookSettings } from "./lorebook";
 import { createNotebook } from "./notebooks";
+import { getPreset } from "./presets";
 import { createJsonSource } from "./sources";
 
 export interface ExportOptions {
@@ -218,7 +219,29 @@ export async function exportNotebookCard(
       created_at: unix(nb.createdAt),
       modified_at: unix(nb.updatedAt),
       source: [],
-      notebook: { title: nb.title, description: nb.description, icon: nb.icon, color: nb.color },
+      notebook: {
+        title: nb.title,
+        description: nb.description,
+        icon: nb.icon,
+        color: nb.color,
+        default_preset_id: nb.defaultPresetId ?? null,
+        ...(nb.manuscript?.volumes.length
+          ? {
+              manuscript: {
+                target: nb.manuscript.target,
+                volumes: nb.manuscript.volumes.map((v) => ({
+                  title: v.title,
+                  chapters: v.chapters.map((c) => ({
+                    note_id: c.noteId,
+                    synopsis: c.synopsis,
+                    beats: c.beats,
+                    target: c.target,
+                  })),
+                })),
+              },
+            }
+          : {}),
+      },
       notes,
       sources,
       ai_instructions: opts.instructions === false ? "" : (nb.aiInstructions ?? ""),
@@ -459,6 +482,7 @@ export async function importCard(
 
   // 笔记：改写资源引用；外链图片下载成本地资源
   const extMap = new Map<string, string>();
+  const noteIdMap = new Map<string, string>();
   let noteCount = 0;
   const fromTavern = parsed.format.startsWith("st-");
   for (const [i, n] of d.notes.entries()) {
@@ -496,6 +520,7 @@ export async function importCard(
       updatedAt: ts,
     };
     await ctx.store.notes.insert(note);
+    noteIdMap.set(n.id, note.id);
     noteCount++;
   }
 
@@ -531,7 +556,37 @@ export async function importCard(
     });
     loreCount = r.created;
     if (r.disabled) warnings.push(T.loreDisabled(r.disabled));
+  } else if (d.lorebook && created) {
+    // 还没有条目的知识书（例如模板）：整本设置照样带上
+    const { entries: _e, ...settings } = d.lorebook;
+    await updateLorebookSettings(ctx, notebookId, settings);
   }
+
+  // 稿件结构：章节换成新笔记 id；合并进已有 Notebook 时追加在后面
+  const ms = d.notebook?.manuscript;
+  if (ms?.volumes.length) {
+    const volumes = ms.volumes.map((v) => ({
+      id: newId("vol"),
+      title: v.title,
+      chapters: v.chapters
+        .filter((c) => noteIdMap.has(c.note_id))
+        .map((c) => ({
+          noteId: noteIdMap.get(c.note_id)!,
+          synopsis: c.synopsis,
+          beats: c.beats,
+          target: c.target,
+        })),
+    }));
+    const cur = (await ctx.store.notebooks.get(notebookId))?.manuscript;
+    await ctx.store.notebooks.update(notebookId, {
+      manuscript: { volumes: [...(cur?.volumes ?? []), ...volumes], target: cur?.target ?? ms.target },
+      updatedAt: nowIso(),
+    });
+  }
+  // 默认预设：新建时、且这个预设在本机存在时才用
+  const presetId = d.notebook?.default_preset_id;
+  if (created && presetId && (await getPreset(ctx, presetId)))
+    await ctx.store.notebooks.update(notebookId, { defaultPresetId: presetId, updatedAt: nowIso() });
 
   // Notebook 说明：新建时直接用；合并时原来没有才写入
   if (d.ai_instructions.trim()) {

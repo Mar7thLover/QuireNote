@@ -29,6 +29,19 @@ export interface ChatRequest {
   systemTail?: string;
   messages: ChatTurn[];
   abortSignal?: AbortSignal;
+  /** 对话预设里的生成参数；不给时用模型默认值。 */
+  temperature?: number | null;
+  topP?: number | null;
+  maxOutputTokens?: number | null;
+}
+
+/** 生成参数：Anthropic 较新的模型不允许同时给 temperature 和 top_p，两个都有时只用 temperature。 */
+function samplingOptions(ref: ModelRef, req: ChatRequest) {
+  const out: { temperature?: number; topP?: number; maxOutputTokens?: number } = {};
+  if (req.temperature != null) out.temperature = req.temperature;
+  if (req.topP != null && !(isAnthropic(ref) && req.temperature != null)) out.topP = req.topP;
+  if (req.maxOutputTokens != null) out.maxOutputTokens = req.maxOutputTokens;
+  return out;
 }
 
 /** 流式对话，逐段 yield 文本增量。出错时抛出 AiError。 */
@@ -41,6 +54,7 @@ export async function* streamChat(ref: ModelRef, req: ChatRequest): AsyncGenerat
     abortSignal: req.abortSignal,
     maxRetries: 1,
     providerOptions: cacheOptions(ref),
+    ...samplingOptions(ref, req),
     // 错误通过 stream 中的 error 部分处理，不让 SDK 打印到控制台。
     onError: () => {},
   });

@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { patchOf } from "./patch";
 import { CardTemplate, RenderRule } from "./render-schema";
+import { CardManuscript } from "./writing";
 
 export const QUIRE_CARD_SPEC = "quire_card_v1";
 export const QUIRE_CARD_VERSION = "1.0";
@@ -170,6 +171,10 @@ export const QuireCardData = z.object({
       description: z.string().default(""),
       icon: z.string().default("📓"),
       color: z.string().default("indigo"),
+      /** 新对话默认的对话预设（内置预设的 id 在任何 QuireNote 里都有效）。 */
+      default_preset_id: z.string().nullable().optional(),
+      /** 小说稿件：卷与章（章节引用 notes 里的 id）。 */
+      manuscript: CardManuscript.optional(),
     })
     .optional(),
   notes: z.array(CardNote).max(10_000).default([]),

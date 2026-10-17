@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
+  Feather,
   House,
   Info,
   Keyboard,
@@ -33,6 +34,7 @@ import { useUi } from "@/stores/ui";
 
 export const SETTINGS_SECTIONS: { id: string; icon: LucideIcon }[] = [
   { id: "models", icon: Brain },
+  { id: "presets", icon: Feather },
   { id: "appearance", icon: Palette },
   { id: "templates", icon: LayoutTemplate },
   { id: "rules", icon: Regex },
