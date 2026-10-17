@@ -57,6 +57,14 @@ interface WorkspaceState {
   open: (spec: PanelSpec) => void;
   close: (spec: Pick<PanelSpec, "kind" | "id">) => void;
   jumpTo: (sourceId: string, start: number, end: number) => void;
+  /** 打开引用：笔记打开笔记，资料跳到原文并高亮。 */
+  openCitation: (c: {
+    sourceId: string;
+    sourceTitle: string;
+    start: number;
+    end: number;
+    noteId?: string | null;
+  }) => void;
 }
 
 export const useWorkspace = create<WorkspaceState>()((set, get) => ({
@@ -115,6 +123,10 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   jumpTo: (sourceId, start, end) => {
     set({ jump: { sourceId, start, end, nonce: Date.now() } });
     get().open({ kind: "reader", id: sourceId });
+  },
+  openCitation: (c) => {
+    if (c.noteId) get().open({ kind: "note", id: c.noteId, title: c.sourceTitle });
+    else get().jumpTo(c.sourceId, c.start, c.end);
   },
 }));
 

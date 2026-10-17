@@ -1,10 +1,11 @@
 import { type Citation, parseCitationMarkers, type RuleScope } from "@quirenote/core";
 import { cn, HoverCard, HoverCardContent, HoverCardTrigger } from "@quirenote/ui";
-import { FileText } from "lucide-react";
+import { FileText, NotebookPen } from "lucide-react";
 import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown, { type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { INLINE_PREFIX, RenderedSegments } from "@/features/render/RenderedSegments";
+import { useTranslation } from "@/i18n";
 import { useWorkspace } from "@/stores/workspace";
 
 /** 把 `[1]`、`[2, 3]` 改写为 `[1](#cite-1)` 链接，交给自定义 a 组件渲染成徽标。 */
@@ -92,7 +93,7 @@ export const Markdown = memo(function Markdown({
 });
 
 export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
-  const jumpTo = useWorkspace((s) => s.jumpTo);
+  const openCitation = useWorkspace((s) => s.openCitation);
   if (!citation) {
     return (
       <span className="cite" data-invalid title="引用不存在">
@@ -106,7 +107,7 @@ export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
         <button
           type="button"
           className="cite"
-          onClick={() => jumpTo(citation.sourceId, citation.start, citation.end)}
+          onClick={() => openCitation(citation)}
           aria-label={`引用 ${n}：${citation.sourceTitle}`}
         >
           {n}
@@ -120,10 +121,11 @@ export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
 }
 
 export function CitationPreview({ citation, extra }: { citation: Citation; extra?: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5 text-xs font-medium text-fg-muted">
-        <FileText className="size-3.5" />
+        {citation.noteId ? <NotebookPen className="size-3.5" /> : <FileText className="size-3.5" />}
         <span className="truncate">{citation.sourceTitle}</span>
         {citation.page ? <span className="shrink-0 text-fg-subtle">· p.{citation.page}</span> : null}
         {extra}
@@ -131,7 +133,9 @@ export function CitationPreview({ citation, extra }: { citation: Citation; extra
       <p className="line-clamp-6 border-l-2 border-accent/50 pl-2.5 font-serif text-[13.5px] leading-relaxed text-fg">
         {citation.quote}
       </p>
-      <p className="text-[11px] text-fg-subtle">点击跳转到原文并高亮</p>
+      <p className="text-[11px] text-fg-subtle">
+        {t(citation.noteId ? "chat.openNote" : "chat.jumpToSource")}
+      </p>
     </div>
   );
 }

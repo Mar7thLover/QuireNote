@@ -131,6 +131,8 @@ export const Citation = z.object({
   start: z.number(),
   end: z.number(),
   page: z.number().nullable(),
+  /** 引用的是笔记时为笔记 id（这时 sourceId / chunkId 也是笔记 id，start / end 是笔记正文里的位置）。 */
+  noteId: z.string().nullable().optional(),
 });
 export type Citation = z.infer<typeof Citation>;
 

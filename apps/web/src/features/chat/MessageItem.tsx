@@ -308,7 +308,7 @@ function LoreUsed({ lore }: { lore: UsedLore[] }) {
 function CitationList({ citations }: { citations: Citation[] }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const jumpTo = useWorkspace((s) => s.jumpTo);
+  const openCitation = useWorkspace((s) => s.openCitation);
   const bySource = new Map<string, Citation[]>();
   for (const c of citations) bySource.set(c.sourceTitle, [...(bySource.get(c.sourceTitle) ?? []), c]);
   return (
@@ -330,7 +330,7 @@ function CitationList({ citations }: { citations: Citation[] }) {
             <button
               key={c.n}
               type="button"
-              onClick={() => jumpTo(c.sourceId, c.start, c.end)}
+              onClick={() => openCitation(c)}
               className="rounded-lg border border-border bg-surface p-2.5 text-left transition-colors hover:border-border-strong focus-ring"
             >
               <CitationPreview citation={c} extra={<span className="cite ml-auto">{c.n}</span>} />

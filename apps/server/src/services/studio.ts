@@ -21,7 +21,7 @@ import { ApiError, badRequest, notFound } from "../errors";
 import { extFromMime } from "../files";
 import { notebookContextFor } from "./lorebook";
 import { concatAudio, detectFfmpeg, renderSlidesVideo } from "./media";
-import { activeSources, gatherPassages } from "./passages";
+import { activeSources, gatherNotes, gatherPassages } from "./passages";
 
 export const MEDIA_DIR = "media";
 
@@ -54,7 +54,9 @@ export async function createArtifact(
   input: CreateArtifactInput,
 ): Promise<Artifact> {
   const sources = await activeSources(ctx, notebookId, input.sourceIds);
-  if (!sources.length && input.kind !== "image") {
+  // 笔记也算资料：没有勾选资料但有笔记时也能生成
+  const hasNotes = (await ctx.store.notes.list({ notebookId })).some((n) => n.markdown.trim());
+  if (!sources.length && !hasNotes && input.kind !== "image") {
     throw badRequest("没有可用的资料：请先导入并勾选资料（且等待解析完成）");
   }
   const ts = nowIso();
@@ -93,10 +95,19 @@ export async function runArtifactJob(
   if (!art) throw notFound("生成物");
   try {
     await progress(0.05, "挑选资料片段");
-    const { passages } = await gatherPassages(ctx, art.notebookId, {
-      sourceIds: art.sourceIds,
-      ...(payload.instructions ? { query: payload.instructions } : {}),
+    const fromSources = art.sourceIds.length
+      ? await gatherPassages(ctx, art.notebookId, {
+          sourceIds: art.sourceIds,
+          ...(payload.instructions ? { query: payload.instructions } : {}),
+        })
+      : { passages: [] };
+    // 笔记也算资料，接在资料片段后面；没有资料时多给一些
+    const fromNotes = await gatherNotes(ctx, art.notebookId, {
+      query: `${payload.instructions ?? ""} ${art.title}`,
+      maxChars: fromSources.passages.length ? 8000 : 24_000,
+      startAt: fromSources.passages.length + 1,
     });
+    const passages = [...fromSources.passages, ...fromNotes.passages];
     await progress(0.15, "生成内容");
     const chat = await ctx.models.chat();
     const titles = [...new Set(passages.map((p) => p.title ?? ""))].join(" ");
@@ -112,7 +123,12 @@ export async function runArtifactJob(
     // 媒体类在合成完成前保持 generating，但先写入脚本 / 幻灯片，前端可以提前展示。
     const patch: Partial<Artifact> = { data, status: isMedia ? "generating" : "ready", error: null };
     if (payload.autoTitle)
-      patch.title = `${ARTIFACT_KIND_META[art.kind].label}：${topicOf(passages)}`.slice(0, 120);
+      // 标题按资料来取；只有笔记时用笔记标题（不算进「几份资料」）
+      patch.title = `${ARTIFACT_KIND_META[art.kind].label}：${topicOf(
+        fromSources.passages.length
+          ? fromSources.passages
+          : fromNotes.passages.map((p) => ({ ...p, title: p.title?.replace(/^笔记：/, "") })),
+      )}`.slice(0, 120);
     await ctx.store.artifacts.update(art.id, patch);
     await emitArtifact(ctx, art.id);
     if (isMedia) {

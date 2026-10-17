@@ -158,7 +158,14 @@ describe("分享链接", () => {
 
   it("整本 Notebook：按创建时的选项带知识书和 AI 说明，内容随原文更新", async () => {
     const full = await createShare({ kind: "notebook", id: nb.id });
-    expect(full.options).toMatchObject({ lorebook: true, instructions: true, sources: false });
+    // 整本分享默认带上资料、生成物和元素，对方能完整地读
+    expect(full.options).toMatchObject({
+      lorebook: true,
+      instructions: true,
+      sources: true,
+      artifacts: true,
+      elements: true,
+    });
     let card = ((await (await readPublic(full.token)).json()) as PublicShare).card;
     expect(card.data.notes.map((n) => n.title)).toEqual(["心理史学", "第二篇"]);
     expect(card.data.lorebook?.entries.map((e) => e.name)).toEqual(["谢顿"]);

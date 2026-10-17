@@ -1,6 +1,6 @@
 /** 为生成任务挑选资料片段：覆盖全文、控制总长度。 */
 import type { Passage } from "@quirenote/ai";
-import type { Chunk, Source } from "@quirenote/core";
+import type { Chunk, Note, Source } from "@quirenote/core";
 import type { CitablePassage } from "../citations";
 import type { AppContext } from "../context";
 import { retrieve } from "../retrieval";
@@ -23,6 +23,87 @@ function spread<T>(items: T[], n: number): T[] {
   const out: T[] = [];
   for (let i = 0; i < n; i++) out.push(items[Math.floor((i * items.length) / n)]!);
   return out;
+}
+
+/** 笔记也算资料：单条最多交给模型这么多字。 */
+const NOTE_MAX_CHARS = 8000;
+
+/** 交给模型的笔记正文：去掉图片和资源引用（模型读不到），过长时截断。 */
+function noteText(n: Note): string {
+  const text = n.markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text.length > NOTE_MAX_CHARS ? `${text.slice(0, NOTE_MAX_CHARS)}…` : text;
+}
+
+/** 提问里的检索词：拉丁字母按词，中文按相邻两字。 */
+function queryTerms(text: string): string[] {
+  const out = new Set<string>();
+  for (const w of text.toLowerCase().match(/[a-z0-9]{2,}/g) ?? []) out.add(w);
+  for (const run of text.match(/\p{Script=Han}+/gu) ?? []) {
+    if (run.length === 1) out.add(run);
+    for (let i = 0; i + 1 < run.length; i++) out.add(run.slice(i, i + 2));
+  }
+  return [...out];
+}
+
+/**
+ * 笔记片段（可引用）：全部放得下就按创建顺序全给；放不下时按与提问的词重合挑，再按创建顺序排列。
+ * 编号从 startAt 开始，接在资料片段后面。
+ */
+export async function gatherNotes(
+  ctx: AppContext,
+  notebookId: string,
+  opts: { query?: string; maxChars: number; startAt: number },
+): Promise<GatheredPassages> {
+  const items = (await ctx.store.notes.list({ notebookId }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map((note) => ({ note, text: noteText(note) }))
+    .filter((x) => x.text);
+  let chosen = items;
+  if (items.reduce((s, x) => s + x.text.length, 0) > opts.maxChars) {
+    const terms = queryTerms(opts.query ?? "");
+    const score = (x: (typeof items)[number]) => {
+      const hay = `${x.note.title}\n${x.text}`.toLowerCase();
+      return terms.reduce((s, w) => s + (hay.includes(w) ? 1 : 0), 0);
+    };
+    const ranked = items
+      .map((x, i) => ({ x, i, s: score(x) }))
+      .sort((a, b) => b.s - a.s || b.x.note.updatedAt.localeCompare(a.x.note.updatedAt));
+    const keep = new Set<number>();
+    let budget = opts.maxChars;
+    for (const r of ranked) {
+      if (r.x.text.length > budget) continue;
+      keep.add(r.i);
+      budget -= r.x.text.length;
+    }
+    chosen = items.filter((_, i) => keep.has(i));
+  }
+  const passages: Passage[] = [];
+  const citable: CitablePassage[] = [];
+  chosen.forEach(({ note, text }, i) => {
+    const n = opts.startAt + i;
+    const title = note.title.trim() || "未命名笔记";
+    passages.push({ n, text, title: `笔记：${title}`, heading: null });
+    citable.push({
+      n,
+      noteId: note.id,
+      sourceTitle: title,
+      chunk: {
+        id: note.id,
+        sourceId: note.id,
+        notebookId,
+        index: 0,
+        text,
+        start: 0,
+        end: text.length,
+        page: null,
+        heading: null,
+      },
+    });
+  });
+  return { passages, citable };
 }
 
 export interface GatheredPassages {

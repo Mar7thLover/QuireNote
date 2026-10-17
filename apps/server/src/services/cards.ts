@@ -3,11 +3,21 @@
  * 导出：笔记或整本 Notebook → card.json + 资源；JSON / PNG 把资源内联成 data: URL，.quire 压缩包放进 assets/。
  * 导入：任意卡片文件（含酒馆格式）→ 新建或合并到 Notebook，资源存进本地，正文里的 asset:// 改成新 id。
  */
+import { extractiveSummary } from "@quirenote/ai";
 import { base64ToBytes, bytesToBase64, type ParsedCard } from "@quirenote/card";
 import {
+  type Artifact,
+  ArtifactData,
+  ArtifactKind,
+  type CardArtifact,
   type CardAsset,
+  type CardElement,
   type CardNote,
+  type CardReviewCard,
+  type CardSource,
   type CardTemplate,
+  type Element,
+  ElementType,
   markdownExcerpt,
   mediaKindOf,
   type Note,
@@ -19,22 +29,32 @@ import {
   type QuireCardData,
   type RenderPack,
   type RenderRule,
+  type Source,
+  SourceKind,
 } from "@quirenote/core";
 import { analyzePattern } from "@quirenote/render";
 import type { AppContext } from "../context";
 import { badRequest, notFound } from "../errors";
+import { mimeFromName, safeName } from "../files";
 import { fetchWithTimeout, UA } from "../ingest/parsers";
+import { rechunk, sourceFile, sourceFileDir } from "../ingest/pipeline";
 import { ASSET_MAX_BYTES, assetIdsIn, readAsset, saveAsset } from "./assets";
 import { exportLorebook, importLorebook } from "./lorebook";
 import { createNotebook } from "./notebooks";
-import { createJsonSource } from "./sources";
+import { createCards } from "./review";
+import { MEDIA_DIR } from "./studio";
 
 export interface ExportOptions {
   /** json：资源内联；zip：资源放进压缩包。PNG 由前端用 json 结果加封面生成。 */
   format: "json" | "zip";
   render?: boolean;
   lorebook?: boolean;
+  /** 资料：全文、页码、高亮；压缩包里另带原始文件。 */
   sources?: boolean;
+  /** Studio 生成物（报告、思维导图、测验……），媒体在压缩包里带文件。 */
+  artifacts?: boolean;
+  /** 元素与复习卡。 */
+  elements?: boolean;
   instructions?: boolean;
   creator?: string;
   /** 给出时资源不内联，`uri` 写成这个函数返回的地址（分享链接的只读页按需加载）。 */
@@ -120,6 +140,143 @@ async function collectAssets(
   return { assets, files };
 }
 
+/** JSON / PNG 卡里内联的生成物媒体上限（音频、视频较大，超过时只在压缩包里带）。 */
+const INLINE_MEDIA_MAX = 3 * 1024 * 1024;
+
+const MEDIA_FIELD = { audio: "audioUrl", image: "imageUrl", video: "videoUrl" } as const;
+
+type CardFiles = { assets: CardAsset[]; files: Map<string, Uint8Array> };
+
+/** 资料：全文、页码、高亮；压缩包格式下带上原始文件（资源类型 `source`）。 */
+async function exportSources(
+  ctx: AppContext,
+  notebookId: string,
+  opts: ExportOptions,
+  out: CardFiles,
+): Promise<CardSource[]> {
+  const highlights = await ctx.store.highlights.list({ notebookId });
+  const list: CardSource[] = [];
+  for (const s of await ctx.store.sources.list({ notebookId })) {
+    const content = await ctx.store.contents.get(s.id);
+    if (s.status !== "ready" || !content?.text.trim()) continue;
+    let file: string | null = null;
+    if (opts.format === "zip" && !opts.assetUrl && s.hasFile) {
+      const f = await sourceFile(ctx, s.id);
+      if (f) {
+        const name = f.path.split("/").pop() || "file";
+        file = `source-${s.id}`;
+        const path = `sources/${s.id}/${name}`;
+        out.files.set(path, f.data);
+        out.assets.push({
+          id: file,
+          type: "source",
+          name,
+          mime: s.mime || mimeFromName(name),
+          size: f.data.byteLength,
+          uri: `embedded://${path}`,
+        });
+      }
+    }
+    list.push({
+      id: s.id,
+      title: s.title,
+      kind: s.kind,
+      url: s.url,
+      text: content.text,
+      summary: s.summary,
+      page_offsets: content.pageOffsets.length ? content.pageOffsets : [0],
+      highlights: highlights
+        .filter((h) => h.sourceId === s.id)
+        .map((h) => ({ start: h.start, end: h.end, color: h.color, note: h.note })),
+      file,
+      mime: s.mime,
+      selected: s.selected,
+    });
+  }
+  return list;
+}
+
+/** 生成物媒体的内容：/api/files/<名> 是 Studio 合成的文件，/api/assets/<id> 是笔记资源。 */
+async function mediaBytes(ctx: AppContext, url: string): Promise<{ name: string; data: Uint8Array } | null> {
+  if (url.startsWith("/api/files/")) {
+    const name = decodeURIComponent(url.slice("/api/files/".length));
+    const data = await ctx.files.get(`${MEDIA_DIR}/${name}`);
+    return data ? { name, data } : null;
+  }
+  if (url.startsWith("/api/assets/")) {
+    const hit = await readAsset(ctx, decodeURIComponent(url.slice("/api/assets/".length)));
+    return hit ? { name: hit.asset.id, data: hit.data } : null;
+  }
+  return null;
+}
+
+/** Studio 生成物：数据原样带上，音频 / 视频 / 配图改成 asset:// 引用。 */
+async function exportArtifacts(
+  ctx: AppContext,
+  notebookId: string,
+  opts: ExportOptions,
+  out: CardFiles,
+): Promise<CardArtifact[]> {
+  const list: CardArtifact[] = [];
+  for (const a of await ctx.store.artifacts.list({ notebookId })) {
+    if (a.status !== "ready" || !a.data) continue;
+    let data: unknown = a.data;
+    const field = MEDIA_FIELD[a.data.kind as keyof typeof MEDIA_FIELD];
+    if (field) {
+      const url = (a.data as Record<string, unknown>)[field];
+      const media = typeof url === "string" && !opts.assetUrl ? await mediaBytes(ctx, url) : null;
+      let ref: string | null = null;
+      if (media && (opts.format === "zip" || media.data.byteLength <= INLINE_MEDIA_MAX)) {
+        const ext = media.name.includes(".") ? media.name.split(".").pop()!.toLowerCase() : "bin";
+        const id = `media-${a.id}.${ext}`;
+        const type = mediaKindOf(id) ?? "x_file";
+        const mime = mimeFromName(id);
+        const base = { id, type, name: media.name, mime, size: media.data.byteLength };
+        if (opts.format === "zip") {
+          const path = `assets/${type}/${id}`;
+          out.files.set(path, media.data);
+          out.assets.push({ ...base, uri: `embedded://${path}` });
+        } else {
+          out.assets.push({ ...base, uri: `data:${mime};base64,${bytesToBase64(media.data)}` });
+        }
+        ref = `asset://${id}`;
+      }
+      data = { ...a.data, [field]: ref };
+    }
+    list.push({
+      id: a.id,
+      kind: a.kind,
+      title: a.title,
+      data,
+      source_ids: a.sourceIds,
+      instructions: typeof a.props.instructions === "string" ? a.props.instructions : "",
+    });
+  }
+  return list;
+}
+
+async function exportElements(
+  ctx: AppContext,
+  notebookId: string,
+): Promise<{ elements: CardElement[]; review_cards: CardReviewCard[] }> {
+  const elements = (await ctx.store.elements.list({ notebookId })).map((e) => ({
+    id: e.id,
+    type: e.type,
+    name: e.name,
+    definition: e.definition,
+    aliases: e.aliases,
+    refs: e.refs.map((r) => ({ source_id: r.sourceId, note_id: r.noteId ?? null, quote: r.quote })),
+    relations: e.relations.map((r) => ({ target_id: r.targetId, label: r.label })),
+  }));
+  const review_cards = (await ctx.store.cards.list({ notebookId })).map((c) => ({
+    front: c.front,
+    back: c.back,
+    element_id: c.elementId,
+    artifact_id: c.artifactId,
+  }));
+  return { elements, review_cards };
+}
+
 function toCardNote(n: Note): CardNote {
   return { id: n.id, title: n.title, markdown: n.markdown, tags: n.tags, kind: n.kind };
 }
@@ -155,6 +312,9 @@ export async function exportNoteCard(
       source: [],
       notes,
       sources: [],
+      artifacts: [],
+      elements: [],
+      review_cards: [],
       ai_instructions: "",
       ...(render ? { render } : {}),
       assets,
@@ -174,15 +334,12 @@ export async function exportNotebookCard(
   const notes = (await ctx.store.notes.list({ notebookId }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map(toCardNote);
-  const { assets, files } = await collectAssets(ctx, notes, opts);
-  const sources: QuireCardData["sources"] = [];
-  if (opts.sources) {
-    for (const s of await ctx.store.sources.list({ notebookId })) {
-      const content = await ctx.store.contents.get(s.id);
-      if (s.status === "ready" && content?.text.trim())
-        sources.push({ id: s.id, title: s.title, kind: s.kind, url: s.url, text: content.text });
-    }
-  }
+  const out = await collectAssets(ctx, notes, opts);
+  const { assets, files } = out;
+  const sources = opts.sources === false ? [] : await exportSources(ctx, notebookId, opts, out);
+  const artifacts = opts.artifacts === false ? [] : await exportArtifacts(ctx, notebookId, opts, out);
+  const { elements, review_cards } =
+    opts.elements === false ? { elements: [], review_cards: [] } : await exportElements(ctx, notebookId);
   const pack = await renderSources(ctx, notebookId);
   const render =
     opts.render === false
@@ -221,6 +378,9 @@ export async function exportNotebookCard(
       notebook: { title: nb.title, description: nb.description, icon: nb.icon, color: nb.color },
       notes,
       sources,
+      artifacts,
+      elements,
+      review_cards,
       ai_instructions: opts.instructions === false ? "" : (nb.aiInstructions ?? ""),
       ...(opts.render === false || !merged ? {} : { render: merged }),
       ...(lorebook?.entries.length ? { lorebook } : {}),
@@ -241,6 +401,8 @@ const IMPORT_TEXT = {
     assetUnreadable: (n: string) => `资源「${n}」无法读取，已跳过`,
     assetFailed: (n: string, why: string) => `资源「${n}」未导入：${why}`,
     sourceFailed: (n: string, why: string) => `资料「${n}」未导入：${why}`,
+    artifactFailed: (n: string) => `生成物「${n}」的内容无法识别，已跳过`,
+    emptySource: "资料没有正文",
     rulesDisabled: (n: number) => `${n} 条规则无效或有卡死风险，已停用`,
     loreDisabled: (n: number) => `${n} 条知识书条目的正则关键词无效或有卡死风险，已停用`,
     keptInstructions: "这本 Notebook 已有 AI 说明，卡片里的说明没有覆盖它",
@@ -251,6 +413,8 @@ const IMPORT_TEXT = {
     assetUnreadable: (n: string) => `Couldn't read asset "${n}"; skipped`,
     assetFailed: (n: string, why: string) => `Asset "${n}" wasn't imported: ${why}`,
     sourceFailed: (n: string, why: string) => `Source "${n}" wasn't imported: ${why}`,
+    artifactFailed: (n: string) => `Studio output "${n}" couldn't be read; skipped`,
+    emptySource: "The source has no text",
     rulesDisabled: (n: number) => `${n} rules were invalid or could freeze the page, so they're turned off`,
     loreDisabled: (n: number) =>
       `${n} lorebook entries had invalid or risky regex keywords, so they're turned off`,
@@ -274,6 +438,15 @@ export interface CardPreview {
   cover: string | null;
   notes: { title: string; chars: number }[];
   sources: number;
+  /** 带原始文件（PDF 等）的资料数。 */
+  sourceFiles: number;
+  /** 本该有原始文件（PDF、DOCX、音视频……）却只带了文字的资料数（PNG / JSON 卡）。 */
+  sourcesTextOnly: number;
+  /** 前几份资料的标题。 */
+  sourceTitles: string[];
+  artifacts: number;
+  elements: number;
+  reviewCards: number;
   lore: { total: number; constant: { name: string; content: string }[] };
   rules: { total: number; disabled: string[] };
   templates: number;
@@ -314,6 +487,14 @@ export function previewCard(parsed: ParsedCard, lang?: string): CardPreview {
     cover: coverOf(parsed),
     notes: d.notes.map((n) => ({ title: n.title, chars: n.markdown.length })),
     sources: d.sources.length,
+    sourceFiles: d.sources.filter((x) => x.file && d.assets.some((a) => a.id === x.file)).length,
+    sourcesTextOnly: d.sources.filter(
+      (x) => !x.file && ["pdf", "docx", "epub", "image", "audio", "video"].includes(x.kind),
+    ).length,
+    sourceTitles: d.sources.slice(0, 8).map((x) => x.title),
+    artifacts: d.artifacts.length,
+    elements: d.elements.length,
+    reviewCards: d.review_cards.length,
     lore: {
       total: d.lorebook?.entries.length ?? 0,
       constant: (d.lorebook?.entries ?? [])
@@ -325,7 +506,7 @@ export function previewCard(parsed: ParsedCard, lang?: string): CardPreview {
       disabled: rules.filter((r) => !r.enabled || riskyRule(r)).map((r) => r.name),
     },
     templates: d.render?.templates.length ?? 0,
-    assets: d.assets.filter((a) => a.type !== "cover").length,
+    assets: d.assets.filter((a) => a.type !== "cover" && a.type !== "source").length,
     aiInstructions: d.ai_instructions,
     warnings: parsed.warnings,
   };
@@ -400,6 +581,101 @@ function mergeRender(
   };
 }
 
+/** 页起始偏移：在正文范围内、升序、去重，第一页从 0 开始。 */
+function normalizeOffsets(offsets: number[], length: number): number[] {
+  const out = [...new Set(offsets.filter((o) => Number.isInteger(o) && o > 0 && o < length))].sort(
+    (a, b) => a - b,
+  );
+  return [0, ...out];
+}
+
+/** 资料原文件只从卡片自身读取（压缩包或 data: URL），不按卡片给的外链去下载。 */
+function embeddedBytes(a: CardAsset, files: Map<string, Uint8Array>): Uint8Array | null {
+  if (a.uri.startsWith("data:")) {
+    const m = /^data:[^;,]*;base64,(.*)$/s.exec(a.uri);
+    return m ? base64ToBytes(m[1]!) : null;
+  }
+  if (/^embedd?ed:\/\//.test(a.uri)) return files.get(a.uri.replace(/^embedd?ed:\/\//, "")) ?? null;
+  return null;
+}
+
+/** 还原一份资料：全文、页码、高亮、原始文件；分块在本地重建，向量由后台任务补，不调用对话模型。 */
+async function restoreSource(
+  ctx: AppContext,
+  notebookId: string,
+  s: CardSource,
+  assets: CardAsset[],
+  files: Map<string, Uint8Array>,
+  importedFrom: string,
+  emptyMessage: string,
+): Promise<Source> {
+  if (!s.text.trim()) throw badRequest(emptyMessage);
+  const id = newId("src");
+  const kind = SourceKind.safeParse(s.kind);
+  const fileAsset = s.file ? assets.find((a) => a.id === s.file) : undefined;
+  const bytes = fileAsset ? embeddedBytes(fileAsset, files) : null;
+  let hasFile = false;
+  if (fileAsset && bytes?.byteLength) {
+    await ctx.files.put(`${sourceFileDir(id)}/${safeName(fileAsset.name || "file")}`, bytes);
+    hasFile = true;
+  }
+  const offsets = normalizeOffsets(s.page_offsets, s.text.length);
+  const ts = nowIso();
+  const src: Source = {
+    id,
+    ownerId: ctx.store.ownerId,
+    notebookId,
+    kind: kind.success ? kind.data : "text",
+    title: s.title.trim().slice(0, 500) || importedFrom,
+    status: "ready",
+    error: null,
+    selected: s.selected,
+    url: s.url,
+    mime: s.mime ?? fileAsset?.mime ?? null,
+    size: bytes?.byteLength ?? s.text.length,
+    pageCount: offsets.length > 1 ? offsets.length : null,
+    charCount: s.text.length,
+    summary: s.summary.trim() || extractiveSummary(s.text, 2),
+    hasFile,
+    props: { importedFrom },
+    createdAt: ts,
+    updatedAt: ts,
+  };
+  await ctx.store.sources.insert(src);
+  await ctx.store.contents.put({ sourceId: id, notebookId, text: s.text, pageOffsets: offsets });
+  await rechunk(ctx, src, s.text, offsets);
+  for (const h of s.highlights) {
+    if (h.end <= h.start || h.end > s.text.length) continue;
+    await ctx.store.highlights.insert({
+      id: newId("hl"),
+      sourceId: id,
+      notebookId,
+      start: h.start,
+      end: h.end,
+      color: h.color,
+      note: h.note,
+      by: "user",
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  }
+  return src;
+}
+
+/** 生成物的媒体引用：卡片里的 asset:// 换成本地资源地址，其他地址（别的服务器上的路径）一律去掉。 */
+function relinkMedia(data: unknown, idMap: Map<string, string>): unknown {
+  if (!data || typeof data !== "object") return data;
+  const rec = { ...(data as Record<string, unknown>) };
+  for (const field of Object.values(MEDIA_FIELD)) {
+    if (!(field in rec)) continue;
+    const v = rec[field];
+    const id =
+      typeof v === "string" && v.startsWith("asset://") ? idMap.get(v.slice("asset://".length)) : null;
+    rec[field] = id ? `/api/assets/${id}` : null;
+  }
+  return rec;
+}
+
 export interface ImportResult {
   notebookId: string;
   created: boolean;
@@ -408,6 +684,9 @@ export interface ImportResult {
   lore: number;
   rules: number;
   assets: number;
+  artifacts: number;
+  elements: number;
+  reviewCards: number;
   warnings: string[];
 }
 
@@ -442,6 +721,8 @@ export async function importCard(
   let assetCount = 0;
   let coverId: string | null = null;
   for (const a of d.assets) {
+    // 资料原文件随资料一起还原，不作为笔记资源
+    if (a.type === "source") continue;
     const bytes = await assetBytes(ctx, a, parsed.files);
     if (!bytes) {
       warnings.push(T.assetUnreadable(a.name || a.id));
@@ -459,6 +740,7 @@ export async function importCard(
 
   // 笔记：改写资源引用；外链图片下载成本地资源
   const extMap = new Map<string, string>();
+  const noteIdMap = new Map<string, string>();
   let noteCount = 0;
   const fromTavern = parsed.format.startsWith("st-");
   for (const [i, n] of d.notes.entries()) {
@@ -496,22 +778,115 @@ export async function importCard(
       updatedAt: ts,
     };
     await ctx.store.notes.insert(note);
+    noteIdMap.set(n.id, note.id);
     noteCount++;
   }
 
-  // 资料原文：作为 Markdown 资料重新解析、建索引
+  // 资料：全文、页码、高亮、原始文件原样还原，导入后直接能读
+  const sourceIdMap = new Map<string, string>();
   for (const s of d.sources) {
     try {
-      await createJsonSource(ctx, notebookId, {
-        kind: "markdown",
-        title: s.title,
-        text: s.text,
-        url: s.url ?? undefined,
-      });
+      const src = await restoreSource(ctx, notebookId, s, d.assets, parsed.files, d.name, T.emptySource);
+      sourceIdMap.set(s.id, src.id);
     } catch (e) {
       warnings.push(T.sourceFailed(s.title, e instanceof Error ? e.message : String(e)));
     }
   }
+  if (sourceIdMap.size)
+    await ctx.jobs.enqueue(
+      "reindex",
+      { notebookId, clear: false },
+      { notebookId, refId: notebookId, message: "为导入的资料建立索引" },
+    );
+
+  // Studio 生成物
+  const artifactIdMap = new Map<string, string>();
+  for (const a of d.artifacts) {
+    const kind = ArtifactKind.safeParse(a.kind);
+    const data = ArtifactData.safeParse(relinkMedia(a.data, idMap));
+    if (!kind.success || !data.success) {
+      warnings.push(T.artifactFailed(a.title || a.kind));
+      continue;
+    }
+    const ts = nowIso();
+    const art: Artifact = {
+      id: newId("art"),
+      ownerId: ctx.store.ownerId,
+      notebookId,
+      kind: kind.data,
+      title: a.title.trim() || kind.data,
+      status: "ready",
+      error: null,
+      sourceIds: a.source_ids.map((x) => sourceIdMap.get(x)).filter((x): x is string => !!x),
+      data: data.data,
+      props: a.instructions.trim() ? { instructions: a.instructions.trim() } : {},
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await ctx.store.artifacts.insert(art);
+    artifactIdMap.set(a.id, art.id);
+  }
+
+  // 元素：合并进已有 Notebook 时，同名同类型的沿用已有的
+  const elementIdMap = new Map<string, string>();
+  const existingEls = created ? [] : await ctx.store.elements.list({ notebookId });
+  const elKey = (type: string, name: string) => `${type}\u0000${name.trim().toLowerCase()}`;
+  const byKey = new Map(existingEls.map((e) => [elKey(e.type, e.name), e.id]));
+  const fresh: { e: CardElement; id: string; type: Element["type"] }[] = [];
+  for (const e of d.elements) {
+    const t = ElementType.safeParse(e.type);
+    const type = t.success ? t.data : "concept";
+    const k = elKey(type, e.name);
+    const hit = byKey.get(k);
+    if (hit) {
+      elementIdMap.set(e.id, hit);
+      continue;
+    }
+    const id = newId("el");
+    byKey.set(k, id);
+    elementIdMap.set(e.id, id);
+    fresh.push({ e, id, type });
+  }
+  for (const { e, id, type } of fresh) {
+    const ts = nowIso();
+    await ctx.store.elements.insert({
+      id,
+      ownerId: ctx.store.ownerId,
+      notebookId,
+      type,
+      name: e.name,
+      definition: e.definition,
+      aliases: e.aliases,
+      refs: e.refs.map((r) => ({
+        sourceId: r.source_id ? (sourceIdMap.get(r.source_id) ?? null) : null,
+        chunkId: null,
+        noteId: r.note_id ? (noteIdMap.get(r.note_id) ?? null) : null,
+        messageId: null,
+        quote: r.quote,
+      })),
+      relations: e.relations
+        .map((r) => ({ targetId: elementIdMap.get(r.target_id) ?? "", label: r.label }))
+        .filter((r) => r.targetId),
+      mastery: 0,
+      props: {},
+      createdAt: ts,
+      updatedAt: ts,
+    });
+  }
+
+  // 复习卡：只带正反面，导入后从头复习
+  const reviewCards = await createCards(
+    ctx,
+    notebookId,
+    d.review_cards
+      .filter((c) => c.front.trim() && c.back.trim())
+      .map((c) => ({
+        front: c.front,
+        back: c.back,
+        elementId: c.element_id ? (elementIdMap.get(c.element_id) ?? null) : null,
+        artifactId: c.artifact_id ? (artifactIdMap.get(c.artifact_id) ?? null) : null,
+      })),
+  );
 
   // 渲染包（只对这本 Notebook 生效）
   let ruleCount = 0;
@@ -547,10 +922,13 @@ export async function importCard(
     notebookId,
     created,
     notes: noteCount,
-    sources: d.sources.length,
+    sources: sourceIdMap.size,
     lore: loreCount,
     rules: ruleCount,
     assets: assetCount,
+    artifacts: artifactIdMap.size,
+    elements: fresh.length,
+    reviewCards: reviewCards.length,
     warnings,
   };
 }

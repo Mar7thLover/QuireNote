@@ -13,6 +13,8 @@ export interface CitablePassage {
   n: number;
   chunk: Chunk;
   sourceTitle: string;
+  /** 笔记片段：chunk 是用笔记正文拼的伪分块。 */
+  noteId?: string;
 }
 
 const GROUP_RE = /\[(\d{1,3}(?:\s*,\s*\d{1,3})*)\]/g;
@@ -106,6 +108,7 @@ export function validateCitations(
         start: q.start,
         end: q.end,
         page: p.chunk.page,
+        ...(p.noteId ? { noteId: p.noteId } : {}),
       });
     }
   }

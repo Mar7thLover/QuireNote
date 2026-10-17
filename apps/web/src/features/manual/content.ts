@@ -90,6 +90,9 @@ const ZH: Omit<ManualSection, "icon">[] = [
     body: `### 引用
 回答中的每个关键结论后面都有 **[n]** 标记。点开可以看到被引用的原文，再点一次跳到资料中的位置。引用由服务端逐条核对，找不到出处的编号会被去掉。
 
+### 笔记也算资料
+你写的笔记和资料一样交给模型阅读，接在资料片段后面编号，也能被引用；点开笔记的引用会打开那条笔记。没有勾选任何资料时，回答就依据这本 Notebook 的笔记和知识书——导入别人分享的笔记本后可以直接提问。
+
 ### 模型如何读到资料
 - **资料不多时**（合计约 6 万字以内）：所选资料整份交给模型阅读，概括、对比、跨资料的问题都能完整回答。资料部分每轮不变，Claude 会缓存这部分内容，连续追问时这部分按缓存价计费（约为原价的十分之一）。
 - **资料较多时**：先检索最相关的片段，再按每份资料均匀补充一些片段，保证「这几份资料分别讲了什么」这类问题也有内容可答。
@@ -243,22 +246,22 @@ Claude 模型按 Anthropic 官方标价估算，包含缓存读写的折扣与�
     summary: "把笔记或整本 Notebook 分享成一个文件（PNG 卡发图即分享）；也能直接导入酒馆的角色卡和世界书。",
     body: `### 分享为 Quire 卡
 - **单条笔记**：笔记右上角「…」→「分享为 Quire 卡…」。
-- **整本 Notebook**：首页卡片的菜单 →「分享为 Quire 卡…」，可以选择是否附带渲染规则、知识书、AI 说明和资料原文（资料默认不带，注意版权）。对话记录不会导出。
+- **整本 Notebook**：首页卡片的菜单 →「分享为 Quire 卡…」。默认把整本都带上：笔记、资料（全文、高亮和原始文件）、Studio 生成物、元素和复习卡、知识书、AI 说明、渲染规则，不想带的可以取消勾选。对方导入后就是一本能直接阅读、直接提问的笔记本。对话记录不会导出；分享别人的资料时注意版权。
 
-三种格式内容相同：
-- **PNG 图片**：带封面，数据藏在图片里，发图即分享。微信、QQ 等会压缩图片，请按「原图」或「文件」发送。
-- **JSON**：纯文本，适合放进 Git。
-- **.quire**：压缩包，图片和视频原样打包，适合大的 Notebook。
+三种格式：
+- **.quire**（整本的默认格式）：压缩包，资料的 PDF 等原始文件、图片、音视频原样打包。
+- **PNG 图片**：带封面，数据藏在图片里，发图即分享；资料只带文字和高亮。微信、QQ 等会压缩图片，请按「原图」或「文件」发送。
+- **JSON**：纯文本，适合放进 Git；资料同样只带文字和高亮。
 
 ### 分享链接
 在同一个对话框里选「链接」→「生成链接」，会在你自己的服务器上生成一个只读页 \`/share/…\`。对方用浏览器直接阅读，不需要安装 QuireNote，也能从页面右上角下载 PNG / JSON / .quire 卡。
-- 页面显示的是当前内容：笔记改了，对方刷新就能看到；带哪些部分（渲染规则、知识书、AI 说明、资料原文、作者）在生成时定下。
+- 页面显示的是当前内容：笔记改了，对方刷新就能看到；资料可以展开阅读（带你的高亮），文字类的生成物也直接显示。带哪些部分在生成时定下。
 - 正文里的 HTML 和卡片模板放在沙箱里显示，脚本不会执行；只有分享内容用到的图片和视频能被访问。
 - **设置 → 分享链接** 里列出所有链接，可以复制或撤销；撤销后链接立即失效。
 - 对方要能从公网访问你的服务器。在设置里填上公开访问地址（比如 \`https://notes.example.com\`）。QuireNote 没有登录，整个服务器暴露出去等于公开所有笔记——建议用反向代理只放行 \`/share/\`、\`/api/public/\`、\`/assets/\` 和 \`/favicon.svg\`。
 
 ### 导入
-把卡片拖进首页，或点「导入」、在命令面板选「导入卡片…」。导入前会先显示预览：作者、包含的内容、常驻的知识书条目、AI 说明，以及会被停用的规则。可以导入成新的 Notebook，或合并进已有的。
+把卡片拖进首页，或点「导入」、在命令面板选「导入卡片…」。导入前会先显示预览：作者、包含的笔记、资料、生成物和元素，常驻的知识书条目、AI 说明，以及会被停用的规则。可以导入成新的 Notebook，或合并进已有的。导入后资料直接能读，高亮都在。
 
 ### 酒馆（SillyTavern）的文件
 可以直接导入角色卡（PNG、JSON、CHARX）、世界书和正则脚本：
@@ -314,6 +317,9 @@ A source's full text can be edited (to fix OCR errors, say) and restored to the 
       "Every [n] in an answer opens the quoted passage. Small notebooks are read whole; large ones are searched first.",
     body: `### Citations
 Key claims end with an **[n]** marker. Open it to see the quoted passage, and again to jump to it in the source. Citations are checked on the server; numbers without a matching passage are removed.
+
+### Notes count as material
+Your notes are given to the model just like sources — numbered after the source passages and citable; opening a note citation opens that note. With no sources selected, answers draw on the notebook's notes and lorebook, so you can ask questions right after importing someone's shared notebook.
 
 ### How the model sees your sources
 - **Small sets** (up to roughly 60,000 characters): the selected sources are given to the model whole, so summaries, comparisons and cross-source questions are answered completely. That part of the prompt stays the same between turns, so Claude caches it and follow-up questions bill it at the cache rate (about a tenth of the normal price).
@@ -477,22 +483,22 @@ Sources, notes and conversations are stored in the server's data directory; API 
       "Share a note or a whole notebook as one file (a PNG card shares like a picture); SillyTavern character cards and world info import directly.",
     body: `### Share as a Quire card
 - **One note**: the note's "…" menu → "Share as Quire card…".
-- **A whole notebook**: the card menu on the home page → "Share as Quire card…". Choose whether to include render rules, the lorebook, AI instructions and source text (sources are off by default — mind copyright). Conversations are never exported.
+- **A whole notebook**: the card menu on the home page → "Share as Quire card…". By default everything goes in: notes, sources (text, highlights and original files), Studio outputs, elements and review cards, the lorebook, AI instructions and render rules — untick what you'd rather leave out. The recipient gets a notebook they can read and ask questions about right away. Conversations are never exported; mind copyright when sharing other people's sources.
 
-All three formats hold the same content:
-- **PNG image**: has a cover and hides the data inside the image, so it shares like a picture. Chat apps that recompress images strip the data; send the original file.
-- **JSON**: plain text, good for Git.
-- **.quire**: a zip with images and videos as files, for large notebooks.
+Three formats:
+- **.quire** (the default for notebooks): a zip with original source files such as PDFs, images, audio and video.
+- **PNG image**: has a cover and hides the data inside the image, so it shares like a picture; sources carry their text and highlights only. Chat apps that recompress images strip the data; send the original file.
+- **JSON**: plain text, good for Git; sources carry their text and highlights only.
 
 ### Share links
 In the same dialog, choose "Link" → "Create link" to get a read-only page \`/share/…\` on your own server. Others read it right in their browser — no QuireNote needed — and can download the PNG / JSON / .quire card from the top-right corner.
-- The page shows the current content: edit the note and they see the change on reload. Which parts are included (render rules, lorebook, AI instructions, source text, creator) is fixed when you create the link.
+- The page shows the current content: edit the note and they see the change on reload. Sources can be expanded and read with your highlights, and text-based Studio outputs show inline. Which parts are included is fixed when you create the link.
 - HTML and card templates in the text render in a sandbox with scripts disabled; only images and videos used by the shared content can be fetched.
 - **Settings → Share links** lists every link so you can copy or revoke it; revoking takes effect immediately.
 - Your server must be reachable from the internet. Enter its public address in settings (for example \`https://notes.example.com\`). QuireNote has no login, so exposing the whole server publishes every note — put a reverse proxy in front that only lets \`/share/\`, \`/api/public/\`, \`/assets/\` and \`/favicon.svg\` through.
 
 ### Importing
-Drop a card onto the home page, click **Import**, or pick "Import card…" in the command palette. A preview comes first: the creator, what's inside, always-on lorebook entries, AI instructions and any rules that will be turned off. Import into a new notebook or merge into an existing one.
+Drop a card onto the home page, click **Import**, or pick "Import card…" in the command palette. A preview comes first: the creator, the notes, sources, Studio outputs and elements inside, always-on lorebook entries, AI instructions and any rules that will be turned off. Import into a new notebook or merge into an existing one. Imported sources are ready to read, highlights included.
 
 ### SillyTavern files
 Character cards (PNG, JSON, CHARX), world info and regex scripts import directly:

@@ -4,7 +4,15 @@
  * HTML 块和模板卡片放进不执行脚本的沙箱 iframe，资源从公开接口按需加载。
  */
 import { cardToPng } from "@quirenote/card";
-import { type CardNote, mediaKindOf, type QuireCard } from "@quirenote/core";
+import {
+  ARTIFACT_KIND_META,
+  type ArtifactKind,
+  type CardArtifact,
+  type CardNote,
+  type CardSource,
+  mediaKindOf,
+  type QuireCard,
+} from "@quirenote/core";
 import { buildSrcdoc, SANDBOX_ATTR } from "@quirenote/render";
 import {
   Button,
@@ -16,8 +24,17 @@ import {
   toast,
 } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileArchive, FileJson, Image as ImageIcon, ImageOff } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  Download,
+  FileArchive,
+  FileJson,
+  FileText,
+  Image as ImageIcon,
+  ImageOff,
+  Sparkles,
+} from "lucide-react";
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { type Components, defaultUrlTransform, type UrlTransform } from "react-markdown";
 import { Markdown } from "@/components/Markdown";
 import { downloadBytes, renderCover, safeFilename } from "@/features/cards/cover";
@@ -133,8 +150,13 @@ function ShareBody({ share }: { share: PublicShare }) {
   const parts = [
     d.lorebook?.entries.length ? t("share.partLorebook") : null,
     d.ai_instructions.trim() ? t("share.partInstructions") : null,
-    d.sources.length ? t("share.partSources") : null,
+    d.elements.length ? t("share.partElements") : null,
   ].filter((p): p is string => !!p);
+  const extra = [
+    d.sources.length ? { id: "share-sources", label: t("share.sources") } : null,
+    d.artifacts.length ? { id: "share-artifacts", label: t("share.artifacts") } : null,
+  ].filter((x): x is { id: string; label: string } => !!x);
+  const withContents = notes.length + extra.length > 1;
 
   const header = (
     <>
@@ -160,7 +182,9 @@ function ShareBody({ share }: { share: PublicShare }) {
         </main>
       ) : (
         <div className="mx-auto grid w-full max-w-[1120px] gap-x-14 px-5 pt-10 pb-24 sm:px-8 sm:pt-16 lg:grid-cols-[200px_minmax(0,1fr)]">
-          <div className="hidden lg:block">{notes.length > 1 ? <Contents notes={notes} sticky /> : null}</div>
+          <div className="hidden lg:block">
+            {withContents ? <Contents notes={notes} extra={extra} sticky /> : null}
+          </div>
           <main className="w-full max-w-[720px] min-w-0">
             {header}
             {parts.length ? (
@@ -168,9 +192,9 @@ function ShareBody({ share }: { share: PublicShare }) {
                 {t("share.includes", { parts: parts.join(t("share.partJoin")) })}
               </p>
             ) : null}
-            {notes.length > 1 ? (
+            {withContents ? (
               <div className="mt-8 lg:hidden">
-                <Contents notes={notes} />
+                <Contents notes={notes} extra={extra} />
               </div>
             ) : null}
             {notes.map((n, i) => (
@@ -187,6 +211,10 @@ function ShareBody({ share }: { share: PublicShare }) {
                 </div>
               </section>
             ))}
+            {d.sources.length ? <SourcesSection sources={d.sources} /> : null}
+            {d.artifacts.length ? (
+              <ArtifactsSection artifacts={d.artifacts} urlTransform={urlTransform} />
+            ) : null}
             <Footer />
           </main>
         </div>
@@ -196,32 +224,198 @@ function ShareBody({ share }: { share: PublicShare }) {
 }
 
 /** 整本分享的目录：宽屏在左侧随页面停留，窄屏放在标题下面。 */
-function Contents({ notes, sticky }: { notes: CardNote[]; sticky?: boolean }) {
+function Contents({
+  notes,
+  extra = [],
+  sticky,
+}: {
+  notes: CardNote[];
+  extra?: { id: string; label: string }[];
+  sticky?: boolean;
+}) {
   const { t } = useTranslation();
+  const items = [
+    ...notes.map((n, i) => ({ id: `note-${i}`, label: n.title || t("share.untitled") })),
+    ...extra,
+  ];
   return (
     <nav aria-label={t("share.contents")} className={sticky ? "sticky top-24" : undefined}>
       <div>
         <p className="mb-2 text-[12.5px] font-medium text-fg-subtle">{t("share.contents")}</p>
         <ol className="flex flex-col gap-0.5">
-          {notes.map((n, i) => (
-            <li key={n.id || i}>
+          {items.map((it) => (
+            <li key={it.id}>
               <a
-                href={`#note-${i}`}
+                href={`#${it.id}`}
                 onClick={(e) => {
                   e.preventDefault();
-                  document
-                    .getElementById(`note-${i}`)
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  document.getElementById(it.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
                 className="block truncate rounded-md px-2 py-1 -mx-2 text-[13.5px] text-fg-muted hover:bg-surface-hover hover:text-fg focus-ring"
               >
-                {n.title || t("share.untitled")}
+                {it.label}
               </a>
             </li>
           ))}
         </ol>
       </div>
     </nav>
+  );
+}
+
+// ───────────── 资料与生成物 ─────────────
+
+const HL_COLORS = new Set(["yellow", "green", "blue", "pink", "purple"]);
+
+function SourcesSection({ sources }: { sources: CardSource[] }) {
+  const { t } = useTranslation();
+  return (
+    <section id="share-sources" className="mt-12 scroll-mt-20 border-t-[0.5px] border-border pt-10">
+      <h2 className="font-serif text-[26px] leading-snug font-normal">{t("share.sources")}</h2>
+      <div className="mt-6 flex flex-col gap-3">
+        {sources.map((s) => (
+          <Expandable
+            key={s.id}
+            icon={<FileText />}
+            title={s.title || t("share.untitled")}
+            summary={s.summary}
+          >
+            <SourceText source={s} />
+          </Expandable>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type Piece = { text: string; color?: string; note?: string };
+
+/** 资料全文按行显示：Markdown 的标题行去掉 # 号、显示成小标题；作者的高亮原样标出（批注在悬停提示里）。 */
+function SourceText({ source: s }: { source: CardSource }) {
+  const lines = useMemo(() => {
+    const hls = s.highlights
+      .filter((h) => h.end > h.start && h.end <= s.text.length)
+      .sort((a, b) => a.start - b.start);
+    const out: { heading: boolean; blank: boolean; pieces: Piece[] }[] = [];
+    let at = 0;
+    for (const raw of s.text.split("\n")) {
+      const lineEnd = at + raw.length;
+      const mark = /^#{1,6}\s+/.exec(raw);
+      let cur = at + (mark ? mark[0].length : 0);
+      const pieces: Piece[] = [];
+      for (const h of hls) {
+        if (h.end <= cur || h.start >= lineEnd) continue;
+        const from = Math.max(h.start, cur);
+        const to = Math.min(h.end, lineEnd);
+        if (from > cur) pieces.push({ text: s.text.slice(cur, from) });
+        pieces.push({
+          text: s.text.slice(from, to),
+          color: HL_COLORS.has(h.color) ? h.color : "yellow",
+          note: h.note,
+        });
+        cur = to;
+      }
+      if (cur < lineEnd) pieces.push({ text: s.text.slice(cur, lineEnd) });
+      out.push({ heading: !!mark, blank: !raw.trim(), pieces });
+      at = lineEnd + 1;
+    }
+    return out;
+  }, [s]);
+  return (
+    <div className="max-h-[70vh] overflow-y-auto px-5 py-4 font-serif text-[15px] leading-[1.8]">
+      {lines.map((l, i) =>
+        l.blank ? (
+          <div key={i} className="h-3" />
+        ) : (
+          <p key={i} className={l.heading ? "mt-2 font-sans text-[16px] font-medium" : "whitespace-pre-wrap"}>
+            {l.pieces.map((p, k) =>
+              p.color ? (
+                <span key={k} className={`rounded-[2px] hl-${p.color}`} title={p.note || undefined}>
+                  {p.text}
+                </span>
+              ) : (
+                <Fragment key={k}>{p.text}</Fragment>
+              ),
+            )}
+          </p>
+        ),
+      )}
+    </div>
+  );
+}
+
+function ArtifactsSection({
+  artifacts,
+  urlTransform,
+}: {
+  artifacts: CardArtifact[];
+  urlTransform: UrlTransform;
+}) {
+  const { t, i18n } = useTranslation();
+  return (
+    <section id="share-artifacts" className="mt-12 scroll-mt-20 border-t-[0.5px] border-border pt-10">
+      <h2 className="font-serif text-[26px] leading-snug font-normal">{t("share.artifacts")}</h2>
+      <div className="mt-6 flex flex-col gap-3">
+        {artifacts.map((a) => {
+          const meta = ARTIFACT_KIND_META[a.kind as ArtifactKind];
+          const kind = meta ? (i18n.language === "en" ? meta.labelEn : meta.label) : a.kind;
+          const data = a.data as { kind?: string; markdown?: string } | null;
+          return (
+            <Expandable key={a.id} icon={<Sparkles />} title={a.title || kind} summary={kind}>
+              {data?.kind === "markdown" && data.markdown ? (
+                <div className="px-5 py-4">
+                  <Markdown
+                    text={data.markdown}
+                    scope="note"
+                    serif
+                    components={SHARE_COMPONENTS}
+                    urlTransform={urlTransform}
+                  />
+                </div>
+              ) : (
+                <p className="px-5 py-4 text-[13.5px] text-fg-subtle">{t("share.artifactImportHint")}</p>
+              )}
+            </Expandable>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Expandable({
+  icon,
+  title,
+  summary,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  summary?: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-border bg-surface">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start gap-3 rounded-xl px-4 py-3 text-left focus-ring [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-fg-subtle"
+      >
+        <span className="mt-0.5">{icon}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-medium">{title}</span>
+          {summary ? (
+            <span className="mt-1 line-clamp-2 block text-[13.5px] leading-relaxed text-fg-muted">
+              {summary}
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown className={open ? "mt-1 rotate-180" : "mt-1"} />
+      </button>
+      {open ? <div className="border-t border-border">{children}</div> : null}
+    </div>
   );
 }
 

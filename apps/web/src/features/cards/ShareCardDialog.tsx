@@ -47,10 +47,16 @@ export function ShareCardDialog({
     if (open) setTarget(open);
   }, [open]);
   const [format, setFormat] = useState<Format>("png");
+  // 整本 Notebook 带着资料原文件和媒体，默认用压缩包；单条笔记默认发图
+  useEffect(() => {
+    if (open) setFormat(open.kind === "notebook" ? "quire" : "png");
+  }, [open]);
   const [render, setRender] = useState(true);
   const [lorebook, setLorebook] = useState(true);
   const [instructions, setInstructions] = useState(true);
-  const [sources, setSources] = useState(false);
+  const [sources, setSources] = useState(true);
+  const [artifacts, setArtifacts] = useState(true);
+  const [elements, setElements] = useState(true);
   const [creator, setCreator] = useState(readCreator);
   const [busy, setBusy] = useState(false);
   /** 生成的链接路径；改了选项就作废，需要重新生成。 */
@@ -58,7 +64,11 @@ export function ShareCardDialog({
   const { base } = useShareBase(!!open);
   const notebook = target?.kind === "notebook";
   // biome-ignore lint/correctness/useExhaustiveDependencies: 任何选项变化都让已生成的链接作废
-  useEffect(() => setLink(null), [open, format, render, lorebook, instructions, sources, creator]);
+  useEffect(
+    () => setLink(null),
+    [open, format, render, lorebook, instructions, sources, artifacts, elements, creator],
+  );
+  const parts = { lorebook, instructions, sources, artifacts, elements };
 
   const createLink = async () => {
     if (!target) return;
@@ -72,7 +82,7 @@ export function ShareCardDialog({
         id: target.id,
         render,
         creator,
-        ...(notebook ? { lorebook, instructions, sources } : {}),
+        ...(notebook ? parts : {}),
       });
       setLink(share.path);
       queryClient.invalidateQueries({ queryKey: qk.shares });
@@ -94,7 +104,7 @@ export function ShareCardDialog({
         format: format === "quire" ? "quire" : "json",
         render,
         creator,
-        ...(notebook ? { lorebook, instructions, sources } : {}),
+        ...(notebook ? parts : {}),
       };
       const url = notebook ? api.cards.notebookUrl(target.id, opts) : api.cards.noteUrl(target.id, opts);
       if (format === "quire") {
@@ -136,7 +146,9 @@ export function ShareCardDialog({
         }}
       >
         <div className="flex flex-col gap-5 px-5 pb-5">
-          <p className="text-[13.5px] leading-relaxed text-fg-subtle">{t("cards.shareDesc")}</p>
+          <p className="text-[13.5px] leading-relaxed text-fg-subtle">
+            {t(notebook ? "cards.shareDescNotebook" : "cards.shareDesc")}
+          </p>
           <fieldset className="grid grid-cols-2 gap-2">
             <legend className="sr-only">{t("cards.format")}</legend>
             <FormatOption
@@ -169,23 +181,25 @@ export function ShareCardDialog({
             />
           </fieldset>
           <div className="flex flex-col gap-2.5">
-            <Check checked={render} onChange={setRender} label={t("cards.includeRender")} />
             {notebook ? (
               <>
+                <Check
+                  checked={sources}
+                  onChange={setSources}
+                  label={t("cards.includeSources")}
+                  hint={format === "png" || format === "json" ? t("cards.includeSourcesHint") : undefined}
+                />
+                <Check checked={artifacts} onChange={setArtifacts} label={t("cards.includeArtifacts")} />
+                <Check checked={elements} onChange={setElements} label={t("cards.includeElements")} />
                 <Check checked={lorebook} onChange={setLorebook} label={t("cards.includeLorebook")} />
                 <Check
                   checked={instructions}
                   onChange={setInstructions}
                   label={t("cards.includeInstructions")}
                 />
-                <Check
-                  checked={sources}
-                  onChange={setSources}
-                  label={t("cards.includeSources")}
-                  hint={t("cards.includeSourcesHint")}
-                />
               </>
             ) : null}
+            <Check checked={render} onChange={setRender} label={t("cards.includeRender")} />
           </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium text-fg-muted">{t("cards.creator")}</span>

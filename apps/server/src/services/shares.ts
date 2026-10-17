@@ -22,6 +22,8 @@ export const ShareInput = z.object({
   lorebook: z.boolean().optional(),
   instructions: z.boolean().optional(),
   sources: z.boolean().optional(),
+  artifacts: z.boolean().optional(),
+  elements: z.boolean().optional(),
   creator: z.string().max(200).optional(),
 });
 export type ShareInput = z.infer<typeof ShareInput>;
@@ -61,7 +63,9 @@ function normalizeOptions(input: ShareInput): ShareOptions {
     render: input.render ?? true,
     lorebook: notebook && (input.lorebook ?? true),
     instructions: notebook && (input.instructions ?? true),
-    sources: notebook && (input.sources ?? false),
+    sources: notebook && (input.sources ?? true),
+    artifacts: notebook && (input.artifacts ?? true),
+    elements: notebook && (input.elements ?? true),
     creator: (input.creator ?? "").trim().slice(0, 200),
   };
 }
@@ -71,6 +75,8 @@ const sameOptions = (a: ShareOptions, b: ShareOptions) =>
   a.lorebook === b.lorebook &&
   a.instructions === b.instructions &&
   a.sources === b.sources &&
+  (a.artifacts ?? true) === (b.artifacts ?? true) &&
+  (a.elements ?? true) === (b.elements ?? true) &&
   a.creator === b.creator;
 
 async function toView(ctx: AppContext, r: ShareRecord): Promise<ShareView> {

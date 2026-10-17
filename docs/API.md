@@ -57,7 +57,9 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 `citations` `Citation[]`（服务端已校验编号真实存在，未知编号被剔除）→ `done`（最终 `Message`）；出错时 `error` `{message}`。
 
 这一轮触发的知识书条目记在助手消息的 `lore` 上：`{id, name, trigger}[]`，`trigger` 为 `constant` / `direct` / `recursive` / `sticky`。
-没有勾选资料时，Notebook 有知识书或 AI 说明也可以对话，回答不带引用。
+笔记也算资料：资料片段之后接着给笔记（有勾选资料时最多约 2 万字，没有时约 6 万字），统一编号、同样可以引用；
+引用笔记时 `Citation.noteId` 为笔记 id（`sourceId` / `chunkId` 也填笔记 id，`start` / `end` 是笔记正文里的位置）。
+没有勾选资料但有笔记、知识书或 AI 说明时也可以对话；三者都没有时回答不带引用。
 
 ## 笔记
 
@@ -95,15 +97,16 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | GET | `/notes/:id/card` | 单条笔记卡 |
 | GET | `/notebooks/:nb/card` | 整本 Notebook 卡 |
 | POST | `/cards/preview` | multipart `file` + `lang` → `CardPreview`（不写入） |
-| POST | `/cards/import` | multipart `file` + `lang` + 可选 `notebookId`（合并进已有 Notebook）→ `{notebookId, created, notes, sources, lore, rules, assets, warnings}`（`201`） |
+| POST | `/cards/import` | multipart `file` + `lang` + 可选 `notebookId`（合并进已有 Notebook）→ `{notebookId, created, notes, sources, lore, rules, assets, artifacts, elements, reviewCards, warnings}`（`201`） |
 
-导出参数（query）：`format=json|quire`（`json` 内联资源为 `data:` URL；`quire` 为压缩包）、`render`、`lorebook`、`instructions`（默认 `1`）、
-`sources`（默认 `0`）、`creator`。PNG 卡由前端用 JSON 画封面后写入 `tEXt` 块。
+导出参数（query）：`format=json|quire`（`json` 内联资源为 `data:` URL；`quire` 为压缩包，另带资料原始文件）、`render`、`lorebook`、
+`instructions`、`sources`、`artifacts`、`elements`（都默认 `1`）、`creator`。PNG 卡由前端用 JSON 画封面后写入 `tEXt` 块。
+导入时资料的全文、分页、高亮原样还原，分块在本地重建并排入 `reindex` 任务补向量；生成物、元素、复习卡一并还原。
 
 导入接受 Quire 卡（PNG / JSON / `.quire`）、酒馆角色卡（PNG / JSON / CHARX）、世界书 JSON、正则脚本 JSON；
 认不出或损坏时返回 `400`，`error.code` 为 `invalid_card`、`unknown_format` 或 `no_card_data`（PNG 里没有卡片数据）。
 `CardPreview`：`{format, kind, name, summary, creator, creatorNotes, version, tags, cover, notes: {title, chars}[], sources,
-lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, templates, assets, aiInstructions, warnings}`。
+sourceFiles, sourceTitles, artifacts, elements, reviewCards, lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, templates, assets, aiInstructions, warnings}`。
 
 ## 分享链接
 
@@ -257,7 +260,7 @@ sources, creator}, path, createdAt}`；`title` 为当前标题，内容已删除
 
 ### Studio 生成物
 
-- `POST /notebooks/:nb/artifacts`：未传 `sourceIds` 时使用已勾选且就绪的资料；没有可用资料时 `400`（`image` 除外）。未传 `title` 时生成完成后自动命名为 `"<类型名>：<主题>"`；`instructions` 保存在 `props.instructions`。
+- `POST /notebooks/:nb/artifacts`：未传 `sourceIds` 时使用已勾选且就绪的资料，笔记接在资料片段后面一起作为材料；资料和笔记都没有时 `400`（`image` 除外）。未传 `title` 时生成完成后自动命名为 `"<类型名>：<主题>"`；`instructions` 保存在 `props.instructions`。
 - 数据形态：`report / briefing / study_guide / faq / infographic` → `{kind:"markdown"}`；其余与 `kind` 同名。`PATCH` 的 `data.kind` 必须与之匹配，否则 `400`。
 - 音频概览：先生成双人脚本（`script`），再逐句 TTS（A/B 两个音色）并拼接（mp3 直接拼帧；wav / PCM 合并并在句间插 0.35s 静音）。**未配置 TTS 时**：`status: "ready"`、`audioUrl: null`，`error` 字段给出提示（脚本可编辑，配置 TTS 后调用 `render` 合成）。音色可用设置 `PUT /settings/ttsVoices` `{A?, B?}` 覆盖。
 - 视频概览：生成幻灯片（`notes` 为旁白）；检测到 ffmpeg（PATH 或 `FFMPEG_PATH`）才合成 mp4（每页纯色背景 + 文字，有 TTS 时配旁白）。没有 ffmpeg 时 `status: "error"`，`error` 说明原因，`data.slides` 仍保留。

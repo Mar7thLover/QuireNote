@@ -7,7 +7,7 @@ import { patchOf } from "./patch";
 import { CardTemplate, RenderRule } from "./render-schema";
 
 export const QUIRE_CARD_SPEC = "quire_card_v1";
-export const QUIRE_CARD_VERSION = "1.0";
+export const QUIRE_CARD_VERSION = "1.1";
 
 const Extensions = z.record(z.string(), z.unknown());
 
@@ -143,14 +143,76 @@ export const CardNote = z.object({
 });
 export type CardNote = z.infer<typeof CardNote>;
 
+export const CardHighlight = z.object({
+  start: z.number().int().min(0),
+  end: z.number().int().min(0),
+  color: z.string().max(40).default("yellow"),
+  note: z.string().max(20_000).default(""),
+});
+export type CardHighlight = z.infer<typeof CardHighlight>;
+
+/** 资料：解析后的全文、页码与高亮；`.quire` 压缩包里还带原始文件（PDF、DOCX、音视频……）。 */
 export const CardSource = z.object({
   id: z.string(),
   title: z.string().max(500),
   kind: z.string().default("text"),
   url: z.string().nullable().default(null),
   text: z.string(),
+  summary: z.string().max(20_000).default(""),
+  /** 每页起始字符偏移；不分页的资料为 [0]。 */
+  page_offsets: z.array(z.number().int().min(0)).default([0]),
+  highlights: z.array(CardHighlight).max(10_000).default([]),
+  /** 原始文件对应的资源 id（资源类型为 `source`）；JSON 与 PNG 卡不带原始文件。 */
+  file: z.string().nullable().default(null),
+  mime: z.string().nullable().default(null),
+  /** 导入后是否默认勾选参与对话。 */
+  selected: z.boolean().default(true),
 });
 export type CardSource = z.infer<typeof CardSource>;
+
+/** Studio 生成物：`data` 与 QuireNote 的 ArtifactData 同形（报告、思维导图、测验……）；媒体用 `asset://<id>` 引用。 */
+export const CardArtifact = z.object({
+  id: z.string(),
+  kind: z.string().min(1).max(40),
+  title: z.string().max(500).default(""),
+  data: z.unknown(),
+  source_ids: z.array(z.string()).default([]),
+  instructions: z.string().max(20_000).default(""),
+});
+export type CardArtifact = z.infer<typeof CardArtifact>;
+
+/** 元素：概念、术语、人物等，带出处。 */
+export const CardElement = z.object({
+  id: z.string(),
+  type: z.string().min(1).max(40),
+  name: z.string().min(1).max(500),
+  definition: z.string().max(50_000).default(""),
+  aliases: z.array(z.string().max(500)).max(200).default([]),
+  refs: z
+    .array(
+      z.object({
+        source_id: z.string().nullable().default(null),
+        note_id: z.string().nullable().default(null),
+        quote: z.string().max(5000).default(""),
+      }),
+    )
+    .max(200)
+    .default([]),
+  relations: z
+    .array(z.object({ target_id: z.string(), label: z.string().max(200) }))
+    .max(200)
+    .default([]),
+});
+export type CardElement = z.infer<typeof CardElement>;
+
+/** 复习卡：只带正反面，导入后从头开始复习。 */
+export const CardReviewCard = z.object({
+  front: z.string().max(20_000),
+  back: z.string().max(20_000),
+  element_id: z.string().nullable().default(null),
+  artifact_id: z.string().nullable().default(null),
+});
+export type CardReviewCard = z.infer<typeof CardReviewCard>;
 
 export const QuireCardData = z.object({
   kind: z.enum(["note", "notebook"]),
@@ -174,6 +236,9 @@ export const QuireCardData = z.object({
     .optional(),
   notes: z.array(CardNote).max(10_000).default([]),
   sources: z.array(CardSource).max(1000).default([]),
+  artifacts: z.array(CardArtifact).max(1000).default([]),
+  elements: z.array(CardElement).max(10_000).default([]),
+  review_cards: z.array(CardReviewCard).max(20_000).default([]),
   ai_instructions: z.string().max(50_000).default(""),
   render: RenderPack.optional(),
   lorebook: CardLorebook.optional(),

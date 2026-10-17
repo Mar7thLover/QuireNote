@@ -139,7 +139,9 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
     format: (c.req.query("format") === "quire" ? "zip" : "json") as "zip" | "json",
     render: flag(c.req.query("render"), true),
     lorebook: flag(c.req.query("lorebook"), true),
-    sources: flag(c.req.query("sources"), false),
+    sources: flag(c.req.query("sources"), true),
+    artifacts: flag(c.req.query("artifacts"), true),
+    elements: flag(c.req.query("elements"), true),
     instructions: flag(c.req.query("instructions"), true),
     creator: (c.req.query("creator") ?? "").slice(0, 200),
   });

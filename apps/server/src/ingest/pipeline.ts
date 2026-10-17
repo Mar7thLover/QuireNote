@@ -162,6 +162,30 @@ export interface ProcessOptions {
   extractiveSummary?: boolean;
 }
 
+/** 按全文重新分块（不调用模型）；向量另由 embedMissing 补。 */
+export async function rechunk(
+  ctx: AppContext,
+  src: Pick<Source, "id" | "notebookId" | "kind">,
+  text: string,
+  pageOffsets: number[],
+): Promise<Chunk[]> {
+  await ctx.store.chunks.deleteBySource(src.id);
+  const paged = pageOffsets.length > 1 || src.kind === "pdf";
+  const chunks: Chunk[] = chunkText(text, pageOffsets, { paged }).map((d) => ({
+    id: newId("ch"),
+    sourceId: src.id,
+    notebookId: src.notebookId,
+    index: d.index,
+    text: d.text,
+    start: d.start,
+    end: d.end,
+    page: d.page,
+    heading: d.heading,
+  }));
+  await ctx.store.chunks.insertMany(chunks);
+  return chunks;
+}
+
 export async function processSource(
   ctx: AppContext,
   sourceId: string,
@@ -199,21 +223,7 @@ export async function processSource(
       pageOffsets: doc.pageOffsets,
     });
     await progress(0.3, "分块中");
-    await store.chunks.deleteBySource(sourceId);
-    const paged = doc.pageOffsets.length > 1 || src.kind === "pdf";
-    const drafts = chunkText(doc.text, doc.pageOffsets, { paged });
-    const chunks: Chunk[] = drafts.map((d) => ({
-      id: newId("ch"),
-      sourceId,
-      notebookId: src.notebookId,
-      index: d.index,
-      text: d.text,
-      start: d.start,
-      end: d.end,
-      page: d.page,
-      heading: d.heading,
-    }));
-    await store.chunks.insertMany(chunks);
+    const chunks = await rechunk(ctx, src, doc.text, doc.pageOffsets);
 
     await progress(0.4, `Embedding 0/${chunks.length}`);
     await embedMissing(ctx, { sourceId }, (done, total) =>

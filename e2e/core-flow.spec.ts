@@ -141,6 +141,8 @@ test.describe("Quire 卡", () => {
     await expect(dialog.getByRole("heading", { name: "人工智能简史" })).toBeVisible();
     await expect(dialog).toContainText("Quire 卡 · PNG");
     await expect(dialog).toContainText("作者 E2E");
+    // 整本卡默认带上资料（PNG 只带文字和高亮）
+    await expect(dialog).toContainText("3 份资料");
     await expect(dialog.locator("img")).toBeVisible();
     await dialog.getByRole("button", { name: "取消" }).click();
     await expect(dialog).toBeHidden();
@@ -155,8 +157,13 @@ test.describe("Quire 卡", () => {
     await expect(
       page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "人工智能简史" }),
     ).toHaveCount(2);
-    // 删掉导入的副本，后面的用例按名字找原来那本
+    // 资料随卡片导入，直接能读
     const copyId = /\/n\/(nb_\w+)/.exec(page.url())![1];
+    const copied = (await (await page.request.get(`/api/notebooks/${copyId}/sources`)).json()) as {
+      status: string;
+    }[];
+    expect(copied.map((x) => x.status)).toEqual(["ready", "ready", "ready"]);
+    // 删掉导入的副本，后面的用例按名字找原来那本
     expect((await page.request.delete(`/api/notebooks/${copyId}`)).ok()).toBe(true);
   });
 });
