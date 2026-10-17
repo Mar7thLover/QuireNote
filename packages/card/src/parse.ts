@@ -14,7 +14,8 @@ export interface ParseOptions extends ConvertOptions {
 }
 
 export const CARD_LIMITS = {
-  json: 8 * 1024 * 1024,
+  /** 整本 Notebook 带上资料全文时会比较大，和 PNG 用同一上限。 */
+  json: 20 * 1024 * 1024,
   png: 20 * 1024 * 1024,
   zip: 200 * 1024 * 1024,
   /** 解压后的总大小（防 zip 炸弹）。 */

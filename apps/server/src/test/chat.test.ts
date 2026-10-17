@@ -120,12 +120,14 @@ describe("chat with citations", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("answers without sources when none are selected", async () => {
+  it("with no sources selected, answers from the notebook's notes and cites them", async () => {
     const sources = await s.json<{ id: string }[]>(`/notebooks/${nb.id}/sources`);
+    const notes = await s.json<{ id: string }[]>(`/notebooks/${nb.id}/notes`);
     const events = await send({ content: "图灵测试", parentId: null, sourceIds: ["src_none"] });
     const done = events.at(-1)!.data as Message;
-    expect(done.citations).toEqual([]);
-    expect(done.content).toMatch(/没有资料片段/);
+    expect(done.citations.length).toBeGreaterThan(0);
+    // 没有资料片段可引，引用都指向笔记
+    for (const c of done.citations) expect(notes.map((n) => n.id)).toContain(c.noteId);
     expect(sources.length).toBe(3);
   });
 

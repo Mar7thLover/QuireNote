@@ -29,6 +29,9 @@ function sampleCard(): QuireCard {
         { id: "n1", title: "心理史学", markdown: "# 心理史学\n\n【概念：心理史学】", tags: [], kind: "note" },
       ],
       sources: [],
+      artifacts: [],
+      elements: [],
+      review_cards: [],
       ai_instructions: "用研究助理的口吻回答。",
       lorebook: {
         name: "设定",
@@ -110,6 +113,31 @@ describe("Quire 卡", () => {
   it("不符合规格的 Quire 卡指出字段", () => {
     const bad = { ...sampleCard(), data: { ...sampleCard().data, name: "" } };
     expect(() => parseCardFile(json(bad))).toThrowError(/data\.name/);
+  });
+
+  it("1.0 版的卡（资料只有文字，没有生成物和元素）按默认值补齐", () => {
+    const old = {
+      spec: "quire_card_v1",
+      spec_version: "1.0",
+      data: {
+        kind: "notebook",
+        name: "旧卡",
+        notes: [],
+        sources: [{ id: "s1", title: "资料", kind: "pdf", url: null, text: "正文" }],
+        assets: [],
+        extensions: {},
+      },
+    };
+    const d = parseCardFile(json(old)).card.data;
+    expect(d.sources[0]).toMatchObject({
+      page_offsets: [0],
+      highlights: [],
+      file: null,
+      mime: null,
+      summary: "",
+      selected: true,
+    });
+    expect([d.artifacts, d.elements, d.review_cards]).toEqual([[], [], []]);
   });
 });
 

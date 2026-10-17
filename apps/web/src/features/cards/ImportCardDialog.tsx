@@ -10,7 +10,7 @@ import { setPluginEnabled } from "@/features/plugins/catalog";
 import { currentLang, useTranslation } from "@/i18n";
 import { ApiError, api, type CardPreview } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
-import { TINTS, tintFor } from "@/lib/tints";
+import { tintBg, tintFor, tintInk } from "@/lib/tints";
 
 const NEW = "__new__";
 
@@ -212,11 +212,14 @@ function PreviewBody({ p }: { p: CardPreview }) {
   const { t } = useTranslation();
   const counts = [
     p.notes.length ? t("cards.countNotes", { count: p.notes.length }) : null,
+    p.sources ? t("cards.countSources", { count: p.sources }) : null,
+    p.artifacts ? t("cards.countArtifacts", { count: p.artifacts }) : null,
+    p.elements ? t("cards.countElements", { count: p.elements }) : null,
+    p.reviewCards ? t("cards.countReviewCards", { count: p.reviewCards }) : null,
     p.lore.total ? t("cards.countLore", { count: p.lore.total }) : null,
     p.rules.total ? t("cards.countRules", { count: p.rules.total }) : null,
     p.templates ? t("cards.countTemplates", { count: p.templates }) : null,
     p.assets ? t("cards.countAssets", { count: p.assets }) : null,
-    p.sources ? t("cards.countSources", { count: p.sources }) : null,
   ].filter(Boolean);
   const meta = [
     p.creator ? t("cards.by", { name: p.creator }) : null,
@@ -231,8 +234,8 @@ function PreviewBody({ p }: { p: CardPreview }) {
         ) : (
           <div
             aria-hidden
-            className="grid h-[150px] w-[100px] shrink-0 place-items-center rounded-lg font-serif text-[44px] text-fg/80"
-            style={{ background: TINTS[tintFor(p.name)] }}
+            className="grid h-[150px] w-[100px] shrink-0 place-items-center rounded-lg font-serif text-[44px]"
+            style={{ background: tintBg(tintFor(p.name)), color: tintInk }}
           >
             {[...p.name.trim()][0] ?? "Q"}
           </div>
@@ -244,10 +247,37 @@ function PreviewBody({ p }: { p: CardPreview }) {
           {p.summary ? (
             <p className="line-clamp-3 text-[13.5px] leading-relaxed text-fg-muted">{p.summary}</p>
           ) : null}
-          {counts.length ? <p className="mt-auto text-[12.5px] text-fg-subtle">{counts.join("、")}</p> : null}
+          {counts.length ? (
+            <p className="mt-auto text-[12.5px] text-fg-subtle">{counts.join(t("share.partJoin"))}</p>
+          ) : null}
         </div>
       </div>
 
+      {p.sources ? (
+        <Section
+          title={t("cards.sources")}
+          hint={
+            p.sourceFiles
+              ? t("cards.sourceFiles", { count: p.sourceFiles })
+              : p.sourcesTextOnly
+                ? t("cards.sourcesTextOnly", { count: p.sourcesTextOnly })
+                : undefined
+          }
+        >
+          <ul className="flex flex-col gap-0.5">
+            {p.sourceTitles.map((title, i) => (
+              <li key={i} className="truncate text-fg">
+                {title}
+              </li>
+            ))}
+            {p.sources > p.sourceTitles.length ? (
+              <li className="text-fg-subtle">
+                {t("cards.moreSources", { count: p.sources - p.sourceTitles.length })}
+              </li>
+            ) : null}
+          </ul>
+        </Section>
+      ) : null}
       {p.creatorNotes ? (
         <Section title={t("cards.creatorNotes")}>
           <p className="whitespace-pre-wrap">{p.creatorNotes}</p>

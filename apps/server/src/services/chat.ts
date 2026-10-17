@@ -5,7 +5,7 @@ import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";
 import { loreForChat } from "./lorebook";
-import { activeSources, gatherPassages } from "./passages";
+import { activeSources, gatherNotes, gatherPassages } from "./passages";
 import { presetFor } from "./presets";
 
 export const DEFAULT_CONVERSATION_TITLE = "新对话";
@@ -17,6 +17,9 @@ const CHAT_CONTEXT_CHARS = 12_000;
  * 而且资料部分每轮不变，可以命中提示词缓存。没有 Embedding 时上限更高，代替向量检索。
  */
 const FULL_CONTEXT_CHARS = { withEmbedding: 20_000, withoutEmbedding: 60_000 };
+/** 笔记也算资料：有勾选资料时笔记最多给这么多字，没有资料时给得多一些。 */
+const NOTES_WITH_SOURCES = 20_000;
+const NOTES_ALONE = 60_000;
 
 export interface SendMessageInput {
   content?: string;
@@ -110,7 +113,7 @@ export async function runChat(
     : FULL_CONTEXT_CHARS.withoutEmbedding;
   // 资料不多：整份按原文顺序给模型。资料多：先放检索命中的片段，再用每份资料的均匀抽样补足，
   // 「这几份资料分别讲了什么」这类概括性提问关键词命中不了任何片段，没有补足时模型会拿到空资料。
-  const { passages, citable } = !sources.length
+  const fromSources = !sources.length
     ? { passages: [], citable: [] }
     : total <= fullLimit
       ? await gatherPassages(ctx, conv.notebookId, { sourceIds, maxChars: total })
@@ -121,6 +124,14 @@ export async function runChat(
           maxChars: CHAT_CONTEXT_CHARS,
           order: "relevance",
         });
+  // 笔记也算资料：接在资料片段后面编号，同样可以引用；没有勾选资料时给得多一些。
+  const fromNotes = await gatherNotes(ctx, conv.notebookId, {
+    query,
+    maxChars: sources.length ? NOTES_WITH_SOURCES : NOTES_ALONE,
+    startAt: fromSources.passages.length + 1,
+  });
+  const passages = [...fromSources.passages, ...fromNotes.passages];
+  const citable = [...fromSources.citable, ...fromNotes.citable];
 
   // 知识书：按本次提问和最近几条消息触发；Notebook 说明随系统提示词一起给模型。
   const [nb, lore] = await Promise.all([

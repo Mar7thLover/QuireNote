@@ -258,6 +258,25 @@ describe.skipIf(!key)(`live: ${model}`, () => {
     expect(answer).not.toMatch(/没有.{0,6}资料/);
   });
 
+  it("cites notes like sources when they are given as numbered passages", async () => {
+    // 服务端把笔记接在资料片段后面编号，标题写成「笔记：…」
+    const n = passages.length + 1;
+    const withNote: Passage[] = [
+      ...passages,
+      { n, title: "笔记：会议纪要", text: "课题组决定在 2027 年春季复现达特茅斯会议的原始提案。" },
+    ];
+    const question = "课题组决定什么时候复现达特茅斯会议的提案？";
+    const answer = await collect(
+      streamChat(haiku, {
+        system: buildCitationSystemPrompt(withNote, question),
+        messages: [{ role: "user", content: question }],
+      }),
+    );
+    expect(answer).toContain("2027");
+    expect(usedCitationNumbers(answer)).toContain(n);
+    for (const x of usedCitationNumbers(answer)) expect(x).toBeLessThanOrEqual(n);
+  });
+
   it("applies notebook instructions to Studio artifacts", async () => {
     const data = await generateArtifactData(haiku, {
       kind: "briefing",

@@ -134,6 +134,9 @@ export interface ShareOptions {
   lorebook: boolean;
   instructions: boolean;
   sources: boolean;
+  /** 较早的分享记录没有这两项，按 true 处理。 */
+  artifacts?: boolean;
+  elements?: boolean;
   creator: string;
 }
 

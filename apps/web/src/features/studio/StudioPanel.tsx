@@ -16,6 +16,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertCircle, BookOpen, ChevronRight, Sparkles, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { PanelShell } from "@/components/Panel";
+import { useNotebookHasNotes } from "@/features/lorebook/useBackground";
 import { useSelectedSourceIds } from "@/features/sources/hooks";
 import { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -74,6 +75,7 @@ function useKindTags(): (k: ArtifactKind) => string[] {
 export function StudioPanel({ notebookId }: { notebookId: string }) {
   const { t } = useTranslation();
   const sourceIds = useSelectedSourceIds(notebookId);
+  const hasNotes = useNotebookHasNotes(notebookId);
   const tagsOf = useKindTags();
   const artifacts = useQuery({
     queryKey: qk.artifacts(notebookId),
@@ -90,11 +92,15 @@ export function StudioPanel({ notebookId }: { notebookId: string }) {
           <p
             className={cn(
               "flex items-center gap-2 text-[13px]",
-              sourceIds.length ? "text-fg-subtle" : "text-warning",
+              sourceIds.length || hasNotes ? "text-fg-subtle" : "text-warning",
             )}
           >
             <BookOpen className="size-4 shrink-0" strokeWidth={1.6} />
-            {sourceIds.length ? t("studio.scope", { count: sourceIds.length }) : t("studio.scopeNone")}
+            {sourceIds.length
+              ? t(hasNotes ? "studio.scopeWithNotes" : "studio.scope", { count: sourceIds.length })
+              : hasNotes
+                ? t("studio.scopeNotes")
+                : t("studio.scopeNone")}
           </p>
 
           <section className="flex flex-col gap-2.5">

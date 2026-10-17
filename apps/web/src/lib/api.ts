@@ -199,6 +199,12 @@ export interface CardPreview {
   cover: string | null;
   notes: { title: string; chars: number }[];
   sources: number;
+  sourceFiles: number;
+  sourcesTextOnly: number;
+  sourceTitles: string[];
+  artifacts: number;
+  elements: number;
+  reviewCards: number;
   lore: { total: number; constant: { name: string; content: string }[] };
   rules: { total: number; disabled: string[] };
   templates: number;
@@ -215,6 +221,9 @@ export interface CardImportResult {
   lore: number;
   rules: number;
   assets: number;
+  artifacts: number;
+  elements: number;
+  reviewCards: number;
   warnings: string[];
 }
 
@@ -230,6 +239,10 @@ export interface CardExportOptions {
   render?: boolean;
   lorebook?: boolean;
   sources?: boolean;
+  /** Studio 生成物。 */
+  artifacts?: boolean;
+  /** 元素与复习卡。 */
+  elements?: boolean;
   instructions?: boolean;
   creator?: string;
 }
@@ -243,7 +256,15 @@ export interface ShareLink {
   /** 当前标题；内容已删除时为 null。 */
   title: string | null;
   notebookTitle: string | null;
-  options: { render: boolean; lorebook: boolean; instructions: boolean; sources: boolean; creator: string };
+  options: {
+    render: boolean;
+    lorebook: boolean;
+    instructions: boolean;
+    sources: boolean;
+    artifacts?: boolean;
+    elements?: boolean;
+    creator: string;
+  };
   /** 只读页路径 `/share/<token>`，拼上公开访问地址就是链接。 */
   path: string;
   createdAt: string;
@@ -256,6 +277,8 @@ export interface ShareInput {
   lorebook?: boolean;
   instructions?: boolean;
   sources?: boolean;
+  artifacts?: boolean;
+  elements?: boolean;
   creator?: string;
 }
 
