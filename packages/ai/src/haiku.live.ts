@@ -18,6 +18,8 @@ import { webSearch } from "./search";
 import {
   buildCitationPrompt,
   buildCitationSystemPrompt,
+  checkConsistency,
+  draftChapterStream,
   expandQuery,
   extractElements,
   generateArtifactData,
@@ -287,5 +289,59 @@ describe.skipIf(!key)(`live: ${model}`, () => {
     expect(chats).toHaveLength(2);
     expect(chats[0]!.inputTokens).toBeGreaterThan(1000);
     expect(chats[1]!.cacheReadTokens).toBeGreaterThan(0);
+  });
+
+  it("applies a chat preset's style, and the notebook's AI instructions win when they conflict", async () => {
+    const question = "达特茅斯会议是哪一年召开的？";
+    const styled = buildCitationPrompt(passages, question, {
+      style: { instructions: "每个回答的第一行只写「【速答】」三个字，从第二行开始作答。" },
+    });
+    const a = await collect(
+      streamChat(haiku, { system: styled.system, messages: [{ role: "user", content: question }], temperature: 0.2 }),
+    );
+    expect(a.trim().split("\n")[0]).toContain("【速答】");
+    expect(a).toContain("1956");
+
+    const conflict = buildCitationPrompt(passages, question, {
+      style: { instructions: "Always answer in English." },
+      instructions: "无论提问用什么语言，都用简体中文回答。",
+    });
+    const b = await collect(streamChat(haiku, { system: conflict.system, messages: [{ role: "user", content: question }] }));
+    const han = (b.match(/\p{Script=Han}/gu) ?? []).length;
+    expect(han / Math.max(1, b.replace(/\s/g, "").length)).toBeGreaterThan(0.3);
+  });
+
+  const lore = { loreAfter: "林岚：二十六岁，左手有旧烧伤，从不在人前摘下手套。灯塔：雾港的灯塔每隔七秒扫过一次海面。" };
+
+  it("drafts a chapter from its outline, using the lorebook, as plain prose", async () => {
+    const text = await collect(
+      draftChapterStream(haiku, {
+        title: "第二章",
+        outline: "梗概：林岚在旅馆遇见老船长。\n场景节拍：\n1. 老船长认出了她的手套\n2. 她假装不认识他",
+        background: "# 前文提要\n\n- 第一章：林岚在雾天抵达雾港。",
+        notebook: lore,
+      }),
+    );
+    expect(text.length).toBeGreaterThan(300);
+    expect(text).toContain("林岚");
+    expect(text).toMatch(/手套/);
+    expect(text).not.toMatch(/^#|^第二章/m);
+  });
+
+  it("continues a passage without repeating it", async () => {
+    const before = "林岚推开旅馆的门，门上的铃铛响了一声。屋里只有一个人，坐在靠窗的位置。";
+    const out = await collect(
+      transformStream(haiku, { action: "continue", text: before, passages: [], notebook: lore }),
+    );
+    expect(out.length).toBeGreaterThan(50);
+    expect(out).not.toContain("门上的铃铛响了一声");
+  });
+
+  it("flags a chapter that contradicts the lorebook, quoting the chapter verbatim", async () => {
+    const chapter =
+      "雨停了。林岚在码头上摘下手套，露出一双光洁无瑕的手，把手套随手塞进口袋。灯塔的光每隔七秒扫过海面。";
+    const r = await checkConsistency(haiku, { title: "第三章", outline: "", text: chapter, notebook: lore });
+    expect(r.issues.length).toBeGreaterThan(0);
+    expect(r.issues.some((i) => chapter.includes(i.quote.trim()) && /手套|手/.test(i.quote))).toBe(true);
   });
 });
