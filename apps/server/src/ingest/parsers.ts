@@ -6,6 +6,7 @@ import mammoth from "mammoth";
 import { extractText, getDocumentProxy } from "unpdf";
 import { joinPages } from "../chunking";
 import { ApiError } from "../errors";
+import { msg } from "../messages";
 
 export interface ParsedDoc {
   text: string;
@@ -48,7 +49,7 @@ export async function parsePdf(bytes: Uint8Array): Promise<ParsedDoc> {
     throw new ApiError(
       400,
       "parse_failed",
-      `无法解析 PDF：${err instanceof Error ? err.message : String(err)}`,
+      msg().pdfParseFailed(err instanceof Error ? err.message : String(err)),
     );
   }
   const { totalPages, text } = await extractText(pdf, { mergePages: false });
@@ -63,11 +64,7 @@ export async function parsePdf(bytes: Uint8Array): Promise<ParsedDoc> {
   const pages = text.map((p) => normalizeText(p));
   const joined = joinPages(pages);
   if (!joined.text.trim()) {
-    throw new ApiError(
-      400,
-      "empty_text",
-      "PDF 中没有可提取的文本（可能是扫描件，请先 OCR 或以图片形式导入）",
-    );
+    throw new ApiError(400, "empty_text", msg().pdfNoText);
   }
   return { ...joined, pageCount: totalPages, ...(title ? { title } : {}) };
 }
@@ -80,7 +77,7 @@ export async function parseDocx(bytes: Uint8Array): Promise<ParsedDoc> {
     throw new ApiError(
       400,
       "parse_failed",
-      `无法解析 DOCX：${err instanceof Error ? err.message : String(err)}`,
+      msg().docxParseFailed(err instanceof Error ? err.message : String(err)),
     );
   }
 }
@@ -178,16 +175,16 @@ export function parseEpub(bytes: Uint8Array): ParsedDoc {
   try {
     files = unzipSync(bytes);
   } catch {
-    throw new ApiError(400, "parse_failed", "无法解压 EPUB 文件");
+    throw new ApiError(400, "parse_failed", msg().epubUnzipFailed);
   }
   const read = (p: string) => (files[p] ? strFromU8(files[p]!) : null);
   const container = read("META-INF/container.xml");
   const opfPath = container
     ? /full-path="([^"]+)"/.exec(container)?.[1]
     : Object.keys(files).find((f) => f.endsWith(".opf"));
-  if (!opfPath) throw new ApiError(400, "parse_failed", "EPUB 中找不到 OPF 清单");
+  if (!opfPath) throw new ApiError(400, "parse_failed", msg().epubNoOpf);
   const opf = read(opfPath);
-  if (!opf) throw new ApiError(400, "parse_failed", "EPUB 的 OPF 清单为空");
+  if (!opf) throw new ApiError(400, "parse_failed", msg().epubEmptyOpf);
   const dir = opfPath.includes("/") ? opfPath.slice(0, opfPath.lastIndexOf("/") + 1) : "";
   const manifest = new Map<string, string>();
   for (const m of opf.matchAll(/<item\b[^>]*>/g)) {
@@ -210,7 +207,7 @@ export function parseEpub(bytes: Uint8Array): ParsedDoc {
     if (text.trim()) chapters.push(text);
   }
   const text = normalizeText(chapters.join("\n\n"));
-  if (!text) throw new ApiError(400, "empty_text", "EPUB 中没有可提取的文本");
+  if (!text) throw new ApiError(400, "empty_text", msg().epubNoText);
   return { text, pageOffsets: [0], pageCount: null, ...(title ? { title: decodeEntities(title) } : {}) };
 }
 
@@ -241,7 +238,7 @@ export async function fetchWithTimeout(
     throw new ApiError(
       400,
       "fetch_failed",
-      `无法访问 ${url}：${err instanceof Error ? err.message : String(err)}`,
+      msg().fetchUnreachable(url, err instanceof Error ? err.message : String(err)),
     );
   } finally {
     clearTimeout(t);
@@ -257,24 +254,24 @@ export async function fetchUrl(
   try {
     parsed = new URL(url);
   } catch {
-    throw new ApiError(400, "bad_url", `URL 无效：${url}`);
+    throw new ApiError(400, "bad_url", msg().invalidUrl(url));
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-    throw new ApiError(400, "bad_url", "只支持 http / https 链接");
+    throw new ApiError(400, "bad_url", msg().httpOnly);
   const res = await fetchWithTimeout(fetchImpl, url, {
     headers: {
       "user-agent": UA,
       accept: "text/html,application/xhtml+xml,application/pdf,text/plain;q=0.9,*/*;q=0.5",
     },
   });
-  if (!res.ok) throw new ApiError(400, "fetch_failed", `抓取失败：HTTP ${res.status}`);
+  if (!res.ok) throw new ApiError(400, "fetch_failed", msg().fetchFailed(res.status));
   const mime = res.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "text/html";
   const bytes = new Uint8Array(await res.arrayBuffer());
   let doc: ParsedDoc;
   if (mime === "application/pdf" || url.toLowerCase().endsWith(".pdf")) doc = await parsePdf(bytes);
   else if (mime.startsWith("text/plain") || mime === "text/markdown") doc = parsePlain(decodeUtf8(bytes));
   else doc = parseHtmlArticle(decodeHtml(bytes, res.headers.get("content-type")), url);
-  if (!doc.text.trim()) throw new ApiError(400, "empty_text", "网页中没有可提取的正文");
+  if (!doc.text.trim()) throw new ApiError(400, "empty_text", msg().pageNoText);
   return { doc: { ...doc, mime }, bytes, mime };
 }
 
@@ -370,11 +367,11 @@ export function captionsToText(lines: { start: number; text: string }[]): string
 
 export async function fetchYoutubeTranscript(url: string, fetchImpl: typeof fetch): Promise<ParsedDoc> {
   const id = youtubeId(url);
-  if (!id) throw new ApiError(400, "bad_url", "不是有效的 YouTube 链接");
+  if (!id) throw new ApiError(400, "bad_url", msg().invalidYoutube);
   const res = await fetchWithTimeout(fetchImpl, `https://www.youtube.com/watch?v=${id}&hl=zh-CN`, {
     headers: { "user-agent": UA, "accept-language": "zh-CN,zh;q=0.9,en;q=0.8" },
   });
-  if (!res.ok) throw new ApiError(400, "fetch_failed", `无法打开 YouTube 页面：HTTP ${res.status}`);
+  if (!res.ok) throw new ApiError(400, "fetch_failed", msg().youtubeOpenFailed(res.status));
   const html = await res.text();
   const titleMatch =
     /"title":"((?:[^"\\]|\\.)*)","lengthSeconds"/.exec(html) ?? /<title>([\s\S]*?)<\/title>/.exec(html);
@@ -389,29 +386,25 @@ export async function fetchYoutubeTranscript(url: string, fetchImpl: typeof fetc
   }
   const tracksMatch = /"captionTracks":(\[.*?\])/.exec(html);
   if (!tracksMatch) {
-    throw new ApiError(
-      400,
-      "no_captions",
-      "无法获取该视频的字幕：视频可能没有字幕、需要登录，或 YouTube 限制了访问",
-    );
+    throw new ApiError(400, "no_captions", msg().youtubeNoCaptions);
   }
   let tracks: CaptionTrack[];
   try {
     tracks = JSON.parse(tracksMatch[1]!) as CaptionTrack[];
   } catch {
-    throw new ApiError(400, "no_captions", "无法解析 YouTube 字幕列表");
+    throw new ApiError(400, "no_captions", msg().youtubeCaptionListFailed);
   }
   const pick =
     tracks.find((t) => t.languageCode?.startsWith("zh") && t.kind !== "asr") ??
     tracks.find((t) => t.languageCode?.startsWith("en") && t.kind !== "asr") ??
     tracks.find((t) => t.kind !== "asr") ??
     tracks[0];
-  if (!pick?.baseUrl) throw new ApiError(400, "no_captions", "该视频没有可用的字幕轨");
+  if (!pick?.baseUrl) throw new ApiError(400, "no_captions", msg().youtubeNoTrack);
   const capRes = await fetchWithTimeout(fetchImpl, pick.baseUrl.replace(/\\u0026/g, "&"), {
     headers: { "user-agent": UA },
   });
   const body = capRes.ok ? await capRes.text() : "";
   const lines = body ? parseCaptions(body) : [];
-  if (!lines.length) throw new ApiError(400, "no_captions", "字幕内容为空（YouTube 可能要求登录或校验令牌）");
+  if (!lines.length) throw new ApiError(400, "no_captions", msg().youtubeEmptyCaptions);
   return { text: captionsToText(lines), pageOffsets: [0], pageCount: null, ...(title ? { title } : {}) };
 }

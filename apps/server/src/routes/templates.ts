@@ -30,7 +30,7 @@ export function templateRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.post("/notebooks/:nb/save-template", async (c) => {
-    must(await ctx.store.notebooks.get(c.req.param("nb")), "Notebook");
+    must(await ctx.store.notebooks.get(c.req.param("nb")), "notebook");
     const input = await readJson(
       c,
       z.object({ name: z.string().max(200).optional(), description: z.string().max(5000).optional() }),

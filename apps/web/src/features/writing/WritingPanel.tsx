@@ -198,7 +198,7 @@ function ManuscriptTab({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-subtle">
-        <span>{t("writing.total", { n: formatNumber(total) })}</span>
+        <span>{t("writing.total", { n: formatNumber(total), count: total })}</span>
         <span aria-hidden>·</span>
         <label className="flex items-center gap-1">
           {t("writing.target")}

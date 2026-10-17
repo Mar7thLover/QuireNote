@@ -48,6 +48,11 @@ export function apiBase(): string {
   return "/api";
 }
 
+/** 界面语言：服务端按它写错误提示、任务进度和自动起的名字。 */
+function langHeaders(): Record<string, string> {
+  return { "accept-language": i18n.language === "en" ? "en" : "zh-CN" };
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -66,7 +71,7 @@ async function request<T>(method: string, path: string, body?: unknown, init?: R
   try {
     res = await fetch(apiBase() + path, {
       method,
-      headers: body && !isForm ? { "content-type": "application/json" } : undefined,
+      headers: { ...langHeaders(), ...(body && !isForm ? { "content-type": "application/json" } : {}) },
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
       ...init,
     });
@@ -322,7 +327,7 @@ export const api = {
       },
     ) => patch<Notebook>(`/notebooks/${id}`, input),
     remove: (id: string) => del(`/notebooks/${id}`),
-    exportUrl: (id: string) => `${apiBase()}/notebooks/${id}/export`,
+    exportUrl: (id: string) => `${apiBase()}/notebooks/${id}/export?lang=${i18n.language}`,
     import: (file: File) => {
       const fd = new FormData();
       fd.append("file", file);
@@ -417,7 +422,7 @@ export const api = {
     fromElements: (nb: string, lang: string) =>
       post<{ created: number }>(`/notebooks/${nb}/lorebook/from-elements?lang=${lang}`),
     exportUrl: (nb: string, format: "quire" | "sillytavern") =>
-      `${apiBase()}/notebooks/${nb}/lorebook/export?format=${format}`,
+      `${apiBase()}/notebooks/${nb}/lorebook/export?format=${format}&lang=${i18n.language}`,
   },
   cards: {
     noteUrl: (id: string, o: CardExportOptions) => `${apiBase()}/notes/${id}/card?${cardQuery(o)}`,
@@ -645,7 +650,7 @@ export async function streamSse(
 ): Promise<void> {
   const res = await fetch(apiBase() + path, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "text/event-stream" },
+    headers: { ...langHeaders(), "content-type": "application/json", accept: "text/event-stream" },
     body: JSON.stringify(body),
     signal,
   });

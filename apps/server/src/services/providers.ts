@@ -16,7 +16,8 @@ import {
 import type { AppContext } from "../context";
 import { keyHint } from "../crypto";
 import { badRequest, notFound } from "../errors";
-import { CAP_LABEL, LEGACY_LOCAL_PROVIDER_ID } from "../models";
+import { msg, providerLabel } from "../messages";
+import { capLabel, LEGACY_LOCAL_PROVIDER_ID } from "../models";
 import type { ProviderRecord } from "../store/types";
 
 const CAP_ORDER: Capability[] = ["chat", "embedding", "search", "tts", "stt", "image", "video"];
@@ -49,7 +50,7 @@ export function normalizeModels(kind: ProviderKind, models: ProviderModel[]): Pr
     const caps = m.capabilities.filter((c) => supportsCapability(kind, c));
     if (!caps.length) {
       throw badRequest(
-        `模型 ${id} 的用途（${m.capabilities.map((c) => CAP_LABEL[c]).join("、")}）不是 ${catalogEntry(kind).label} 支持的能力`,
+        msg().modelCapsUnsupported(id, m.capabilities.map(capLabel).join(msg().listSep), providerLabel(kind)),
       );
     }
     const cur = byId.get(id);
@@ -81,7 +82,7 @@ function decodeHeaders(ctx: AppContext, p: ProviderRecord): ProviderHeaders {
 function checkBaseUrl(kind: ProviderKind, baseUrl: string | null): void {
   const entry = catalogEntry(kind);
   if (entry.baseUrlRequired && !entry.defaultBaseUrl && !baseUrl)
-    throw badRequest(`${entry.label}需要填写 baseUrl`);
+    throw badRequest(msg().baseUrlRequired(providerLabel(kind)));
 }
 
 export async function createProvider(ctx: AppContext, input: ProviderInput): Promise<ProviderRecord> {
@@ -121,7 +122,7 @@ export async function updateProvider(
   patch: ProviderPatch,
 ): Promise<ProviderRecord> {
   const cur = await ctx.store.providers.get(id);
-  if (!cur) throw notFound("Provider");
+  if (!cur) throw notFound("provider");
   const next: Partial<ProviderRecord> = {};
   if (patch.name !== undefined) next.name = patch.name.trim() || cur.name;
   if (patch.baseUrl !== undefined) {
@@ -172,10 +173,10 @@ export async function validateModelChoice(
   providerId: string,
   model: string,
 ): Promise<void> {
-  if (!model.trim()) throw badRequest("model 不能为空");
+  if (!model.trim()) throw badRequest(msg().emptyField("model"));
   const p = await ctx.store.providers.get(providerId);
-  if (!p) throw badRequest(`provider ${providerId} 不存在`);
-  if (!supportsCapability(p.kind, cap)) throw badRequest(`${p.name}（${p.kind}）不支持${CAP_LABEL[cap]}`);
+  if (!p) throw badRequest(msg().providerNotFound(providerId));
+  if (!supportsCapability(p.kind, cap)) throw badRequest(msg().capUnsupported(p.name, p.kind, capLabel(cap)));
 }
 
 export function validateAssignment(ctx: AppContext, a: ModelAssignment): Promise<void> {
@@ -324,7 +325,7 @@ async function bootstrapCompatible(
   const key = readEnvSecret(env, COMPAT_ENV.key, log);
   const rec = await createProvider(ctx, {
     kind: "openai-compatible",
-    name: "OpenAI 兼容接口（环境变量）",
+    name: msg().envProviderName(providerLabel("openai-compatible")),
     baseUrl,
     ...(key ? { apiKey: key } : {}),
     ...(models.length ? { models } : {}),
@@ -355,7 +356,7 @@ export async function bootstrapProvidersFromEnv(
     if (byKind.has(spec.kind)) continue;
     const rec = await createProvider(ctx, {
       kind: spec.kind,
-      name: `${spec.name}（环境变量）`,
+      name: msg().envProviderName(spec.name),
       apiKey: key,
       enabled: true,
     });
@@ -375,7 +376,7 @@ export async function bootstrapProvidersFromEnv(
     compat?.enabled ? env[cap === "chat" ? COMPAT_ENV.chat : COMPAT_ENV.embedding]?.trim() || null : null;
   const assign = async (cap: Capability, p: ProviderRecord, model: string) => {
     await ctx.store.assignments.set({ capability: cap, providerId: p.id, model });
-    log(`${CAP_LABEL[cap]}模型已分配为 ${p.name} / ${model}`);
+    log(`${capLabel(cap)}模型已分配为 ${p.name} / ${model}`);
   };
 
   if (!(await ctx.models.assignment("chat"))) {
@@ -400,6 +401,6 @@ export async function bootstrapProvidersFromEnv(
   // Claude 也能联网搜索、画插图：上面没补上的，用 Anthropic 补。
   const claude = usable("anthropic");
   if (claude)
-    for (const cap of await fillUnassigned(ctx, claude)) log(`${CAP_LABEL[cap]}模型已分配为 ${claude.name}`);
+    for (const cap of await fillUnassigned(ctx, claude)) log(`${capLabel(cap)}模型已分配为 ${claude.name}`);
   return created;
 }

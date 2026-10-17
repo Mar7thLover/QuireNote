@@ -3,6 +3,8 @@ import { enrichElement, extractElements, type Passage } from "@quirenote/ai";
 import { ELEMENT_TYPE_META, type Element, newId, nowIso, type ReviewCard } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest, notFound } from "../errors";
+import { currentLang } from "../lang";
+import { msg } from "../messages";
 import { retrieve, toPassages } from "../retrieval";
 import { gatherPassages } from "./passages";
 import { createCards, updateElementMastery } from "./review";
@@ -81,12 +83,12 @@ export async function runExtractJob(
   input: ExtractInput,
   progress: (p: number, m?: string) => Promise<void>,
 ): Promise<string> {
-  await progress(0.05, "收集内容");
+  await progress(0.05, msg().job.collecting);
   const { passages, origins } = await collect(ctx, input);
-  if (!passages.length) throw badRequest("没有可抽取的内容：请先导入资料，或指定笔记 / 对话");
-  await progress(0.2, "抽取元素");
+  if (!passages.length) throw badRequest(msg().nothingToExtract);
+  await progress(0.2, msg().job.extract);
   const draft = await extractElements(await ctx.models.chat(), passages);
-  await progress(0.8, "合并到知识库");
+  await progress(0.8, msg().job.merging);
   const existing = await ctx.store.elements.list({ notebookId: input.notebookId });
   const index = new Map<string, Element>();
   for (const e of existing) for (const n of [e.name, ...e.aliases]) index.set(normName(n), e);
@@ -127,7 +129,7 @@ export async function runExtractJob(
     index.set(normName(el.name), el);
     created++;
   }
-  return `抽取 ${draft.elements.length} 个元素：新增 ${created}，合并 ${merged}`;
+  return msg().job.extracted(draft.elements.length, created, merged);
 }
 
 export async function mergeElements(
@@ -137,7 +139,7 @@ export async function mergeElements(
   intoId: string,
 ): Promise<Element> {
   const into = await ctx.store.elements.get(intoId);
-  if (!into || into.notebookId !== notebookId) throw notFound("目标元素");
+  if (!into || into.notebookId !== notebookId) throw notFound("targetElement");
   const others: Element[] = [];
   for (const id of new Set(ids)) {
     if (id === intoId) continue;
@@ -189,7 +191,7 @@ export async function mergeElements(
 
 export async function enrich(ctx: AppContext, id: string): Promise<Element> {
   const el = await ctx.store.elements.get(id);
-  if (!el) throw notFound("元素");
+  if (!el) throw notFound("element");
   const { results } = await retrieve(ctx.store, el.notebookId, [el.name, ...el.aliases].join(" "), {
     k: 6,
     ...(await ctx.models.retrieval()),
@@ -211,7 +213,7 @@ export async function enrich(ctx: AppContext, id: string): Promise<Element> {
   for (const name of draft.related) {
     const target = byName.get(normName(name));
     if (target && target.id !== el.id && !relations.some((r) => r.targetId === target.id)) {
-      relations.push({ targetId: target.id, label: "相关" });
+      relations.push({ targetId: target.id, label: msg().relatedLabel });
     }
   }
   const aliases = [
@@ -235,9 +237,10 @@ export async function cardsFromElements(
     if (!el || el.notebookId !== notebookId) continue;
     const existing = await ctx.store.cards.list({ refId: id });
     if (existing.length) continue;
-    const label = ELEMENT_TYPE_META[el.type].label;
+    const meta = ELEMENT_TYPE_META[el.type];
+    const label = currentLang() === "en" ? meta.labelEn : meta.label;
     const back = el.definition.trim() || el.refs[0]?.quote || el.name;
-    inputs.push({ front: `${el.name}（${label}）`, back, elementId: el.id });
+    inputs.push({ front: msg().elementCardFront(el.name, label), back, elementId: el.id });
   }
   return createCards(ctx, notebookId, inputs);
 }

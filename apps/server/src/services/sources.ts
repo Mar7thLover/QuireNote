@@ -5,6 +5,7 @@ import { badRequest } from "../errors";
 import { mimeFromName, safeName } from "../files";
 import { youtubeId } from "../ingest/parsers";
 import { sourceFileDir } from "../ingest/pipeline";
+import { msg } from "../messages";
 
 const EXT_KIND: Record<string, SourceKind> = {
   pdf: "pdf",
@@ -78,7 +79,7 @@ async function enqueueIngest(ctx: AppContext, src: Source): Promise<Source> {
   await ctx.jobs.enqueue(
     "ingest",
     { sourceId: src.id },
-    { notebookId: src.notebookId, refId: src.id, message: `解析「${src.title}」` },
+    { notebookId: src.notebookId, refId: src.id, message: msg().job.parse(src.title) },
   );
   return src;
 }
@@ -92,9 +93,9 @@ export async function createFileSource(
   const name = safeName(file.name || "upload");
   const mime = file.type || mimeFromName(name);
   const kind = kindFromFile(name, mime);
-  if (!kind) throw badRequest(`不支持的文件类型：${name}`, "unsupported_type");
+  if (!kind) throw badRequest(msg().unsupportedFile(name), "unsupported_type");
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!bytes.length) throw badRequest("文件为空");
+  if (!bytes.length) throw badRequest(msg().emptyFile);
   const src = baseSource(ctx, notebookId, {
     kind,
     title: title?.trim() || name.replace(/\.[^.]+$/, "") || name,
@@ -136,7 +137,7 @@ export async function createJsonSource(
     }
     case "youtube": {
       const url = body.url?.trim();
-      if (!url || !youtubeId(url)) throw badRequest("不是有效的 YouTube 链接");
+      if (!url || !youtubeId(url)) throw badRequest(msg().invalidYoutube);
       return enqueueIngest(
         ctx,
         baseSource(ctx, notebookId, {
@@ -152,7 +153,7 @@ export async function createJsonSource(
     case "markdown":
     case "search": {
       const text = body.text ?? "";
-      if (!text.trim()) throw badRequest("text 不能为空");
+      if (!text.trim()) throw badRequest(msg().emptyField("text"));
       const ext = body.kind === "text" ? "txt" : "md";
       const bytes = new TextEncoder().encode(text);
       const src = baseSource(ctx, notebookId, {
@@ -164,7 +165,7 @@ export async function createJsonSource(
             .split("\n")[0]!
             .replace(/^#+\s*/, "")
             .slice(0, 60) ||
-          "未命名",
+          msg().untitled,
         url: body.url?.trim() || null,
         mime: ext === "txt" ? "text/plain" : "text/markdown",
         size: bytes.length,
@@ -174,6 +175,6 @@ export async function createJsonSource(
       return enqueueIngest(ctx, src);
     }
     default:
-      throw badRequest("kind 必须是 url / text / markdown / youtube / search");
+      throw badRequest(msg().badSourceKind);
   }
 }

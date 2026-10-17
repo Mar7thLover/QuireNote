@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { BinaryResult } from "@quirenote/ai";
 import type { AppContext } from "../context";
+import { msg } from "../messages";
 
 /** 跳过 ID3v2 标签，便于把多段 mp3 直接拼接。 */
 function stripId3(data: Uint8Array): Uint8Array {
@@ -85,7 +86,7 @@ function pcmToWav(p: BinaryResult): BinaryResult {
 
 /** 拼接多段音频。全部是 mp3 时直接拼帧；全部是 wav/PCM 时合并 PCM 数据。 */
 export function concatAudio(parts: BinaryResult[]): BinaryResult {
-  if (!parts.length) throw new Error("没有音频片段");
+  if (!parts.length) throw new Error(msg().noAudioParts);
   const normalized = parts.map((p) => (/L16|pcm/i.test(p.mediaType) ? pcmToWav(p) : p));
   if (normalized.every(isMp3)) {
     const chunks = normalized.map((p, i) => (i === 0 ? p.data : stripId3(p.data)));
@@ -125,7 +126,7 @@ export function concatAudio(parts: BinaryResult[]): BinaryResult {
       };
     }
   }
-  throw new Error("无法拼接不同格式的音频片段（需要 ffmpeg）");
+  throw new Error(msg().audioConcatNeedsFfmpeg);
 }
 
 /** 探测 ffmpeg：FFMPEG_PATH 或 PATH 中的 ffmpeg。结果缓存在 ctx 上。 */
@@ -156,7 +157,7 @@ function runFfmpeg(bin: string, args: string[], cwd: string): Promise<void> {
     });
     p.on("error", reject);
     p.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(`ffmpeg 退出码 ${code}：${err.slice(-500)}`)),
+      code === 0 ? resolve() : reject(new Error(msg().ffmpegExit(code, err.slice(-500)))),
     );
   });
 }

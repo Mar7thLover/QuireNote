@@ -69,6 +69,7 @@ export class UnsupportedError extends AiError {
 export interface CatalogEntry {
   kind: ProviderKind;
   label: string;
+  labelEn: string;
   capabilities: Capability[];
   defaultBaseUrl: string | null;
   /** baseUrl 是否必须由用户填写（openai-compatible）。 */

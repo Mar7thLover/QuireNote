@@ -10,7 +10,8 @@ import {
 import { type Chunk, newId, nowIso, type Source } from "@quirenote/core";
 import { chunkText } from "../chunking";
 import type { AppContext } from "../context";
-import { ApiError, errorMessageOf } from "../errors";
+import { ApiError, errorMessageOf, notFound } from "../errors";
+import { msg } from "../messages";
 import { originalTextPath, remapHighlights } from "../services/source-edit";
 import {
   decodeUtf8,
@@ -52,14 +53,14 @@ function formatSeconds(sec: number): string {
 async function parseSource(ctx: AppContext, src: Source): Promise<ParsedDoc> {
   switch (src.kind) {
     case "url": {
-      if (!src.url) throw new ApiError(400, "bad_url", "缺少 URL");
+      if (!src.url) throw new ApiError(400, "bad_url", msg().missingSourceUrl);
       const { doc, bytes, mime } = await fetchUrl(src.url, ctx.fetch);
       const ext = mime === "application/pdf" ? "pdf" : mime.startsWith("text/plain") ? "txt" : "html";
       await ctx.files.put(`${sourceFileDir(src.id)}/page.${ext}`, bytes);
       return { ...doc, mime };
     }
     case "youtube": {
-      if (!src.url) throw new ApiError(400, "bad_url", "缺少 YouTube 链接");
+      if (!src.url) throw new ApiError(400, "bad_url", msg().missingYoutubeUrl);
       return fetchYoutubeTranscript(src.url, ctx.fetch);
     }
     default:
@@ -70,7 +71,7 @@ async function parseSource(ctx: AppContext, src: Source): Promise<ParsedDoc> {
     // 文本类资料（text / markdown / search）在创建时已写入 contents。
     const content = await ctx.store.contents.get(src.id);
     if (content) return { text: content.text, pageOffsets: content.pageOffsets, pageCount: src.pageCount };
-    throw new ApiError(400, "missing_file", "找不到资料的原始文件");
+    throw new ApiError(400, "missing_file", msg().missingSourceFile);
   }
   const bytes = file.data;
   switch (src.kind) {
@@ -96,7 +97,7 @@ async function parseSource(ctx: AppContext, src: Source): Promise<ParsedDoc> {
     }
     case "audio":
     case "video": {
-      const stt = await ctx.models.require("stt", "音视频转写");
+      const stt = await ctx.models.require("stt", "transcribe");
       const res = await transcribeAudio(stt, bytes);
       let text = res.text;
       if (res.segments.length) {
@@ -118,7 +119,7 @@ async function parseSource(ctx: AppContext, src: Source): Promise<ParsedDoc> {
       return parsePlain(text);
     }
     default:
-      throw new ApiError(400, "unsupported", `不支持的资料类型：${src.kind}`);
+      throw new ApiError(400, "unsupported", msg().unsupportedSourceKind(src.kind));
   }
 }
 
@@ -194,17 +195,17 @@ export async function processSource(
   const { store } = ctx;
   const progress = opts.progress ?? (async () => {});
   const src = await store.sources.get(sourceId);
-  if (!src) throw new ApiError(404, "not_found", "资料不存在");
+  if (!src) throw notFound("source");
   await store.sources.update(sourceId, { status: "processing", error: null });
   await emitSource(ctx, sourceId);
   try {
-    await progress(0.05, "解析中");
+    await progress(0.05, msg().job.parsing);
     let doc: ParsedDoc;
     const previous = await store.contents.get(sourceId);
     const existing = opts.reuseContent ? previous : null;
     if (existing) doc = { text: existing.text, pageOffsets: existing.pageOffsets, pageCount: src.pageCount };
     else doc = await parseSource(ctx, src);
-    if (!doc.text.trim()) throw new ApiError(400, "empty_text", "未能从资料中提取到文本");
+    if (!doc.text.trim()) throw new ApiError(400, "empty_text", msg().noTextExtracted);
     if (!existing && previous) {
       // 重新解析：高亮跟着文本走；手动编辑过的内容被解析结果取代，不再保留编辑前的原文。
       await remapHighlights(ctx, sourceId, previous.text, doc.text);
@@ -222,7 +223,7 @@ export async function processSource(
       text: doc.text,
       pageOffsets: doc.pageOffsets,
     });
-    await progress(0.3, "分块中");
+    await progress(0.3, msg().job.chunking);
     const chunks = await rechunk(ctx, src, doc.text, doc.pageOffsets);
 
     await progress(0.4, `Embedding 0/${chunks.length}`);
@@ -230,7 +231,7 @@ export async function processSource(
       progress(0.4 + 0.45 * (done / Math.max(1, total)), `Embedding ${done}/${total}`),
     );
 
-    await progress(0.9, "生成摘要");
+    await progress(0.9, msg().job.summarizing);
     let summary = "";
     try {
       summary = opts.extractiveSummary

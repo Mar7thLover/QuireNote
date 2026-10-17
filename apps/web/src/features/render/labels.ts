@@ -1,5 +1,5 @@
 import type { CardTemplate, RenderRule } from "@quirenote/core";
-import { builtinRuleSamples } from "@quirenote/render";
+import { builtinRuleSamples, type PatternAnalysis } from "@quirenote/render";
 import i18n from "@/i18n";
 
 /** 内置模板和规则的名称、示例文字写在 @quirenote/render 里（中文）；界面上按语言取 i18n 里的版本。 */
@@ -33,4 +33,16 @@ export function builtinRuleName(rule: Pick<RenderRule, "id" | "name">): string {
 export function builtinRuleSample(ruleId: string): string {
   const sample = builtinRuleSamples[ruleId] ?? "";
   return i18n.t(`render.sample_${builtinKey(ruleId)}`, { defaultValue: sample });
+}
+
+/** 正则风险提示：@quirenote/render 给的是中文说明，界面上按问题类型换成当前语言。 */
+export function patternIssuesText(analysis: PatternAnalysis): string {
+  return analysis.issues
+    .map((x) =>
+      i18n.t(`render.issue_${x.code.replace(/-/g, "_")}`, {
+        defaultValue: x.message,
+        error: analysis.error ?? "",
+      }),
+    )
+    .join("\n");
 }

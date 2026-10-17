@@ -40,6 +40,7 @@ export const en: Messages = {
     quoted: "“{{text}}”",
     networkError: "Can't reach the server",
     offlineQueued: "You're offline — changes will sync once you reconnect",
+    rows_one: "{{count}} row",
   },
   home: {
     greeting_morning: "Good morning",
@@ -104,6 +105,11 @@ export const en: Messages = {
     editedAt: "Edited {{time}}",
     icon: "Icon",
     color: "Color",
+    sources_one: "{{count}} source",
+    notes_one: "{{count}} note",
+    dueHint_one: "{{total}} card in total",
+    words_one: "{{words}} word",
+    writingHint_one: "{{notes}} note · {{edited}} edited this week",
   },
   nav: {
     writing: "Writing",
@@ -181,6 +187,7 @@ export const en: Messages = {
     new_faction: "New faction",
     new_item: "New object",
     new_other: "New entry",
+    total_one: "{{n}} word",
   },
   templates: {
     fromTemplate: "New from template",
@@ -346,6 +353,18 @@ export const en: Messages = {
       "Only you can open this address. Set your server's public address in Settings → Share links before sending the link.",
     linkSettings: "Open settings",
     coverFailed: "Couldn't create the cover",
+    countArtifacts_one: "{{count}} Studio output",
+    countElements_one: "{{count}} element",
+    countReviewCards_one: "{{count}} review card",
+    sourceFiles_one: "{{count}} with its original file (PDF and so on)",
+    sourcesTextOnly_one:
+      "{{count}} comes with text and highlights only; its original file (PDF and so on) wasn't packed",
+    countNotes_one: "{{count}} note",
+    countLore_one: "{{count}} lorebook entry",
+    countRules_one: "{{count}} render rule",
+    countTemplates_one: "{{count}} template",
+    countAssets_one: "{{count}} image or media file",
+    countSources_one: "{{count}} source",
   },
   share: {
     sources: "Sources",
@@ -486,6 +505,8 @@ export const en: Messages = {
     maxRecursion: "Max recursion depth",
     wholeWordsHint: "Applies to Latin-script words only; Chinese is matched as substrings",
     keysPlaceholder: "Turing test, imitation game, /imitation games?/",
+    fromElementsDone_one: "Created {{count}} entry from elements",
+    posDepthN_one: "{{n}} message from the end",
   },
   manual: {
     title: "Manual",
@@ -562,6 +583,7 @@ export const en: Messages = {
     startRecording: "Start recording",
     uploading: "Uploading…",
     recordHint: "Click to record; when you stop, it's transcribed into a source",
+    pages_one: "{{count}} page",
   },
   reader: {
     edit: "Edit content",
@@ -602,6 +624,7 @@ export const en: Messages = {
     highlights: "Highlights and annotations",
     summary: "Summary",
     highlightsEmpty: "Select text and pick a color to highlight it, or let AI highlight the key points.",
+    highlightsRemoved_one: "{{count}} highlight was removed because its text changed",
   },
   chat: {
     openNote: "Click to open the note",
@@ -646,6 +669,7 @@ export const en: Messages = {
     suggestTimeline: "Lay out the key timeline",
     suggestArgument: "What is the main argument of “{{title}}”?",
     suggestConflicts: "Where do the sources disagree or contradict each other?",
+    sourcesUsed_one: "Using {{count}} source",
   },
   notes: {
     toNote: "Convert to note",
@@ -835,6 +859,12 @@ export const en: Messages = {
     detail: "Details…",
     insertAfter: "Insert after",
     addEvent: "Add event",
+    scopeWithNotes_one: "Based on {{count}} selected source and your notes",
+    basedOn_one: "Based on {{count}} selected source",
+    addedToReview_one: "Added to review: {{count}} card",
+    audioMeta_one: "Two hosts · {{count}} line",
+    scope_one: "Based on {{count}} selected source",
+    cardCount_one: "{{count}} card",
   },
   review: {
     title: "Review",
@@ -848,6 +878,7 @@ export const en: Messages = {
     easy: "Easy",
     progress: "{{done}} / {{total}}",
     stats: "{{total}} total · {{learned}} learned",
+    due_one: "{{count}} card due",
   },
   elements: {
     title: "Elements",
@@ -922,6 +953,7 @@ export const en: Messages = {
     addSort: "Add sort",
     shownFields: "Visible fields",
     editPropHint: "Click a cell in table view to edit custom properties.",
+    rows_one: "{{count}} row",
   },
   search: {
     title: "Web search",
@@ -976,6 +1008,8 @@ export const en: Messages = {
     thinking: "AI is planning changes…",
     unchangedLines: "{{count}} unchanged lines",
     noChanges: "The AI didn't propose any changes",
+    applied_one: "Applied {{count}} change",
+    unchangedLines_one: "{{count}} unchanged line",
   },
   settings: {
     presets: "Presets & templates",
@@ -1113,6 +1147,7 @@ export const en: Messages = {
     noKey: "No key set",
     default: "Default",
     optional: "Optional",
+    modelsCount_one: "{{count}} model",
   },
   data: {
     storage: "Storage usage",
@@ -1134,6 +1169,7 @@ export const en: Messages = {
     statNotes: "Notes / outputs / elements",
     pendingJobs: "{{count}} pending tasks",
     serverPlaceholder: "(leave empty to use this site)",
+    pendingJobs_one: "{{count}} pending task",
   },
   render: {
     rulesDesc:
@@ -1178,7 +1214,7 @@ export const en: Messages = {
     copyName: "{{name}} (copy)",
     myTheme: "My QuireNote theme",
     importFailed: "Import failed: {{error}}",
-    themeImported: "Imported “{{name}}”: {{templates}} templates, {{rules}} rules",
+    themeImported: "Imported “{{name}}” (templates: {{templates}}, rules: {{rules}})",
     sampleBody: "Body text",
     forkTemplate: "Copy as a custom template",
     detectedVars: " (found in the template: {{vars}})",
@@ -1236,6 +1272,13 @@ export const en: Messages = {
     tplSample_stat_label: "Share of Earth's surface covered by ocean",
     tplSample_stat_note: "Source: NOAA",
     tplSample_term_alias: "Shannon entropy",
+    issue_invalid: "The regex doesn't compile: {{error}}",
+    issue_large_repeat: "A repeat count over 1000 may be slow",
+    issue_nested_quantifier: "Nested quantifiers (like (a+)+) backtrack exponentially when a match fails",
+    issue_overlapping_alternation:
+      "Branches in a repeated group can match the same start (like (a|ab)*), which can cause heavy backtracking",
+    issue_adjacent_quantifiers:
+      "Adjacent unbounded quantifiers can match the same characters (like \\d+\\d+ or .*.*), which backtracks polynomially on long text",
   },
   menu: {
     webSearch: "Search the web",
@@ -1355,6 +1398,7 @@ export const en: Messages = {
     serverDesc:
       "QuireNote keeps your data on a server you host yourself (one docker compose command). Enter its address.",
     connect: "Connect",
+    added_one: "Added {{count}} source",
   },
   providers: {
     anthropic: {

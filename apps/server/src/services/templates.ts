@@ -10,6 +10,7 @@ import {
 } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest, notFound } from "../errors";
+import { msg } from "../messages";
 import { exportNotebookCard, importCard } from "./cards";
 import { withStats } from "./notebooks";
 
@@ -42,7 +43,7 @@ export async function createFromTemplate(
   const tpl = [...builtinNotebookTemplates(input.lang), ...(await custom(ctx))].find(
     (t) => t.id === input.templateId,
   );
-  if (!tpl) throw notFound("模板");
+  if (!tpl) throw notFound("template");
   const card = QuireCard.parse(structuredClone(tpl.card));
   // 内置模板里的占位符（日期等）在新建时填上
   for (const n of card.data.notes)
@@ -69,10 +70,9 @@ export async function saveAsTemplate(
   input: { name?: string; description?: string },
 ): Promise<NotebookTemplateInfo> {
   const nb = await ctx.store.notebooks.get(notebookId);
-  if (!nb) throw notFound("Notebook");
+  if (!nb) throw notFound("notebook");
   const { card } = await exportNotebookCard(ctx, notebookId, { format: "json", sources: false });
-  if (JSON.stringify(card).length > MAX_TEMPLATE_BYTES)
-    throw badRequest("这本 Notebook 太大（图片内联后超过 5 MB），不适合做模板；可以分享为 .quire 卡");
+  if (JSON.stringify(card).length > MAX_TEMPLATE_BYTES) throw badRequest(msg().templateTooBig);
   const tpl: NotebookTemplate = {
     id: newId("tpl"),
     name: input.name?.trim() || nb.title,
@@ -83,7 +83,7 @@ export async function saveAsTemplate(
     card,
   };
   const list = await custom(ctx);
-  if (list.length >= 100) throw badRequest("自定义模板最多 100 个");
+  if (list.length >= 100) throw badRequest(msg().templateLimit);
   await ctx.store.settings.set(KEY, [...list, tpl]);
   return info(tpl);
 }
@@ -95,7 +95,7 @@ export async function renameNotebookTemplate(
 ): Promise<NotebookTemplateInfo> {
   const list = await custom(ctx);
   const cur = list.find((t) => t.id === id);
-  if (!cur) throw notFound("模板");
+  if (!cur) throw notFound("template");
   const next = {
     ...cur,
     ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
@@ -109,9 +109,9 @@ export async function renameNotebookTemplate(
 }
 
 export async function deleteNotebookTemplate(ctx: AppContext, id: string): Promise<void> {
-  if (id.startsWith("builtin.")) throw badRequest("内置模板不能删除");
+  if (id.startsWith("builtin.")) throw badRequest(msg().builtinTemplateDelete);
   const list = await custom(ctx);
-  if (!list.some((t) => t.id === id)) throw notFound("模板");
+  if (!list.some((t) => t.id === id)) throw notFound("template");
   await ctx.store.settings.set(
     KEY,
     list.filter((t) => t.id !== id),

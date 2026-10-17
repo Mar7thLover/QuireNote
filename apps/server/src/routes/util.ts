@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import type { z } from "zod";
-import { ApiError, badRequest } from "../errors";
+import { ApiError, badRequest, notFound, type Resource } from "../errors";
+import { msg } from "../messages";
 
 /** Uint8Array → Response body（TS 的 BodyInit 要求 ArrayBuffer 支撑的视图）。 */
 const body = (d: Uint8Array) => d as Uint8Array<ArrayBuffer>;
@@ -12,7 +13,7 @@ export async function readJson<S extends z.ZodType>(c: Context, schema: S): Prom
     const text = await c.req.text();
     raw = text.trim() ? JSON.parse(text) : {};
   } catch {
-    throw badRequest("请求体不是合法 JSON", "invalid_json");
+    throw badRequest(msg().invalidJson, "invalid_json");
   }
   const r = schema.safeParse(raw);
   if (!r.success) {
@@ -25,8 +26,8 @@ export async function readJson<S extends z.ZodType>(c: Context, schema: S): Prom
   return r.data;
 }
 
-export function must<T>(value: T | null | undefined, what: string): T {
-  if (value === null || value === undefined) throw new ApiError(404, "not_found", `${what}不存在`);
+export function must<T>(value: T | null | undefined, what: Resource): T {
+  if (value === null || value === undefined) throw notFound(what);
   return value;
 }
 
@@ -99,10 +100,10 @@ export async function readUpload(
   try {
     form = (await c.req.parseBody({ all: true })) as Record<string, unknown>;
   } catch {
-    throw badRequest("无法解析 multipart 表单");
+    throw badRequest(msg().badMultipart);
   }
   const v = form[field];
   const file = Array.isArray(v) ? v.find((x) => x instanceof File) : v;
-  if (!(file instanceof File)) throw badRequest(`缺少上传文件字段 ${field}`);
+  if (!(file instanceof File)) throw badRequest(msg().missingUpload(field));
   return { file: file as File, form };
 }

@@ -20,6 +20,7 @@ import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
 import { safeName } from "../files";
 import { sourceFileDir } from "../ingest/pipeline";
+import { msg } from "../messages";
 import type { Highlight, NotebookRecord, ReviewCardRecord, ReviewLog, SourceText } from "../store/types";
 import { ASSET_DIR } from "./assets";
 import { withStats } from "./notebooks";
@@ -77,7 +78,7 @@ export async function exportNotebook(
 ): Promise<{ zip: Uint8Array; filename: string }> {
   const { store } = ctx;
   const notebook = await store.notebooks.get(notebookId);
-  if (!notebook) throw notFound("Notebook");
+  if (!notebook) throw notFound("notebook");
   const f = { notebookId };
   const sources = await store.sources.list(f);
   const contents: SourceText[] = [];
@@ -111,9 +112,7 @@ export async function exportNotebook(
     assets: await store.assets.list(f),
   };
   const zip: Zippable = { "notebook.json": strToU8(JSON.stringify(data, null, 2)) };
-  zip["README.md"] = strToU8(
-    `# ${notebook.title}\n\n${notebook.description}\n\n由 QuireNote 导出于 ${data.exportedAt}。\n\n- notebook.json：完整元数据（可用 POST /api/import 导入）\n- markdown/：笔记、资料全文与文本类生成物的 Markdown\n- files/：原始资料文件与生成的媒体\n`,
-  );
+  zip["README.md"] = strToU8(msg().exportReadme(notebook.title, notebook.description, data.exportedAt));
   data.notes.forEach((n, i) => {
     zip[`markdown/notes/${slug(n.title, i)}.md`] = strToU8(`# ${n.title}\n\n${n.markdown}\n`);
   });
@@ -192,18 +191,18 @@ export async function importNotebook(
   try {
     files = unzipSync(zipBytes);
   } catch {
-    throw badRequest("不是有效的 zip 文件");
+    throw badRequest(msg().invalidZip);
   }
   const meta = files["notebook.json"];
-  if (!meta) throw badRequest("zip 中缺少 notebook.json");
+  if (!meta) throw badRequest(msg().zipNoNotebookJson);
   const raw = strFromU8(meta);
   let parsed: NotebookExport;
   try {
     parsed = JSON.parse(raw) as NotebookExport;
   } catch {
-    throw badRequest("notebook.json 不是合法 JSON");
+    throw badRequest(msg().notebookJsonInvalid);
   }
-  if (parsed.format !== "quirenote-notebook") throw badRequest("不是 QuireNote 导出的 Notebook");
+  if (parsed.format !== "quirenote-notebook") throw badRequest(msg().notQuireNotebook);
   const remapped = remapIds(raw, collectIds(parsed));
   const { map } = remapped;
   // 资源 id 带扩展名（决定显示方式），单独换新 id 并保留扩展名。
@@ -258,7 +257,7 @@ export async function importNotebook(
   await ctx.jobs.enqueue(
     "reindex",
     { notebookId: nb.id, clear: false },
-    { notebookId: nb.id, refId: nb.id, message: "为导入的 Notebook 建立索引" },
+    { notebookId: nb.id, refId: nb.id, message: msg().job.indexImportedNotebook },
   );
   return withStats(ctx, nb);
 }
@@ -292,17 +291,17 @@ export async function restoreAll(
   try {
     files = unzipSync(zipBytes);
   } catch {
-    throw badRequest("不是有效的 zip 文件");
+    throw badRequest(msg().invalidZip);
   }
   const meta = files["backup.json"];
   const db = files["quirenote.db"];
-  if (!meta || !db) throw badRequest("不是 QuireNote 全量备份（缺少 backup.json 或 quirenote.db）");
+  if (!meta || !db) throw badRequest(msg().notBackup);
   try {
     if ((JSON.parse(strFromU8(meta)) as { format?: string }).format !== "quirenote-backup") throw new Error();
   } catch {
-    throw badRequest("backup.json 无效");
+    throw badRequest(msg().backupJsonInvalid);
   }
-  if (ctx.jobs.pending > 0) throw new ApiError(409, "busy", "还有后台任务在运行，请稍后再恢复");
+  if (ctx.jobs.pending > 0) throw new ApiError(409, "busy", msg().restoreBusy);
   await ctx.store.restore(db);
   await ctx.files.clear();
   let n = 0;

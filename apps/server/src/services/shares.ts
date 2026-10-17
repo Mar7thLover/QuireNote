@@ -11,6 +11,7 @@ import { type Asset, markdownExcerpt } from "@quirenote/core";
 import { z } from "zod";
 import type { AppContext } from "../context";
 import { ApiError, notFound } from "../errors";
+import { msg } from "../messages";
 import type { ShareOptions, ShareRecord } from "../store/types";
 import { assetIdsIn, readAsset } from "./assets";
 import { type ExportedCard, type ExportOptions, exportNotebookCard, exportNoteCard } from "./cards";
@@ -55,7 +56,7 @@ export const publicAssetPath = (token: string, id: string) =>
   `/api/public/shares/${token}/assets/${encodeURIComponent(id)}`;
 
 /** 公开接口统一的 404：不区分令牌错误、已撤销和内容已删除。 */
-const gone = () => new ApiError(404, "not_found", "分享链接不存在或已失效");
+const gone = () => new ApiError(404, "not_found", msg().shareGone);
 
 function normalizeOptions(input: ShareInput): ShareOptions {
   const notebook = input.kind === "notebook";
@@ -84,7 +85,7 @@ async function toView(ctx: AppContext, r: ShareRecord): Promise<ShareView> {
   // 笔记可能被移到别的 Notebook：以笔记当前所在的为准
   const notebookId = note?.notebookId ?? r.notebookId;
   const nb = await ctx.store.notebooks.get(notebookId);
-  const title = r.kind === "note" ? (note ? note.title || "未命名笔记" : null) : (nb?.title ?? null);
+  const title = r.kind === "note" ? (note ? note.title || msg().untitledNote : null) : (nb?.title ?? null);
   return {
     token: r.id,
     kind: r.kind,
@@ -107,10 +108,10 @@ export async function createShare(
   let notebookId: string;
   if (input.kind === "note") {
     const note = await store.notes.get(input.id);
-    if (!note) throw notFound("笔记");
+    if (!note) throw notFound("note");
     notebookId = note.notebookId;
   } else {
-    if (!(await store.notebooks.get(input.id))) throw notFound("Notebook");
+    if (!(await store.notebooks.get(input.id))) throw notFound("notebook");
     notebookId = input.id;
   }
   const options = normalizeOptions(input);
@@ -223,7 +224,7 @@ export async function shareMeta(
     if (rec.kind === "note") {
       const note = await ctx.store.notes.get(rec.targetId);
       if (!note) return null;
-      return { title: note.title || "未命名笔记", description: markdownExcerpt(note.markdown, 140) };
+      return { title: note.title || msg().untitledNote, description: markdownExcerpt(note.markdown, 140) };
     }
     const nb = await ctx.store.notebooks.get(rec.targetId);
     return nb ? { title: nb.title, description: nb.description.slice(0, 140) } : null;

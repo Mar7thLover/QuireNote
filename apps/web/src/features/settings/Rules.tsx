@@ -4,7 +4,12 @@ import { Badge, Button, Checkbox, cn, Input, Select, Switch, Textarea } from "@q
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Markdown } from "@/components/Markdown";
-import { builtinRuleName, builtinRuleSample, builtinTemplateName } from "@/features/render/labels";
+import {
+  builtinRuleName,
+  builtinRuleSample,
+  builtinTemplateName,
+  patternIssuesText,
+} from "@/features/render/labels";
 import { useRenderStore } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
 import { SettingsSection } from "@/routes/settings";
@@ -161,10 +166,7 @@ function RuleCard({
           className="h-7 w-48 text-[13px] font-medium"
         />
         {analysis.risk !== "none" ? (
-          <Badge
-            tone={analysis.risk === "danger" ? "danger" : "warning"}
-            title={analysis.issues.map((x) => x.message).join("\n")}
-          >
+          <Badge tone={analysis.risk === "danger" ? "danger" : "warning"} title={patternIssuesText(analysis)}>
             <AlertTriangle />
             {t("render.redosWarning")}
           </Badge>

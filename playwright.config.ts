@@ -41,6 +41,8 @@ export default defineConfig({
             PORT: "8799",
             QUIRENOTE_DATA_DIR: dataDir,
             QUIRENOTE_RESET_DATA: "1",
+            // E2E 用中文界面；启动时自动起的名字也固定为中文，不随 CI 机器的区域设置变化。
+            QUIRENOTE_LANG: "zh",
             OPENAI_COMPATIBLE_BASE_URL: "http://localhost:8798/v1",
             OPENAI_COMPATIBLE_CHAT_MODEL: "fake-chat",
             OPENAI_COMPATIBLE_EMBEDDING_MODEL: "fake-embed",

@@ -144,7 +144,7 @@ export async function reviewCard(
   now = new Date(),
 ): Promise<ReviewCard> {
   const rec = await ctx.store.cards.get(cardId);
-  if (!rec) throw notFound("复习卡");
+  if (!rec) throw notFound("reviewCard");
   const { card } = scheduler.next(toFsrs(rec), now, rating as Grade);
   const ts = nowIso();
   await ctx.store.reviewLogs.insert({

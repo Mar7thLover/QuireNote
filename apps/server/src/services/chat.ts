@@ -4,11 +4,13 @@ import { type Conversation, type Message, newId, nowIso } from "@quirenote/core"
 import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";
+import { isDefaultConversationTitle, msg } from "../messages";
 import { loreForChat } from "./lorebook";
 import { activeSources, gatherNotes, gatherPassages } from "./passages";
 import { presetFor } from "./presets";
 
-export const DEFAULT_CONVERSATION_TITLE = "新对话";
+/** 新对话的默认标题（按界面语言）；第一次提问后改成问题本身。 */
+export const defaultConversationTitle = (): string => msg().defaultConversationTitle;
 
 /** 检索模式下每轮对话送给模型的资料片段总字数上限。 */
 const CHAT_CONTEXT_CHARS = 12_000;
@@ -54,20 +56,20 @@ export async function prepareSend(
   input: SendMessageInput,
 ): Promise<{ conv: Conversation; user: Message; isNewUser: boolean; history: Message[] }> {
   const conv = await ctx.store.conversations.get(conversationId);
-  if (!conv) throw notFound("对话");
+  if (!conv) throw notFound("conversation");
   const all = await ctx.store.messages.list({ refId: conversationId });
   if (input.regenerateOf) {
     const target = all.find((m) => m.id === input.regenerateOf);
-    if (!target) throw notFound("要重新生成的消息");
-    if (target.role !== "assistant") throw badRequest("只能重新生成助手消息");
+    if (!target) throw notFound("regenTarget");
+    if (target.role !== "assistant") throw badRequest(msg().regenAssistantOnly);
     const user = all.find((m) => m.id === target.parentId);
-    if (user?.role !== "user") throw badRequest("找不到这条回答对应的提问");
+    if (user?.role !== "user") throw badRequest(msg().regenNoQuestion);
     return { conv, user, isNewUser: false, history: pathTo(all, user.id).slice(0, -1) };
   }
   const content = input.content?.trim();
-  if (!content) throw badRequest("消息内容不能为空");
+  if (!content) throw badRequest(msg().messageEmpty);
   if (input.parentId !== null && !all.some((m) => m.id === input.parentId)) {
-    throw badRequest("parentId 不属于该对话");
+    throw badRequest(msg().notInConversation("parentId"));
   }
   const user: Message = {
     id: newId("msg"),
@@ -246,7 +248,7 @@ async function setLeaf(
   firstQuestion: string,
 ): Promise<void> {
   const patch: Partial<Conversation> = { activeLeafId: leafId };
-  if (conv.title === DEFAULT_CONVERSATION_TITLE || !conv.title.trim())
+  if (isDefaultConversationTitle(conv.title) || !conv.title.trim())
     patch.title = truncate(firstQuestion.replace(/\s+/g, " "), 40);
   await ctx.store.conversations.update(conv.id, patch);
 }
@@ -259,6 +261,6 @@ export async function deleteConversation(ctx: AppContext, id: string): Promise<v
 
 export function assertLeafInConversation(messages: Message[], leafId: string | null): void {
   if (leafId !== null && !messages.some((m) => m.id === leafId)) {
-    throw new ApiError(400, "bad_request", "activeLeafId 不属于该对话");
+    throw new ApiError(400, "bad_request", msg().notInConversation("activeLeafId"));
   }
 }

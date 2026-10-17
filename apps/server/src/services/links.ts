@@ -4,6 +4,7 @@ import { nowIso } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest } from "../errors";
 import { decodeHtml, fetchWithTimeout, UA } from "../ingest/parsers";
+import { msg } from "../messages";
 import type { LinkPreview } from "../store/types";
 
 const MAX_HTML = 1024 * 1024;
@@ -61,10 +62,9 @@ export async function linkPreview(ctx: AppContext, url: string): Promise<LinkPre
   try {
     parsed = new URL(url);
   } catch {
-    throw badRequest("网址无效");
+    throw badRequest(msg().invalidUrlShort);
   }
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
-    throw badRequest("只支持 http / https 链接");
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw badRequest(msg().httpOnly);
   const id = createHash("sha256").update(parsed.href).digest("hex").slice(0, 32);
   const cached = await ctx.store.linkPreviews.get(id);
   if (cached && Date.now() - Date.parse(cached.updatedAt) < TTL_MS) return cached;

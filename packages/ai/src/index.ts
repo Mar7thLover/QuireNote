@@ -6,6 +6,7 @@ export * from "./drafts";
 export { embeddingKey, embedTexts } from "./embedding";
 export { extractiveSummary, topicOf } from "./extractive";
 export { comfyWorkflow, generateImageFile, generateVideoFile, sanitizeSvg } from "./image";
+export { type AiLang, setAiLangSource } from "./messages";
 export { errorMessage } from "./sdk";
 export type { SearchOptions } from "./search";
 export { webSearch } from "./search";

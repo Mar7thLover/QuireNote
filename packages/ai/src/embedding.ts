@@ -1,4 +1,5 @@
 import { embedMany } from "ai";
+import { aiText } from "./messages";
 import { embeddingModel, errorMessage } from "./sdk";
 import { AiError, type ModelRef } from "./types";
 import { reportUsage } from "./usage";
@@ -22,7 +23,7 @@ export async function embedTexts(
     }
     return out;
   } catch (err) {
-    throw new AiError(`Embedding 失败：${errorMessage(err)}`);
+    throw new AiError(aiText().embeddingFailed(errorMessage(err)));
   }
 }
 

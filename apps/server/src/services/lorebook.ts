@@ -14,11 +14,12 @@ import {
 } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { notFound } from "../errors";
+import { currentLang, parseLang } from "../lang";
 import { getPreset } from "./presets";
 
 export async function lorebookSettings(ctx: AppContext, notebookId: string): Promise<LorebookSettings> {
   const nb = await ctx.store.notebooks.get(notebookId);
-  if (!nb) throw notFound("Notebook");
+  if (!nb) throw notFound("notebook");
   return { ...DEFAULT_LOREBOOK, ...(nb.lorebook ?? {}) };
 }
 
@@ -60,7 +61,7 @@ export async function updateLoreEntry(
   patch: LoreEntryInput,
 ): Promise<LoreEntry> {
   const cur = await ctx.store.lore.get(id);
-  if (!cur) throw notFound("知识书条目");
+  if (!cur) throw notFound("loreEntry");
   const next = { ...cur, ...LoreEntryInput.parse(patch), updatedAt: nowIso() };
   return (await ctx.store.lore.update(id, next))!;
 }
@@ -74,7 +75,7 @@ export async function exportLorebook(ctx: AppContext, notebookId: string): Promi
   return { ...settings, entries };
 }
 
-const en = (lang?: string) => !!lang?.toLowerCase().startsWith("en");
+const en = (lang?: string) => (parseLang(lang) ?? currentLang()) === "en";
 
 /** 导入卡片里的知识书：条目重新编号，有回溯风险的正则键所在条目导入为停用。返回导入条数与停用条数。 */
 export async function importLorebook(

@@ -193,7 +193,7 @@ export function LorebookPanel({ notebookId }: { notebookId: string }) {
 
 function positionLabel(t: (k: string, o?: Record<string, unknown>) => string, e: LoreEntry): string {
   return e.position === "at_depth"
-    ? t("lorebook.posDepthN", { n: e.depth })
+    ? t("lorebook.posDepthN", { n: e.depth, count: e.depth })
     : t(`lorebook.pos_${e.position}`);
 }
 

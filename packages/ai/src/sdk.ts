@@ -5,16 +5,17 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { EmbeddingModel, ImageModel, LanguageModel, SpeechModel, TranscriptionModel } from "ai";
 import { defaultBaseUrl } from "./catalog";
+import { aiText } from "./messages";
 import { AiError, type ProviderRuntime, UnsupportedError } from "./types";
 
 export function baseUrlOf(p: ProviderRuntime): string {
   const url = (p.baseUrl?.trim() || defaultBaseUrl(p.kind) || "").replace(/\/+$/, "");
-  if (!url) throw new AiError(`provider ${p.id} 缺少 baseUrl`, "bad_config", 400);
+  if (!url) throw new AiError(aiText().missingBaseUrl(p.id), "bad_config", 400);
   return url;
 }
 
 export function requireKey(p: ProviderRuntime): string {
-  if (!p.apiKey) throw new AiError(`provider「${p.id}」未配置 API Key`, "missing_key", 400);
+  if (!p.apiKey) throw new AiError(aiText().missingKey(p.id), "missing_key", 400);
   return p.apiKey;
 }
 
@@ -71,7 +72,7 @@ export function languageModel(p: ProviderRuntime, model: string): LanguageModel 
     case "openai-compatible":
       return compatible(p).chatModel(model);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持对话`);
+      throw new UnsupportedError(aiText().noChat(p.kind));
   }
 }
 
@@ -86,11 +87,9 @@ export function embeddingModel(p: ProviderRuntime, model: string): EmbeddingMode
       return compatible(p).embeddingModel(model);
     case "anthropic":
     case "anthropic-compatible":
-      throw new UnsupportedError(
-        "Anthropic 没有 Embedding 接口，请另选 OpenAI / Gemini / Ollama / OpenAI 兼容接口做 Embedding",
-      );
+      throw new UnsupportedError(aiText().anthropicNoEmbedding);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持 Embedding`);
+      throw new UnsupportedError(aiText().noEmbedding(p.kind));
   }
 }
 
@@ -103,7 +102,7 @@ export function imageModel(p: ProviderRuntime, model: string): ImageModel {
     case "openai-compatible":
       return compatible(p).imageModel(model);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不能通过 AI SDK 生成图像`);
+      throw new UnsupportedError(aiText().sdkNoImage(p.kind));
   }
 }
 
@@ -115,7 +114,7 @@ export function speechModel(p: ProviderRuntime, model: string): SpeechModel {
     case "google":
       return google(p).speech(model);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不能通过 AI SDK 合成语音`);
+      throw new UnsupportedError(aiText().sdkNoSpeech(p.kind));
   }
 }
 
@@ -127,13 +126,13 @@ export function transcriptionModel(p: ProviderRuntime, model: string): Transcrip
     case "google":
       return google(p).transcription(model);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持语音转写`);
+      throw new UnsupportedError(aiText().noStt(p.kind));
   }
 }
 
 export function videoModel(p: ProviderRuntime, model: string) {
   if (p.kind === "google") return google(p).video(model);
-  throw new UnsupportedError(`provider 类型 ${p.kind} 不能通过 AI SDK 生成视频`);
+  throw new UnsupportedError(aiText().sdkNoVideo(p.kind));
 }
 
 /** 把 SDK / 网络错误转成简短可读的信息。 */

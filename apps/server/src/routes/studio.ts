@@ -21,6 +21,7 @@ import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";
 import { badRequest } from "../errors";
+import { msg } from "../messages";
 import { cardsFromElements, deleteElement, enrich, mergeElements } from "../services/elements";
 import { createCards, dueCards, publicCard, reviewCard, reviewStats } from "../services/review";
 import { createArtifact, deleteArtifact, refineArtifact } from "../services/studio";
@@ -76,7 +77,7 @@ const PropertyCreate = z.object({
 
 export function studioRoutes(api: Hono, ctx: AppContext): void {
   const { store } = ctx;
-  const nbOr404 = async (id: string) => must(await store.notebooks.get(id), "Notebook");
+  const nbOr404 = async (id: string) => must(await store.notebooks.get(id), "notebook");
 
   // ───── Artifacts ─────
   api.get("/notebooks/:nb/artifacts", async (c) => {
@@ -92,22 +93,22 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.get("/artifacts/:id", async (c) =>
-    c.json(must(await store.artifacts.get(c.req.param("id")), "生成物")),
+    c.json(must(await store.artifacts.get(c.req.param("id")), "artifact")),
   );
 
   api.patch("/artifacts/:id", async (c) => {
-    const art = must(await store.artifacts.get(c.req.param("id")), "生成物");
+    const art = must(await store.artifacts.get(c.req.param("id")), "artifact");
     const patch = await readJson(c, ArtifactPatch);
     if (patch.data && patch.data.kind !== dataKindFor(art.kind)) {
-      throw badRequest(`data.kind 应为 ${dataKindFor(art.kind)}`);
+      throw badRequest(msg().dataKindMismatch(dataKindFor(art.kind)));
     }
-    const updated = must(await store.artifacts.update(art.id, patch as Partial<Artifact>), "生成物");
+    const updated = must(await store.artifacts.update(art.id, patch as Partial<Artifact>), "artifact");
     ctx.events.emit("artifact", updated);
     return c.json(updated);
   });
 
   api.delete("/artifacts/:id", async (c) => {
-    must((await deleteArtifact(ctx, c.req.param("id"))) || null, "生成物");
+    must((await deleteArtifact(ctx, c.req.param("id"))) || null, "artifact");
     return c.json({ ok: true });
   });
 
@@ -121,14 +122,14 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
 
   /** 补充：按当前数据重新合成媒体（编辑播客脚本 / 幻灯片 / 提示词后使用）。 */
   api.post("/artifacts/:id/render", async (c) => {
-    const art = must(await store.artifacts.get(c.req.param("id")), "生成物");
-    if (!["audio", "video", "image"].includes(art.kind)) throw badRequest("只有音频 / 视频 / 配图需要合成");
-    if (!art.data) throw badRequest("生成物还没有内容");
+    const art = must(await store.artifacts.get(c.req.param("id")), "artifact");
+    if (!["audio", "video", "image"].includes(art.kind)) throw badRequest(msg().mediaOnly);
+    if (!art.data) throw badRequest(msg().artifactEmpty);
     await store.artifacts.update(art.id, { status: "generating", error: null });
     const job = await ctx.jobs.enqueue(
       "artifact_media",
       { artifactId: art.id },
-      { notebookId: art.notebookId, refId: art.id, message: "合成媒体" },
+      { notebookId: art.notebookId, refId: art.id, message: msg().job.renderMedia },
     );
     return c.json(job, 202);
   });
@@ -177,7 +178,7 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
 
   /** 补充：删除复习卡。 */
   api.delete("/review/:cardId", async (c) => {
-    must((await store.cards.delete(c.req.param("cardId"))) || null, "复习卡");
+    must((await store.cards.delete(c.req.param("cardId"))) || null, "reviewCard");
     return c.json({ ok: true });
   });
 
@@ -212,13 +213,13 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.patch("/elements/:id", async (c) => {
-    must(await store.elements.get(c.req.param("id")), "元素");
+    must(await store.elements.get(c.req.param("id")), "element");
     const patch = await readJson(c, ElementCreate.partial());
-    return c.json(must(await store.elements.update(c.req.param("id"), patch as Partial<Element>), "元素"));
+    return c.json(must(await store.elements.update(c.req.param("id"), patch as Partial<Element>), "element"));
   });
 
   api.delete("/elements/:id", async (c) => {
-    must((await deleteElement(ctx, c.req.param("id"))) || null, "元素");
+    must((await deleteElement(ctx, c.req.param("id"))) || null, "element");
     return c.json({ ok: true });
   });
 
@@ -236,7 +237,7 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
     const job = await ctx.jobs.enqueue(
       "extract_elements",
       { notebookId: nb, ...input },
-      { notebookId: nb, message: "抽取元素" },
+      { notebookId: nb, message: msg().job.extract },
     );
     return c.json(job, 202);
   });
@@ -271,13 +272,13 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.patch("/views/:id", async (c) => {
-    must(await store.views.get(c.req.param("id")), "视图");
+    must(await store.views.get(c.req.param("id")), "view");
     const patch = await readJson(c, ViewCreate.partial());
-    return c.json(must(await store.views.update(c.req.param("id"), patch), "视图"));
+    return c.json(must(await store.views.update(c.req.param("id"), patch), "view"));
   });
 
   api.delete("/views/:id", async (c) => {
-    must((await store.views.delete(c.req.param("id"))) || null, "视图");
+    must((await store.views.delete(c.req.param("id"))) || null, "view");
     return c.json({ ok: true });
   });
 
@@ -297,13 +298,13 @@ export function studioRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.patch("/properties/:id", async (c) => {
-    must(await store.properties.get(c.req.param("id")), "属性");
+    must(await store.properties.get(c.req.param("id")), "property");
     const patch = await readJson(c, PropertyCreate.partial());
-    return c.json(must(await store.properties.update(c.req.param("id"), patch), "属性"));
+    return c.json(must(await store.properties.update(c.req.param("id"), patch), "property"));
   });
 
   api.delete("/properties/:id", async (c) => {
-    must((await store.properties.delete(c.req.param("id"))) || null, "属性");
+    must((await store.properties.delete(c.req.param("id"))) || null, "property");
     return c.json({ ok: true });
   });
 }

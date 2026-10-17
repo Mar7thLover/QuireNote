@@ -5,6 +5,7 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import type { AppContext } from "../context";
 import { badRequest, errorMessageOf } from "../errors";
+import { msg } from "../messages";
 import {
   bookToDocx,
   bookToEpub,
@@ -24,11 +25,11 @@ export function writingRoutes(api: Hono, ctx: AppContext): void {
   api.post("/notebooks/:nb/writing/draft", async (c) => {
     const nb = c.req.param("nb");
     const { noteId } = await readJson(c, z.object({ noteId: z.string() }));
-    const note = must(await store.notes.get(noteId), "笔记");
+    const note = must(await store.notes.get(noteId), "note");
     const { notebook, background, chapter } = await writingContext(ctx, nb, noteId, note.markdown);
-    if (!chapter) throw badRequest("这篇笔记不在稿件里", "not_chapter");
+    if (!chapter) throw badRequest(msg().notChapter, "not_chapter");
     const outline = outlineText(chapter);
-    if (!outline) throw badRequest("先写下这一章的梗概或场景节拍", "empty_outline");
+    if (!outline) throw badRequest(msg().emptyOutline, "empty_outline");
     const chat = await ctx.models.chat();
     const abort = new AbortController();
     return streamSSE(c, async (stream) => {
@@ -60,7 +61,7 @@ export function writingRoutes(api: Hono, ctx: AppContext): void {
   api.post("/notebooks/:nb/writing/check", async (c) => {
     const nb = c.req.param("nb");
     const { noteId } = await readJson(c, z.object({ noteId: z.string() }));
-    const note = must(await store.notes.get(noteId), "笔记");
+    const note = must(await store.notes.get(noteId), "note");
     if (!note.markdown.trim()) return c.json({ issues: [] });
     const { notebook, background } = await writingContext(ctx, nb, noteId, note.markdown);
     const r = await checkConsistency(await ctx.models.chat(), {

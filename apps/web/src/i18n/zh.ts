@@ -1188,6 +1188,12 @@ export const zh = {
     tplSample_stat_label: "地球表面被海洋覆盖的比例",
     tplSample_stat_note: "来源：NOAA",
     tplSample_term_alias: "Entropy",
+    issue_invalid: "正则无法编译：{{error}}",
+    issue_large_repeat: "重复次数超过 1000，可能很慢",
+    issue_nested_quantifier: "嵌套量词（如 (a+)+）在匹配失败时会指数级回溯",
+    issue_overlapping_alternation: "重复分组中的分支可以匹配相同的开头（如 (a|ab)*），可能导致大量回溯",
+    issue_adjacent_quantifiers:
+      "相邻的无界量词可以匹配相同的字符（如 \\d+\\d+ 或 .*.*），长文本上会出现多项式级回溯",
   },
   menu: {
     webSearch: "联网搜索",
@@ -1361,5 +1367,8 @@ export const zh = {
   },
 } as const;
 
-type Widen<T> = { [K in keyof T]: T[K] extends string ? string : Widen<T[K]> };
+/** en 等语言可以给带数量的词条加单数形式 `<key>_one`（i18next 在 count 为 1 时选它）；中文不需要。 */
+type Widen<T> = { [K in keyof T]: T[K] extends string ? string : Widen<T[K]> } & {
+  [K in keyof T as T[K] extends string ? `${K & string}_one` : never]?: string;
+};
 export type Messages = Widen<typeof zh>;
