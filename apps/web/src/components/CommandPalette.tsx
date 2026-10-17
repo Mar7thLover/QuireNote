@@ -7,6 +7,7 @@ import {
   CommandList,
   Dialog,
   DialogContent,
+  Kbd,
   Spinner,
   toast,
 } from "@quirenote/ui";
@@ -18,6 +19,7 @@ import {
   Brain,
   Database,
   FilePlus2,
+  FileText,
   Globe,
   Home,
   Keyboard,
@@ -63,6 +65,8 @@ export function CommandPalette() {
   const notebookId = useWorkspace((s) => s.notebookId);
   const [value, setValue] = useState("");
   const notebooks = useQuery({ queryKey: qk.notebooks, queryFn: api.notebooks.list, enabled: open });
+  const overview = useQuery({ queryKey: qk.overview, queryFn: api.overview, enabled: open });
+  const recent = (overview.data?.recent ?? []).filter((n) => n.openedAt).slice(0, 5);
 
   useEffect(() => {
     if (open) setValue(seed);
@@ -87,7 +91,7 @@ export function CommandPalette() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent hideClose className="top-[14vh] max-w-xl overflow-hidden p-0">
+      <DialogContent hideClose className="top-[16vh] max-w-[640px] overflow-hidden rounded-2xl p-0">
         <Command
           loop
           filter={(itemValue, search, keywords) => {
@@ -117,10 +121,30 @@ export function CommandPalette() {
                   icon={<Wand2 />}
                   hint={t("command.aiHint")}
                   onSelect={() => ai.mutate(text)}
-                  className="data-[selected=true]:bg-accent data-[selected=true]:text-accent-fg data-[selected=true]:[&_svg]:text-accent-fg data-[selected=true]:[&_span]:text-accent-fg/80"
                 >
                   {ai.isPending ? t("agent.thinking") : t("command.aiAction", { text })}
                 </CommandItem>
+              </CommandGroup>
+            ) : null}
+            {recent.length ? (
+              <CommandGroup heading={t("command.recent")}>
+                {recent.map((n) => (
+                  <CommandItem
+                    key={n.id}
+                    value={`note ${n.title} ${n.notebookTitle} ${n.id}`}
+                    icon={<FileText />}
+                    hint={n.notebookTitle}
+                    onSelect={run(() =>
+                      navigate({
+                        to: "/n/$notebookId",
+                        params: { notebookId: n.notebookId },
+                        search: { note: n.id },
+                      }),
+                    )}
+                  >
+                    {n.title || t("common.untitled")}
+                  </CommandItem>
+                ))}
               </CommandGroup>
             ) : null}
             {notebookId ? (
@@ -237,6 +261,22 @@ export function CommandPalette() {
               </CommandGroup>
             ) : null}
           </CommandList>
+          <div className="flex items-center gap-4 border-t border-border px-4 py-2.5 text-[12px] text-fg-subtle">
+            <span className="flex items-center gap-1.5">
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+              {t("command.footSelect")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Kbd>↵</Kbd>
+              {t("command.footRun")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Kbd>Esc</Kbd>
+              {t("command.footClose")}
+            </span>
+            {notebookId ? <span className="ml-auto truncate">{t("command.footAi")}</span> : null}
+          </div>
         </Command>
       </DialogContent>
     </Dialog>

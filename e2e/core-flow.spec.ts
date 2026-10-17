@@ -54,18 +54,30 @@ test.describe("核心流程", () => {
 });
 
 test.describe("引导与布局", () => {
-  test("首页有上手引导、概览卡片，侧栏里有带文字的设置", async ({ page }) => {
+  test("首页有概览卡片和使用手册，侧栏里的设置向上展开", async ({ page }) => {
     await page.goto("/");
-    const guide = page.getByRole("region", { name: "开始使用 QuireNote" });
-    await expect(guide).toBeVisible();
-    // E2E 已配置假模型、示例 Notebook 自带资料：前两步完成，第三步待做。
-    await expect(guide.getByText("已完成")).toHaveCount(2);
-    // 概览卡片显示当前对话模型（E2E 接的是假模型）。
+    // 概览卡片：当前对话模型（E2E 接的是假模型）、本月花费、Token 用量。
     await expect(page.getByText("fake-chat", { exact: true })).toBeVisible();
-    // 设置在侧栏里是可展开的分组，展开后列出各分区。
+    await expect(page.getByText("本月花费", { exact: true })).toBeVisible();
+    await expect(page.getByText("Token 用量", { exact: true })).toBeVisible();
+    // 还没提过问：使用手册先讲怎么开始，「阅读」打开内置手册的对应章节。
+    const manual = page.getByRole("region", { name: "使用手册" });
+    await expect(manual.getByText("开始使用", { exact: true })).toBeVisible();
+    await manual.getByRole("button", { name: "阅读" }).first().click();
+    await expect(page.getByRole("heading", { name: "开始使用", level: 1 })).toBeVisible();
+    await page.keyboard.press("Escape");
+    // 设置是侧栏底部的分组：展开后子项出现在「设置」上方，「设置」本身不动。
     const sidebar = page.locator("aside");
-    await sidebar.getByRole("button", { name: "设置" }).click();
-    await sidebar.getByRole("link", { name: "模型与服务" }).click();
+    const settings = sidebar.getByRole("button", { name: "设置" });
+    const before = await settings.boundingBox();
+    await settings.click();
+    const models = sidebar.getByRole("link", { name: "模型与服务" });
+    await expect(models).toBeVisible();
+    await page.waitForTimeout(300);
+    const after = await settings.boundingBox();
+    expect(Math.round(after!.y)).toBe(Math.round(before!.y));
+    expect((await models.boundingBox())!.y).toBeLessThan(after!.y);
+    await models.click();
     await expect(page).toHaveURL(/\/settings\/models/);
   });
 

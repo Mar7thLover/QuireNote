@@ -9,23 +9,27 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   anthropic: {
     kind: "anthropic",
     label: "Anthropic Claude",
-    capabilities: ["chat"],
+    capabilities: ["chat", "search", "image"],
     defaultBaseUrl: "https://api.anthropic.com/v1",
     baseUrlRequired: false,
     requiresKey: true,
-    models: { chat: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"] },
+    models: {
+      chat: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5", "claude-fable-5-1"],
+      search: ["claude-haiku-5-5", "claude-sonnet-5-5"],
+      image: ["claude-sonnet-5-5", "claude-opus-5-5"],
+    },
     notes:
-      "Anthropic 没有 Embedding 接口，可另选 OpenAI / Gemini / Ollama / OpenAI 兼容接口做 Embedding；不配置时检索只用关键词。Claude 支持图片输入，可用于图片 OCR。",
+      "对话、联网搜索（Claude 自带的 web search，每千次约 10 美元）、矢量插图（Claude 绘制 SVG）。图片资料由 Claude 直接读图识别。没有 Embedding 接口时，资料不多就整份交给 Claude 阅读，资料多时由 Claude 扩展检索词再检索。",
     docsUrl: "https://docs.anthropic.com/en/docs/about-claude/models",
   },
   "anthropic-compatible": {
     kind: "anthropic-compatible",
     label: "Anthropic 兼容接口",
-    capabilities: ["chat"],
+    capabilities: ["chat", "image"],
     defaultBaseUrl: null,
     baseUrlRequired: true,
     requiresKey: false,
-    models: { chat: ["claude-sonnet-5-5"] },
+    models: { chat: ["claude-sonnet-5-5"], image: ["claude-sonnet-5-5"] },
     notes:
       "兼容 Anthropic Messages API（/v1/messages）的服务：Claude 中转、DeepSeek / Kimi / GLM 等提供的 Anthropic 端点。baseUrl 需包含 /v1。Key 以 x-api-key 发送；服务要求 Authorization: Bearer 时，在自定义请求头里添加。",
     docsUrl: null,

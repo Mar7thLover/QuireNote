@@ -192,7 +192,7 @@ export async function enrich(ctx: AppContext, id: string): Promise<Element> {
   if (!el) throw notFound("元素");
   const { results } = await retrieve(ctx.store, el.notebookId, [el.name, ...el.aliases].join(" "), {
     k: 6,
-    embedding: await ctx.models.embedding(),
+    ...(await ctx.models.retrieval()),
   });
   const passages = toPassages(results);
   for (const r of el.refs) {

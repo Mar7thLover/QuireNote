@@ -17,6 +17,8 @@ import type {
   SettingsRepo,
   SourceText,
   Store,
+  UsageRepo,
+  UsageRow,
   VectorHit,
 } from "./types";
 
@@ -112,6 +114,24 @@ const MIGRATIONS: ((db: DB) => void)[] = [
         model TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (owner_id, capability)
+      );
+    `);
+  },
+  (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS usage_daily (
+        owner_id TEXT NOT NULL DEFAULT 'local',
+        day TEXT NOT NULL,
+        provider_id TEXT NOT NULL,
+        model TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        calls INTEGER NOT NULL DEFAULT 0,
+        input_tokens INTEGER NOT NULL DEFAULT 0,
+        output_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+        cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+        searches INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (owner_id, day, provider_id, model, kind)
       );
     `);
   },
@@ -669,6 +689,58 @@ class SqliteAssignmentRepo implements AssignmentRepo {
   }
 }
 
+class SqliteUsageRepo implements UsageRepo {
+  constructor(private readonly s: SqliteStore) {}
+  async add(r: Omit<UsageRow, "calls">): Promise<void> {
+    this.s.db
+      .prepare(
+        `INSERT INTO usage_daily (owner_id, day, provider_id, model, kind, calls, input_tokens, output_tokens,
+           cache_read_tokens, cache_write_tokens, searches)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+         ON CONFLICT(owner_id, day, provider_id, model, kind) DO UPDATE SET
+           calls = calls + 1,
+           input_tokens = input_tokens + excluded.input_tokens,
+           output_tokens = output_tokens + excluded.output_tokens,
+           cache_read_tokens = cache_read_tokens + excluded.cache_read_tokens,
+           cache_write_tokens = cache_write_tokens + excluded.cache_write_tokens,
+           searches = searches + excluded.searches`,
+      )
+      .run(
+        this.s.ownerId,
+        r.day,
+        r.providerId,
+        r.model,
+        r.kind,
+        r.inputTokens,
+        r.outputTokens,
+        r.cacheReadTokens,
+        r.cacheWriteTokens,
+        r.searches,
+      );
+  }
+  async list(since?: string): Promise<UsageRow[]> {
+    const rows = this.s.db
+      .prepare(
+        `SELECT day, provider_id, model, kind, calls, input_tokens, output_tokens, cache_read_tokens,
+           cache_write_tokens, searches
+         FROM usage_daily WHERE owner_id = ? AND day >= ? ORDER BY day`,
+      )
+      .all(this.s.ownerId, since ?? "0000-00-00") as Record<string, string | number>[];
+    return rows.map((r) => ({
+      day: String(r.day),
+      providerId: String(r.provider_id),
+      model: String(r.model),
+      kind: String(r.kind),
+      calls: Number(r.calls),
+      inputTokens: Number(r.input_tokens),
+      outputTokens: Number(r.output_tokens),
+      cacheReadTokens: Number(r.cache_read_tokens),
+      cacheWriteTokens: Number(r.cache_write_tokens),
+      searches: Number(r.searches),
+    }));
+  }
+}
+
 const nb = (x: { notebookId?: string | null }): Keys => ({ notebookId: x.notebookId ?? null });
 
 export class SqliteStore implements Store {
@@ -693,6 +765,7 @@ export class SqliteStore implements Store {
   readonly undo;
   readonly assignments;
   readonly settings;
+  readonly usage;
 
   constructor(
     private readonly path: string,
@@ -738,6 +811,7 @@ export class SqliteStore implements Store {
     this.undo = new SqliteEntityRepo<import("./types").UndoRecord>(this, "undo_log", nb);
     this.assignments = new SqliteAssignmentRepo(this);
     this.settings = new SqliteSettingsRepo(this);
+    this.usage = new SqliteUsageRepo(this);
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

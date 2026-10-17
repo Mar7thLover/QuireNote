@@ -2,6 +2,24 @@ import { generateText, Output, streamText } from "ai";
 import type { z } from "zod";
 import { errorMessage, languageModel } from "./sdk";
 import { AiError, type ChatTurn, type ModelRef } from "./types";
+import { reportUsage } from "./usage";
+
+const isAnthropic = (ref: ModelRef) =>
+  ref.provider.kind === "anthropic" || ref.provider.kind === "anthropic-compatible";
+const EPHEMERAL = { anthropic: { cacheControl: { type: "ephemeral" as const } } };
+
+/** Anthropic 自动缓存最后一个可缓存块：同一段对话里继续追问时，之前的部分按缓存价计费。 */
+export function cacheOptions(ref: ModelRef) {
+  return isAnthropic(ref) ? EPHEMERAL : undefined;
+}
+
+/**
+ * 系统提示词（含资料片段）单独设一个缓存断点：新开对话、换个问题，只要资料没变也能命中缓存。
+ * 其他提供方原样传字符串。
+ */
+function instructionsFor(ref: ModelRef, system: string) {
+  return isAnthropic(ref) ? { role: "system" as const, content: system, providerOptions: EPHEMERAL } : system;
+}
 
 export interface ChatRequest {
   system: string;
@@ -14,10 +32,11 @@ export async function* streamChat(ref: ModelRef, req: ChatRequest): AsyncGenerat
   const model = languageModel(ref.provider, ref.model);
   const result = streamText({
     model,
-    instructions: req.system,
+    instructions: instructionsFor(ref, req.system),
     messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
     abortSignal: req.abortSignal,
     maxRetries: 1,
+    providerOptions: cacheOptions(ref),
     // 错误通过 stream 中的 error 部分处理，不让 SDK 打印到控制台。
     onError: () => {},
   });
@@ -26,6 +45,7 @@ export async function* streamChat(ref: ModelRef, req: ChatRequest): AsyncGenerat
       if (part.type === "text-delta") yield part.text;
       else if (part.type === "error") throw new AiError(errorMessage(part.error));
     }
+    reportUsage(ref, "chat", await result.totalUsage);
   } catch (err) {
     if (err instanceof AiError) throw err;
     throw new AiError(errorMessage(err));
@@ -45,6 +65,7 @@ export async function generateChatText(
       abortSignal: req.abortSignal,
       maxRetries: 1,
     });
+    reportUsage(ref, "chat", result.usage);
     return result.text;
   } catch (err) {
     throw new AiError(errorMessage(err));
@@ -71,6 +92,7 @@ export async function generateStructured<S extends z.ZodType>(
       abortSignal: req.abortSignal,
       maxRetries: 1,
     });
+    reportUsage(ref, "chat", result.usage);
     return req.schema.parse(result.output);
   } catch (err) {
     throw new AiError(`结构化生成失败：${errorMessage(err)}`);
@@ -96,6 +118,7 @@ export async function describeImage(
       ],
       maxRetries: 1,
     });
+    reportUsage(ref, "chat", result.usage);
     return result.text;
   } catch (err) {
     throw new AiError(`图片识别失败：${errorMessage(err)}`);

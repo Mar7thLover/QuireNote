@@ -29,8 +29,10 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   CloudDownload,
+  Info,
   KeyRound,
   Plug,
   Plus,
@@ -46,6 +48,7 @@ import { api, type ProviderCatalogEntry } from "@/lib/api";
 import { useAssignments, useProviderCatalog, useProviders } from "@/lib/models";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { SettingsSection } from "@/routes/settings";
+import { useUi } from "@/stores/ui";
 
 const CAPS: Capability[] = ["chat", "embedding", "search", "tts", "stt", "image", "video"];
 
@@ -632,6 +635,8 @@ function AddProviderDialog({
       queryClient.setQueryData<ProviderConfig[]>(qk.providers, (old) =>
         old?.some((x) => x.id === p.id) ? old : [...(old ?? []), p],
       );
+      // 服务端会用新提供方补上还没分配的对话 / 联网搜索 / 插图。
+      queryClient.invalidateQueries({ queryKey: qk.assignments });
       onOpenChange(false);
       setName("");
       setKey("");
@@ -760,46 +765,98 @@ function Assignments({
             )}
           >
             <span className="text-[13.5px] font-medium">{t(`models.cap_${cap}`)}</span>
-            <Select
-              value={a?.providerId}
-              onValueChange={(providerId) => {
-                const first = providers
-                  .find((p) => p.id === providerId)
-                  ?.models.find((m) => m.capabilities.includes(cap));
-                if (!first) return toast.error(t("models.noModelsForCap"));
-                assign.mutate({ capability: cap, providerId, model: first.id });
-              }}
-              options={options.map((p) => ({ value: p.id, label: p.name }))}
-              placeholder={options.length ? t("models.pickProvider") : t("models.noProviderForCap")}
-              ariaLabel={`${t(`models.cap_${cap}`)} · ${t("models.pickProvider")}`}
-            />
-            <Select
-              value={a?.model}
-              onValueChange={(model) => a && model !== a.model && assign.mutate({ ...a, model })}
-              options={modelOptions}
-              placeholder={a ? t("models.modelPlaceholder") : t("models.notAssigned")}
-              ariaLabel={`${t(`models.cap_${cap}`)} · ${t("models.model")}`}
-              className="font-mono text-[13px]"
-            />
-            {a ? (
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => unassign.mutate(cap)}
-                aria-label={t("models.unassign")}
-                title={t("models.unassign")}
-              >
-                <X />
-              </Button>
+            {!a && !options.length ? (
+              <Fallback cap={cap} />
             ) : (
-              <span />
+              <>
+                <Select
+                  value={a?.providerId}
+                  onValueChange={(providerId) => {
+                    const first = providers
+                      .find((p) => p.id === providerId)
+                      ?.models.find((m) => m.capabilities.includes(cap));
+                    if (!first) return toast.error(t("models.noModelsForCap"));
+                    assign.mutate({ capability: cap, providerId, model: first.id });
+                  }}
+                  options={options.map((p) => ({ value: p.id, label: p.name }))}
+                  placeholder={options.length ? t("models.pickProvider") : t("models.noProviderForCap")}
+                  ariaLabel={`${t(`models.cap_${cap}`)} · ${t("models.pickProvider")}`}
+                />
+                <Select
+                  value={a?.model}
+                  onValueChange={(model) => a && model !== a.model && assign.mutate({ ...a, model })}
+                  options={modelOptions}
+                  placeholder={a ? t("models.modelPlaceholder") : t("models.notAssigned")}
+                  ariaLabel={`${t(`models.cap_${cap}`)} · ${t("models.model")}`}
+                  className="font-mono text-[13px]"
+                />
+                {a ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => unassign.mutate(cap)}
+                    aria-label={t("models.unassign")}
+                    title={t("models.unassign")}
+                  >
+                    <X />
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </>
             )}
-            {cap === "embedding" && !a ? (
-              <p className="text-xs text-fg-subtle sm:col-span-4">{t("models.embeddingNone")}</p>
-            ) : null}
+            {a || !options.length ? null : <FallbackNote cap={cap} />}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/** 未分配模型时实际会发生什么：有替代方案的照实说明，没有的说明影响哪些功能。 */
+const FALLBACK: Partial<Record<Capability, { works: boolean; manual?: string }>> = {
+  embedding: { works: true, manual: "chat" },
+  search: { works: false, manual: "research" },
+  tts: { works: true, manual: "studio" },
+  stt: { works: false, manual: "sources" },
+  image: { works: false, manual: "studio" },
+  video: { works: true, manual: "studio" },
+};
+
+function Fallback({ cap }: { cap: Capability }) {
+  const { t } = useTranslation();
+  const f = FALLBACK[cap];
+  return (
+    <div className="flex min-h-9 items-start gap-2 rounded-lg bg-surface-sunken px-3 py-2 sm:col-span-2">
+      {f?.works ? (
+        <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2} />
+      ) : (
+        <Info className="mt-0.5 size-4 shrink-0 text-fg-subtle" strokeWidth={1.8} />
+      )}
+      <span className="flex-1 text-[13px] leading-relaxed text-fg-muted">
+        <span className={cn(f?.works && "font-medium text-fg")}>{t(`models.fallback_${cap}`)}</span>
+        {f?.manual ? (
+          <button
+            type="button"
+            onClick={() => useUi.getState().set({ manual: f.manual! })}
+            className="ml-2 text-fg-subtle underline decoration-border-strong underline-offset-4 hover:text-fg"
+          >
+            {t("models.learnMore")}
+          </button>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+/** 有可选的提供方但还没分配：在两个下拉框下面说明不分配时的行为。 */
+function FallbackNote({ cap }: { cap: Capability }) {
+  const { t } = useTranslation();
+  if (!FALLBACK[cap]?.works) return null;
+  return (
+    <p className="flex items-center gap-1.5 text-[12.5px] text-fg-subtle sm:col-span-4 sm:col-start-2">
+      <Check className="size-3.5 shrink-0 text-success" strokeWidth={2} />
+      {t(`models.fallbackNote_${cap}`)}
+    </p>
   );
 }

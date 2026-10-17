@@ -13,15 +13,18 @@ import { DEMO_SOURCES } from "@quirenote/core/fixtures";
 import { describe, expect, it } from "vitest";
 import { streamChat } from "./chat";
 import { listModels } from "./connection";
+import { generateImageFile } from "./image";
+import { webSearch } from "./search";
 import {
   buildCitationSystemPrompt,
+  expandQuery,
   extractElements,
   generateArtifactData,
   proposeAgentOps,
   summarizeText,
   transformStream,
 } from "./tasks";
-import type { ModelRef, Passage, ProviderRuntime } from "./types";
+import type { ModelRef, Passage, ProviderRuntime, UsageEvent } from "./types";
 
 function readKey(): string | null {
   const file = process.env.ANTHROPIC_API_KEY_FILE?.trim();
@@ -167,5 +170,59 @@ describe.skipIf(!key)(`live: ${model}`, () => {
       }),
     );
     expect(answer).toContain("2");
+  });
+
+  // ───── Claude 代替其他提供方的能力：联网搜索、矢量插图、检索词扩展、用量与缓存 ─────
+
+  const usage: UsageEvent[] = [];
+  const tracked: ModelRef = { provider: { ...provider, onUsage: (e) => usage.push(e) }, model };
+
+  it("searches the web with Claude and returns real pages with snippets", async () => {
+    usage.length = 0;
+    const results = await webSearch(tracked, "Dartmouth workshop 1956 artificial intelligence", {
+      maxResults: 5,
+    });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.length).toBeLessThanOrEqual(5);
+    for (const r of results) expect(r.url).toMatch(/^https?:\/\//);
+    expect(results.some((r) => r.snippet.length > 40)).toBe(true);
+    expect(usage.some((u) => u.kind === "search" && u.searches >= 1)).toBe(true);
+  });
+
+  it("draws an illustration as a sanitized SVG", async () => {
+    const img = await generateImageFile(tracked, "一盏台灯照亮桌上一本打开的书，窗外是夜色");
+    const svg = new TextDecoder().decode(img.data);
+    expect(img.mediaType).toBe("image/svg+xml");
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).toMatch(/<\/svg>$/);
+    expect(svg).not.toMatch(/<script|onload=|foreignObject/i);
+    expect(usage.some((u) => u.kind === "image" && u.outputTokens > 100)).toBe(true);
+  });
+
+  it("expands an overview question into several search phrasings", async () => {
+    const terms = await expandQuery(
+      tracked,
+      "这几份资料分别讲了什么？神经网络是怎么复兴的？",
+      DEMO_SOURCES.map((s) => s.title),
+    );
+    expect(terms.length).toBeGreaterThanOrEqual(3);
+    expect(terms.every((t) => t.length >= 2 && t.length <= 40)).toBe(true);
+  });
+
+  it("reports usage and reads repeated source context from the prompt cache", async () => {
+    // 资料部分要超过模型的最小缓存长度：把示例资料重复几遍。
+    const long = Array.from({ length: 6 }, (_, k) =>
+      passages.map((p) => ({ ...p, n: k * passages.length + p.n })),
+    ).flat();
+    const system = buildCitationSystemPrompt(long, "达特茅斯会议");
+    const ask = (q: string) =>
+      collect(streamChat(tracked, { system, messages: [{ role: "user", content: q }] }));
+    usage.length = 0;
+    await ask("达特茅斯会议是哪一年？");
+    await ask("图灵测试是谁提出的？");
+    const chats = usage.filter((u) => u.kind === "chat");
+    expect(chats).toHaveLength(2);
+    expect(chats[0]!.inputTokens).toBeGreaterThan(1000);
+    expect(chats[1]!.cacheReadTokens).toBeGreaterThan(0);
   });
 });

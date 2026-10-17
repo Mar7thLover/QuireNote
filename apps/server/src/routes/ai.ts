@@ -1,4 +1,11 @@
-import { guessCapabilities, listCatalog, listModels, testConnection, transformStream } from "@quirenote/ai";
+import {
+  catalogEntry,
+  guessCapabilities,
+  listCatalog,
+  listModels,
+  testConnection,
+  transformStream,
+} from "@quirenote/ai";
 import {
   AgentProposal,
   Capability,
@@ -19,6 +26,7 @@ import {
   createProvider,
   deleteProvider,
   effectiveAssignments,
+  fillUnassigned,
   publicProvider,
   updateProvider,
   validateAssignment,
@@ -134,7 +142,10 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
 
   api.post("/providers", async (c) => {
     const input = await readJson(c, ProviderInput);
-    return c.json(publicProvider(await createProvider(ctx, input)), 201);
+    const rec = await createProvider(ctx, input);
+    // 新提供方能做、但还没分配的对话 / 联网搜索 / 插图，直接用它补上（前端会刷新能力分配）。
+    if (rec.keyEnc || !catalogEntry(rec.kind).requiresKey) await fillUnassigned(ctx, rec);
+    return c.json(publicProvider(rec), 201);
   });
 
   api.patch("/providers/:id", async (c) => {

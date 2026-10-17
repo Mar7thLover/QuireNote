@@ -4,7 +4,11 @@
   --dv-tabs-and-actions-container-background-color: transparent;
   --dv-activegroup-visiblepanel-tab-background-color: var(--surface-hover);
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
-  --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: color-mix(
+    in srgb,
+    var(--surface-hover) 55%,
+    transparent
+  );
   --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
   --dv-activegroup-visiblepanel-tab-color: var(--fg);
   --dv-activegroup-hiddenpanel-tab-color: var(--fg-subtle);
@@ -28,8 +32,8 @@
   --dv-spacing-padding: 6px;
   --dv-border-radius: 0px;
   --dv-tab-border-radius: calc(var(--radius) * 0.7);
-  --dv-tabs-and-actions-container-height: 40px;
-  --dv-tab-margin-block: 6px;
+  --dv-tabs-and-actions-container-height: 44px;
+  --dv-tab-margin-block: 7px;
   --dv-tab-margin-inline: 2px;
   --dv-tab-font-size: 13px;
   --dv-tabs-and-actions-container-font-size: 13px;
@@ -59,8 +63,17 @@
 .quirenote-dock .dv-tabs-and-actions-container {
   border-bottom: 1px solid var(--border);
 }
+/*
+ * 标签页：文字左右留足 12px，关闭按钮是独立的 18px 方块、与文字隔开 4px；
+ * 每组第一个标签离面板边缘 8px；过长的标题截断，不把其他标签挤出去。
+ */
+.quirenote-dock .dv-tabs-container {
+  padding-left: 6px;
+}
 .quirenote-dock .dv-tab {
+  padding: 0 5px 0 12px;
   font-weight: 400;
+  max-width: 240px;
   transition:
     background-color var(--dur-fast),
     color var(--dur-fast);
@@ -68,13 +81,38 @@
 .quirenote-dock .dv-tab:hover {
   color: var(--fg);
 }
-.quirenote-dock .dv-tab .dv-default-tab-action {
+.quirenote-dock .dv-tab .dv-default-tab {
+  gap: 4px;
+  min-width: 0;
+}
+.quirenote-dock .dv-tab .dv-default-tab .dv-default-tab-content {
+  margin-right: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.quirenote-dock .dv-tab .dv-default-tab .dv-default-tab-action {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: 5px;
   opacity: 0;
-  transition: opacity var(--dur-fast);
+  transition:
+    opacity var(--dur-fast),
+    background-color var(--dur-fast);
+}
+.quirenote-dock .dv-tab .dv-default-tab .dv-default-tab-action:hover {
+  border-radius: 5px;
+  background-color: var(--surface-hover);
 }
 .quirenote-dock .dv-tab:hover .dv-default-tab-action,
 .quirenote-dock .dv-tab.dv-active-tab .dv-default-tab-action {
-  opacity: 0.6;
+  opacity: 0.65;
+}
+/* 未聚焦面板组里正显示的标签：文字稍淡，底色更浅，仍能看出每组当前是哪一页。 */
+.quirenote-dock .dv-groupview.dv-inactive-group .dv-tab.dv-active-tab {
+  color: var(--fg-muted);
 }
 .quirenote-dock .dv-watermark {
   background: var(--bg);

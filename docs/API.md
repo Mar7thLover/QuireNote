@@ -37,7 +37,7 @@
 
 `POST /notebooks/:nb/retrieve` body `{query, sourceIds?, k?}` →
 `{ results: { chunk: Chunk, sourceTitle: string, score: number, vectorRank: number|null, keywordRank: number|null }[] }`
-混合检索：向量（sqlite-vec）+ 关键词（FTS5 trigram），RRF 融合。
+混合检索：向量（sqlite-vec）+ 关键词（FTS5 trigram），RRF 融合。没有 Embedding 模型时，由对话模型把提问扩展成 4–8 组检索词（同义词、上下位概念、中英对照、全称缩写），各做一次关键词检索后一并融合（权重 0.6）。
 
 ## 对话
 
@@ -128,7 +128,7 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | GET / PUT | `/models/assignments` | `ModelAssignment[]` / body `ModelAssignment` |
 | DELETE | `/models/assignments/:capability` | 清除分配，返回完整列表 |
 
-没有内置模型：AI 功能需要先添加 provider 并分配模型。未分配对话模型时相关接口返回 `400 model_not_configured`；未分配 Embedding 时检索只用关键词。
+没有内置模型：AI 功能需要先添加 provider 并分配模型。未分配对话模型时相关接口返回 `400 model_not_configured`；未分配 Embedding 时检索由对话模型扩展检索词（见「检索」）。
 
 ## 任务、设置、数据管理
 
@@ -143,6 +143,9 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | POST | `/admin/restore` | multipart `file` |
 | GET | `/files/:name` | 生成的音频/图片/视频 |
 | GET | `/health` | `{ok, version}` |
+| GET | `/usage/summary` | AI 用量与估算花费：`{today, budget, month, week, prevWeek, daily, byModel}` |
+| GET | `/overview` | 首页数据：`{writing: {words, notes, editedThisWeek, wordsThisWeek}, recent: RecentNote[]}` |
+| POST | `/notes/:id/opened` | 记录「最近打开」→ `{ok: true}` |
 
 ---
 
@@ -236,8 +239,11 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 - `POST /providers/:id/test` 永远返回 200：`{ok, latencyMs, error?, models?}`；错误信息不包含 Key。fal 没有免费探测接口，只检查是否填写了 Key；Edge TTS 暂不支持（返回 `ok:false` 及说明）。
 - `GET /models/assignments` 只返回已分配的能力。`PUT` 校验 provider 存在且支持该能力，返回更新后的完整列表。更换 Embedding 模型会自动排入全库 `reindex` 任务（期间检索退回关键词）。
 - `DELETE /models/assignments/:capability` 清除分配（该能力回到未配置），返回完整列表。删除 provider 时，引用它的分配一并清除。
+- `POST /providers` 新建后，若该 provider 支持 `chat` / `search` / `image` 而这些能力尚未分配，自动用它的默认模型补上（Embedding / TTS / STT 不自动分配：前者会触发重建索引，后两者会产生合成费用）。
+- Anthropic 的能力为 `chat`、`search`（Claude 服务端 web search 工具；Haiku 用 `web_search_20250305`，其他用 `web_search_20260209`；搜索结果正文加密，摘要由 Claude 撰写，URL 只保留工具真实返回的页面）、`image`（Claude 绘制的 SVG 插图，保存前去掉脚本、事件属性与外链；`/files/*.svg` 另带 `content-security-policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`）。`anthropic-compatible` 支持 `chat`、`image`。启动时为现有 provider 补上目录新增的能力（每个目录版本只做一次）。
+- Anthropic 对话请求带两个缓存断点：系统提示词（含资料片段）与最后一条消息。
 - 早期版本的内置 `local` provider 已移除：启动时删除指向它的分配和它生成的向量（`local:*`）。
-- 启动时可从环境变量引导 provider（Docker 部署）：`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、`TAVILY_API_KEY`、`BRAVE_API_KEY`，以及对应的 `*_FILE`（文件路径，读取内容并 trim）；OpenAI 兼容接口用 `OPENAI_COMPATIBLE_BASE_URL`（必填）、`OPENAI_COMPATIBLE_API_KEY[_FILE]`、`OPENAI_COMPATIBLE_CHAT_MODEL`、`OPENAI_COMPATIBLE_EMBEDDING_MODEL`。该类型（兼容接口按 baseUrl）尚无 provider 时才创建。未分配的能力补上分配：chat 依次用 Anthropic `claude-sonnet-5-5` / OpenAI / Gemini 的默认模型 / 兼容接口指定的对话模型；embedding 依次用 OpenAI / Gemini / 兼容接口指定的 Embedding 模型；search 用 Tavily / Brave。日志只输出 keyHint。
+- 启动时可从环境变量引导 provider（Docker 部署）：`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、`TAVILY_API_KEY`、`BRAVE_API_KEY`，以及对应的 `*_FILE`（文件路径，读取内容并 trim）；OpenAI 兼容接口用 `OPENAI_COMPATIBLE_BASE_URL`（必填）、`OPENAI_COMPATIBLE_API_KEY[_FILE]`、`OPENAI_COMPATIBLE_CHAT_MODEL`、`OPENAI_COMPATIBLE_EMBEDDING_MODEL`。该类型（兼容接口按 baseUrl）尚无 provider 时才创建。未分配的能力补上分配：chat 依次用 Anthropic `claude-sonnet-5-5` / OpenAI / Gemini 的默认模型 / 兼容接口指定的对话模型；embedding 依次用 OpenAI / Gemini / 兼容接口指定的 Embedding 模型；search 用 Tavily / Brave，都没有时用 Anthropic（Claude Haiku）；image 用 Anthropic（SVG 插图）。日志只输出 keyHint。
 
 ### 任务与事件
 
@@ -252,6 +258,13 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 - `POST /admin/reindex` 清除范围内的旧向量后用当前模型重建。
 - `GET /admin/backup`：zip 内含 `backup.json`、`quirenote.db`（SQLite 快照，含向量与全文索引）、`files/**`。**不含** `secret.key`：在另一台机器恢复时需要相同的 `QUIRENOTE_SECRET` / `secret.key`，否则需重新填写 provider Key。
 - `POST /admin/restore`：有后台任务运行时 `409 busy`；成功返回 `{ok: true, files: number}`。
+
+### 用量与首页
+
+- 每次模型调用（对话、生成、检索词扩展、联网搜索、Embedding、插图）按「本地日期 × provider × 模型 × 类型」累计：调用次数、输入 / 输出 / 缓存读 / 缓存写 Token、联网搜索次数。
+- `GET /usage/summary`：`month` / `week`（含今天的最近 7 天）/ `prevWeek` 为 `UsageTotals`（`{calls, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, searches, cost, unpricedTokens}`）；`cost` 按 Anthropic 官方标价估算（美元，含缓存折扣与每千次 10 美元的搜索费），没有价目的模型只计入 `unpricedTokens`。`daily` 为最近 14 天 `{day, tokens, cost}`（旧 → 新），`byModel` 为本月按模型汇总（`cost` 可能为 `null`）。`budget` 来自设置 `aiBudget.monthlyUsd`，未设置为 `null`。
+- `GET /overview`：字数按中日韩文字逐字、其他文字按词计（只统计 `kind: "note"`）；`recent` 最多 8 条，先按打开时间（`openedAt`），不足时用最近修改的笔记补位（`openedAt: null`）。每条：`{id, notebookId, notebookTitle, notebookColor, notebookIcon, title, excerpt, words, tags, updatedAt, openedAt}`。
+- 对话：所选资料的分块总字数不超过 6 万（配置了 Embedding 时 2 万）时，整份按原文顺序交给模型，不做检索；超过时检索 + 按资料均匀补足（12,000 字以内）。
 
 ### Notebook 导出 / 导入
 

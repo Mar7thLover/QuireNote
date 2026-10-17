@@ -273,7 +273,7 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
     const { results, warning } = await retrieve(store, nb, input.query, {
       ...(input.sourceIds ? { sourceIds: input.sourceIds } : {}),
       k: input.k ?? 8,
-      embedding: await ctx.models.embedding(),
+      ...(await ctx.models.retrieval()),
     });
     return c.json(warning ? { results, warning } : { results });
   });

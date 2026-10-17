@@ -59,6 +59,8 @@ export const qk = {
   jobs: ["jobs"] as const,
   settings: (key: string) => ["settings", key] as const,
   adminStats: ["admin-stats"] as const,
+  overview: ["overview"] as const,
+  usage: ["usage-summary"] as const,
 };
 
 /** 用列表里的某一项更新缓存（乐观更新 / SSE 推送共用）。 */

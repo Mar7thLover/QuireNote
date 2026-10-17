@@ -1,5 +1,5 @@
 /** 联网搜索与深度研究：多轮检索 → 抓取正文 → 作为 search 资料导入 → 生成报告。 */
-import { type ModelRef, researchQueries, type SearchResult, webSearch } from "@quirenote/ai";
+import { defaultModel, type ModelRef, researchQueries, type SearchResult, webSearch } from "@quirenote/ai";
 import { newId, nowIso, type Source } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest } from "../errors";
@@ -14,7 +14,7 @@ export async function searchModel(ctx: AppContext, providerId?: string): Promise
     const model = assigned?.providerId === providerId ? assigned.model : "";
     return {
       provider: rt,
-      model: model || (rt.kind === "tavily" ? "basic" : rt.kind === "searxng" ? "general" : "web"),
+      model: model || defaultModel(rt.kind, "search") || "web",
     };
   }
   return ctx.models.require("search", "联网搜索");

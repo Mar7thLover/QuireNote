@@ -5,7 +5,7 @@
  * - POST /chat/completions   → 文本回答引用 [1]；带 json_schema 时按 schema 生成合法对象，字符串取自资料原句
  * 只看路径后缀，不关心 host。
  */
-import { splitSentences, stripMarkdown } from "./text";
+import { keywordOverlap, splitSentences, stripMarkdown } from "./text";
 import { textVector } from "./vector";
 
 export const FAKE_BASE_URL = "http://fake-llm.test/v1";
@@ -77,7 +77,12 @@ function sentencePool(prompt: string): string[] {
 
 function answerText(prompt: string, question: string): string {
   const passages = passagesIn(prompt);
-  const first = [...passages.entries()][0];
+  // 像真实模型一样从最相关的片段作答（整份资料按原文顺序给出时，第一个片段未必相关）。
+  const entries = [...passages.entries()];
+  const first = entries.reduce<[number, string] | undefined>(
+    (best, e) => (!best || keywordOverlap(question, e[1]) > keywordOverlap(question, best[1]) ? e : best),
+    undefined,
+  );
   if (!first) return `（测试模型）没有资料片段。问题：${question.slice(0, 60)}`;
   const sentence =
     sentencePool(`[${first[0]}]
@@ -131,16 +136,26 @@ function sampleFromSchema(
   }
 }
 
-function streamResponse(model: string, content: string): Response {
+function streamResponse(model: string, content: string, promptChars: number): Response {
   const id = `chatcmpl-fake-${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
   const chunk = (delta: Record<string, unknown>, finish: string | null) =>
     `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
   const parts = content.match(/[\s\S]{1,16}/g) ?? [""];
+  // 和 OpenAI 一样，最后一个分片只带用量。
+  const usage = `data: ${JSON.stringify({
+    id,
+    object: "chat.completion.chunk",
+    created,
+    model,
+    choices: [],
+    usage: { prompt_tokens: Math.ceil(promptChars / 4), completion_tokens: Math.ceil(content.length / 4) },
+  })}\n\n`;
   const body =
     chunk({ role: "assistant", content: "" }, null) +
     parts.map((p) => chunk({ content: p }, null)).join("") +
     chunk({}, "stop") +
+    usage +
     "data: [DONE]\n\n";
   return new Response(body, { headers: { "content-type": "text/event-stream" } });
 }
@@ -148,6 +163,11 @@ function streamResponse(model: string, content: string): Response {
 function chatCompletion(body: ChatBody): Response {
   const prompt = body.messages.map((m) => textOf(m.content)).join("\n\n");
   const lastUser = [...body.messages].reverse().find((m) => m.role === "user");
+  // 资料片段在系统提示词里；只从这里找片段，避免把提问本身当成最后一个片段的正文。
+  const systemText = body.messages
+    .filter((m) => m.role === "system")
+    .map((m) => textOf(m.content))
+    .join("\n\n");
   const schema =
     body.response_format?.type === "json_schema" ? body.response_format.json_schema?.schema : null;
   // 没有编号片段时（自动标注等直接给全文），从用户消息里取句子。
@@ -155,8 +175,8 @@ function chatCompletion(body: ChatBody): Response {
   if (!pool.length) pool.push(...sentencesOf(textOf(lastUser?.content)));
   const content = schema
     ? JSON.stringify(sampleFromSchema(schema, schema, pool, { i: 0 }))
-    : answerText(prompt, textOf(lastUser?.content));
-  if (body.stream) return streamResponse(body.model, content);
+    : answerText(systemText || prompt, textOf(lastUser?.content));
+  if (body.stream) return streamResponse(body.model, content, prompt.length);
   return json({
     id: `chatcmpl-fake-${Date.now()}`,
     object: "chat.completion",

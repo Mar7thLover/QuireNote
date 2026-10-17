@@ -10,6 +10,21 @@ export interface ProviderRuntime {
   headers?: Record<string, string> | null;
   /** 可注入的 fetch，测试时用来 mock。 */
   fetch?: typeof fetch;
+  /** 每次调用结束后回报用量（服务端据此统计 Token 与花费）。 */
+  onUsage?: (event: UsageEvent) => void;
+}
+
+/** 一次模型调用的用量。 */
+export interface UsageEvent {
+  providerId: string;
+  model: string;
+  kind: "chat" | "embedding" | "search" | "image";
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  /** 服务端工具（联网搜索）的调用次数。 */
+  searches: number;
 }
 
 /** 某个能力的模型分配：provider + 模型名。 */

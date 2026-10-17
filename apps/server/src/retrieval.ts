@@ -1,5 +1,8 @@
-/** 混合检索：sqlite-vec 向量 + FTS5 关键词，RRF 融合。 */
-import { embeddingKey, embedTexts, type ModelRef, type Passage } from "@quirenote/ai";
+/**
+ * 混合检索：sqlite-vec 向量 + FTS5 关键词，RRF 融合。
+ * 没有 Embedding 模型时，由对话模型把提问扩展成多组检索词，代替向量召回同义、跨语言的说法。
+ */
+import { embeddingKey, embedTexts, expandQuery, type ModelRef, type Passage } from "@quirenote/ai";
 import type { Chunk } from "@quirenote/core";
 import type { Store } from "./store/types";
 
@@ -50,6 +53,21 @@ export interface RetrieveOptions {
   k?: number;
   /** 当前的 embedding 模型；为 null 时只做关键词检索。 */
   embedding: ModelRef | null;
+  /** 没有 embedding 时用来扩展检索词的对话模型；为 null 时只用原始提问检索。 */
+  expand?: ModelRef | null;
+}
+
+/** 扩展结果缓存：同一提问（重新生成、追问）不重复调用模型。 */
+const expansions = new Map<string, string[]>();
+
+async function expandedQueries(ref: ModelRef, query: string, titles: string[]): Promise<string[]> {
+  const key = `${ref.provider.id}:${ref.model}:${query}`;
+  const hit = expansions.get(key);
+  if (hit) return hit;
+  const out = await expandQuery(ref, query, titles);
+  expansions.set(key, out);
+  if (expansions.size > 200) expansions.delete(expansions.keys().next().value!);
+  return out;
 }
 
 export async function retrieve(
@@ -90,14 +108,39 @@ export async function retrieve(
   const keywordIds = (await store.chunks.keywordSearch(notebookId, query, candidates * 2)).map(
     (h) => h.chunkId,
   );
+  // 扩展检索词各自做一次关键词检索，结果作为「语义」列表，权重略低于原始提问。
+  let expandedIds: string[][] = [];
+  if (!opts.embedding && opts.expand) {
+    try {
+      const terms = await expandedQueries(
+        opts.expand,
+        query,
+        sources.filter((s) => allowed.has(s.id)).map((s) => s.title),
+      );
+      expandedIds = await Promise.all(
+        terms.map(async (t) =>
+          (await store.chunks.keywordSearch(notebookId, t, candidates)).map((h) => h.chunkId),
+        ),
+      );
+    } catch (err) {
+      warning = `扩展检索词失败，已只用原始提问检索：${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
 
   // 先按资料范围过滤，再融合（名次以过滤后的列表计）。
   const chunkMap = new Map(
-    (await store.chunks.get([...new Set([...vectorIds, ...keywordIds])])).map((c) => [c.id, c]),
+    (await store.chunks.get([...new Set([...vectorIds, ...keywordIds, ...expandedIds.flat()])])).map((c) => [
+      c.id,
+      c,
+    ]),
   );
   const keep = (ids: string[]) =>
     ids.filter((id) => allowed.has(chunkMap.get(id)?.sourceId ?? "")).slice(0, candidates);
-  const fused = rrf([{ ids: keep(vectorIds) }, { ids: keep(keywordIds) }]).slice(0, k);
+  const fused = rrf([
+    { ids: keep(vectorIds) },
+    { ids: keep(keywordIds) },
+    ...expandedIds.map((ids) => ({ ids: keep(ids), weight: 0.6 })),
+  ]).slice(0, k);
   const results = fused.map((f) => {
     const chunk = chunkMap.get(f.id)!;
     return {

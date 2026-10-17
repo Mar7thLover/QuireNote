@@ -74,6 +74,14 @@ function NoteEditor({ notebookId, note }: { notebookId: string; note: Note }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: 卸载时执行
   useEffect(() => () => flush(), []);
 
+  // 记录「最近打开」（首页展示）；失败不影响编辑。
+  useEffect(() => {
+    api.notes
+      .opened(note.id)
+      .then(() => queryClient.invalidateQueries({ queryKey: qk.overview }))
+      .catch(() => {});
+  }, [note.id]);
+
   // 更新标签页标题
   const panelApi = useWorkspace((s) => s.api);
   useEffect(() => {

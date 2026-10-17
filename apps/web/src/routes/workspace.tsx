@@ -82,7 +82,15 @@ const ACTIVITY: { kind: PanelKind; icon: LucideIcon; shortcut?: string }[] = [
   { kind: "search", icon: Globe, shortcut: SHORTCUTS.search },
 ];
 
-export function WorkspacePage({ notebookId, initialPanel }: { notebookId: string; initialPanel?: string }) {
+export function WorkspacePage({
+  notebookId,
+  initialPanel,
+  initialNote,
+}: {
+  notebookId: string;
+  initialPanel?: string;
+  initialNote?: string;
+}) {
   const notebook = useQuery({
     queryKey: qk.notebook(notebookId),
     queryFn: () => api.notebooks.get(notebookId),
@@ -98,7 +106,12 @@ export function WorkspacePage({ notebookId, initialPanel }: { notebookId: string
       {mobile ? (
         <MobileWorkspace notebookId={notebookId} notebook={notebook.data} />
       ) : (
-        <DesktopWorkspace notebookId={notebookId} notebook={notebook.data} initialPanel={initialPanel} />
+        <DesktopWorkspace
+          notebookId={notebookId}
+          notebook={notebook.data}
+          initialPanel={initialPanel}
+          initialNote={initialNote}
+        />
       )}
       <AddSourceDialog notebookId={notebookId} />
     </>
@@ -109,10 +122,12 @@ function DesktopWorkspace({
   notebookId,
   notebook,
   initialPanel,
+  initialNote,
 }: {
   notebookId: string;
   notebook?: Notebook;
   initialPanel?: string;
+  initialNote?: string;
 }) {
   const { t } = useTranslation();
   const focusMode = useUi((s) => s.focusMode);
@@ -142,6 +157,12 @@ function DesktopWorkspace({
     [SHORTCUTS.toggleFocus]: () => useUi.getState().toggleFocus(),
     Escape: () => useUi.getState().focusMode && useUi.getState().set({ focusMode: false }),
   });
+
+  // 从首页「最近打开」进来：打开指定笔记（同一 Notebook 内换笔记时也生效）。
+  useEffect(() => {
+    if (dockApi && initialNote)
+      useWorkspace.getState().open({ kind: "note", id: initialNote, title: t("common.untitled") });
+  }, [dockApi, initialNote, t]);
 
   // 专注模式：隐藏外框，最大化当前面板组
   useEffect(() => {

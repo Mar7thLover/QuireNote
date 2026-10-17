@@ -1,6 +1,7 @@
 import { embedMany } from "ai";
 import { embeddingModel, errorMessage } from "./sdk";
 import { AiError, type ModelRef } from "./types";
+import { reportUsage } from "./usage";
 
 /** 批量 Embedding。返回与输入等长的向量数组。 */
 export async function embedTexts(
@@ -17,6 +18,7 @@ export async function embedTexts(
     for (let i = 0; i < texts.length; i += batch) {
       const res = await embedMany({ model, values: texts.slice(i, i + batch), abortSignal, maxRetries: 2 });
       out.push(...res.embeddings);
+      reportUsage(ref, "embedding", { inputTokens: res.usage?.tokens ?? 0 });
     }
     return out;
   } catch (err) {

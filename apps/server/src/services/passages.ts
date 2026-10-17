@@ -51,7 +51,7 @@ export async function gatherPassages(
     const { results } = await retrieve(ctx.store, notebookId, opts.query, {
       sourceIds: sources.map((s) => s.id),
       k: opts.k ?? 12,
-      embedding: await ctx.models.embedding(),
+      ...(await ctx.models.retrieval()),
     });
     chosen = results.map((r) => r.chunk);
   }
@@ -59,9 +59,18 @@ export async function gatherPassages(
   const used = new Set(chosen.map((c) => c.id));
   let budget = maxChars - chosen.reduce((s, c) => s + c.text.length, 0);
   if (opts.fill !== false && budget > 0 && sources.length) {
-    const per = Math.max(1500, Math.floor(budget / sources.length));
+    const rest = new Map<string, Chunk[]>();
+    for (const s of sources)
+      rest.set(
+        s.id,
+        (await ctx.store.chunks.listBySource(s.id)).filter((c) => !used.has(c.id)),
+      );
+    const restChars = [...rest.values()].flat().reduce((a, c) => a + c.text.length, 0);
+    // 剩下的全部放得下：整份资料都给模型（长上下文模式），不再抽样。
+    const per =
+      restChars <= budget ? Number.POSITIVE_INFINITY : Math.max(1500, Math.floor(budget / sources.length));
     for (const s of sources) {
-      const chunks = (await ctx.store.chunks.listBySource(s.id)).filter((c) => !used.has(c.id));
+      const chunks = rest.get(s.id)!;
       const avg = chunks.length ? chunks.reduce((a, c) => a + c.text.length, 0) / chunks.length : 1;
       const n = Math.max(1, Math.floor(Math.min(per, budget) / Math.max(1, avg)));
       for (const c of spread(chunks, n)) {

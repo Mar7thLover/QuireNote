@@ -2,6 +2,7 @@ import { Toaster, TooltipProvider } from "@quirenote/ui";
 import { onlineManager, useQuery } from "@tanstack/react-query";
 import { WifiOff } from "lucide-react";
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { ManualDialog } from "@/features/manual/ManualDialog";
 import { initNative } from "@/features/mobile/native";
 import { ServerOnboarding, ShareInbox } from "@/features/mobile/ShareInbox";
 import { syncRenderSettings } from "@/features/render/store";
@@ -46,6 +47,7 @@ export function Root({ children }: { children: ReactNode }) {
       </div>
       <CommandPalette />
       <ShortcutsDialog />
+      <ManualDialog />
       <AgentDiffDialog />
       <NewNotebookDialog />
       <ShareInbox />

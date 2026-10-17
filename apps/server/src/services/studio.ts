@@ -146,13 +146,14 @@ export async function renderArtifactMedia(
       case "audio": {
         const tts = await ctx.models.resolve("tts");
         if (!tts) {
-          // 没有 TTS：保留可编辑的脚本，提示用户配置后重新合成。
-          await fail(
-            "已生成播客脚本，但尚未配置 TTS 模型：在「设置 → 模型」为“语音合成”分配模型后，点击重新合成即可生成音频。",
-            { ...data, audioUrl: null },
-            "ready",
-          );
-          return "已生成脚本（未配置 TTS）";
+          // 没有 TTS：脚本照常可用，前端用系统语音朗读；配置 TTS 后可以重新合成为音频文件。
+          await ctx.store.artifacts.update(art.id, {
+            status: "ready",
+            error: null,
+            data: { ...data, audioUrl: null },
+          });
+          await emitArtifact(ctx, art.id);
+          return "已生成脚本（用系统语音朗读）";
         }
         const voices = {
           ...defaultVoices(tts),

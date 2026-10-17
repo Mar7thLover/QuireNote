@@ -197,6 +197,66 @@ export async function removeLegacyLocal(ctx: AppContext): Promise<boolean> {
   return legacy.length > 0 || vectors > 0;
 }
 
+/**
+ * 自动补位的能力：只有用到时才产生费用、换模型也没有副作用的这几种。
+ * Embedding 会触发重建索引、TTS / STT 会产生合成费用，仍由用户自己分配。
+ */
+const AUTO_FILL: Capability[] = ["chat", "search", "image"];
+
+/** 新加（或刚升级）的提供方支持、但还没分配模型的能力，直接用它的默认模型补上。返回补上的能力。 */
+export async function fillUnassigned(ctx: AppContext, p: ProviderRecord): Promise<Capability[]> {
+  if (!p.enabled) return [];
+  const filled: Capability[] = [];
+  const models = providerModels(p);
+  for (const cap of AUTO_FILL) {
+    if (!supportsCapability(p.kind, cap) || (await ctx.models.assignment(cap))) continue;
+    const preferred = defaultModel(p.kind, cap);
+    const model =
+      models.find((m) => m.id === preferred && m.capabilities.includes(cap))?.id ??
+      models.find((m) => m.capabilities.includes(cap))?.id;
+    if (!model) continue;
+    await ctx.store.assignments.set({ capability: cap, providerId: p.id, model });
+    filled.push(cap);
+  }
+  return filled;
+}
+
+/** 目录升级的版本号：2 = Anthropic 增加了联网搜索与矢量插图；3 = 新能力自动补上分配。 */
+const CATALOG_UPGRADE = 3;
+
+/**
+ * 目录给某类提供方增加了能力时，把新能力补到已登记的同名示例模型上；
+ * 该能力一个模型都没有时，再补上目录里的默认模型。每个版本只做一次，不覆盖用户之后的改动。
+ */
+export async function upgradeProviderModels(ctx: AppContext): Promise<number> {
+  const done = (await ctx.store.settings.get<number>("providerCatalogUpgrade")) ?? 0;
+  if (done >= CATALOG_UPGRADE) return 0;
+  let changed = 0;
+  for (const p of await ctx.store.providers.list()) {
+    if (!p.models) continue;
+    const catalog = catalogModels(p.kind);
+    const models = p.models.map((m) => {
+      const known = catalog.find((c) => c.id === m.id);
+      return known ? { ...m, capabilities: [...new Set([...m.capabilities, ...known.capabilities])] } : m;
+    });
+    for (const cap of catalogEntry(p.kind).capabilities) {
+      if (models.some((m) => m.capabilities.includes(cap))) continue;
+      const id = defaultModel(p.kind, cap);
+      if (id) models.push({ id, label: null, capabilities: [cap] });
+    }
+    const next = normalizeModels(p.kind, models);
+    let current = p;
+    if (JSON.stringify(next) !== JSON.stringify(p.models)) {
+      current = (await ctx.store.providers.update(p.id, { models: next, updatedAt: nowIso() })) ?? p;
+      changed++;
+    }
+    if (current.keyEnc || !catalogEntry(current.kind).requiresKey)
+      changed += (await fillUnassigned(ctx, current)).length;
+  }
+  await ctx.store.settings.set("providerCatalogUpgrade", CATALOG_UPGRADE);
+  return changed;
+}
+
 // ───────────── 从环境变量引导 provider ─────────────
 
 const ENV_PROVIDERS: { env: string; kind: ProviderKind; name: string }[] = [
@@ -337,5 +397,9 @@ export async function bootstrapProvidersFromEnv(
     const pick = usable("tavily") ?? usable("brave");
     if (pick) await assign("search", pick, defaultModel(pick.kind, "search") ?? "");
   }
+  // Claude 也能联网搜索、画插图：上面没补上的，用 Anthropic 补。
+  const claude = usable("anthropic");
+  if (claude)
+    for (const cap of await fillUnassigned(ctx, claude)) log(`${CAP_LABEL[cap]}模型已分配为 ${claude.name}`);
   return created;
 }

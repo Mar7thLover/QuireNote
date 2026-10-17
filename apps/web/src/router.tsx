@@ -21,13 +21,15 @@ const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", comp
 export const workspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/n/$notebookId",
-  /** panel：进入时打开的面板（例如首页「去复习」）。 */
-  validateSearch: (search: Record<string, unknown>): { panel?: string } =>
-    typeof search.panel === "string" ? { panel: search.panel } : {},
+  /** panel：进入时打开的面板（例如首页「去复习」）；note：进入时打开的笔记（首页「最近打开」）。 */
+  validateSearch: (search: Record<string, unknown>): { panel?: string; note?: string } => ({
+    ...(typeof search.panel === "string" ? { panel: search.panel } : {}),
+    ...(typeof search.note === "string" ? { note: search.note } : {}),
+  }),
   component: function Workspace() {
     const { notebookId } = workspaceRoute.useParams();
-    const { panel } = workspaceRoute.useSearch();
-    return <WorkspacePage key={notebookId} notebookId={notebookId} initialPanel={panel} />;
+    const { panel, note } = workspaceRoute.useSearch();
+    return <WorkspacePage key={notebookId} notebookId={notebookId} initialPanel={panel} initialNote={note} />;
   },
 });
 

@@ -7,6 +7,7 @@ import { badRequest } from "../errors";
 import type { BusEvent } from "../events";
 import { mimeFromName, safeName } from "../files";
 import { publicJob } from "../jobs";
+import { overview, recordNoteOpened, usageSummary } from "../services/insights";
 import { backupAll, restoreAll } from "../services/portability";
 import { MEDIA_DIR } from "../services/studio";
 import { download, fileResponse, must, readUpload } from "./util";
@@ -85,6 +86,17 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
     }
     await store.settings.set(key, value);
     return c.json(value);
+  });
+
+  // ───── 首页：用量、写作、最近打开 ─────
+  api.get("/usage/summary", async (c) => c.json(await usageSummary(ctx)));
+
+  api.get("/overview", async (c) => c.json(await overview(ctx)));
+
+  api.post("/notes/:id/opened", async (c) => {
+    must(await store.notes.get(c.req.param("id")), "笔记");
+    await recordNoteOpened(ctx, c.req.param("id"));
+    return c.json({ ok: true });
   });
 
   // ───── Admin ─────

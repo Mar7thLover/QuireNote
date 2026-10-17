@@ -49,7 +49,10 @@ pnpm dev
 - 服务端：http://localhost:8787/api/health
 - 首次启动会创建一个示例 Notebook「人工智能简史」。阅读、笔记、检索不需要模型；对话、Studio 等 AI 功能需要先配置模型。
 - 在「设置 → 模型与服务」添加 Claude / OpenAI / Gemini / Ollama，或任意 OpenAI 兼容、Anthropic 兼容接口（中转、DeepSeek、硅基流动、vLLM 等）；在提供方下手动添加或「从服务拉取」模型，再为每种能力分配。对话输入框左下角可以给单个对话切换模型。
-- Anthropic 没有 Embedding 接口。没有配置 Embedding 时检索只用关键词；需要向量检索时选 OpenAI、Gemini、Ollama 或兼容接口的 Embedding 模型。
+- 只配一个 Claude 就能用全部核心功能：对话、联网搜索（Claude 自带 web search）、读图、矢量插图（Claude 绘制 SVG）。添加 Anthropic 后，对话 / 联网搜索 / 插图会自动分配。
+- Anthropic 没有 Embedding 接口。没有 Embedding 时：所选资料不多（约 6 万字以内）就整份交给模型阅读，并用提示词缓存降低连续提问的费用；资料多时由对话模型把提问扩展成多组检索词再做全文检索。需要向量检索时选 OpenAI、Gemini、Ollama 或兼容接口的 Embedding 模型。
+- 没有语音合成（TTS）时，音频概览用浏览器自带的系统语音朗读。
+- 首页显示本月估算花费（Claude 按官方标价）、最近 7 天 Token 用量、写作字数和最近打开的笔记；可以设置月度预算。内置使用手册在首页右上角。
 
 ### Docker 一键部署
 

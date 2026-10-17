@@ -32,6 +32,34 @@ export function formatCount(n: number): string {
   }).format(n);
 }
 
+/** Token 数：1,234 / 12.3K / 4.5M。 */
+export function formatTokens(n: number): string {
+  if (n < 10_000) return new Intl.NumberFormat("en").format(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 100_000 ? 1 : 0)}K`;
+  return `${(n / 1_000_000).toFixed(n < 100_000_000 ? 1 : 0)}M`;
+}
+
+/** 美元金额：$0.00；大于 0 但不足一分显示 <$0.01。 */
+export function formatUsd(n: number): string {
+  if (n > 0 && n < 0.01) return "<$0.01";
+  return `$${n.toFixed(n >= 1000 ? 0 : 2)}`;
+}
+
+/** 本地化的数字（字数等）。 */
+export function formatNumber(n: number): string {
+  return new Intl.NumberFormat(currentLang() === "zh" ? "zh-CN" : "en").format(n);
+}
+
+/** YYYY-MM-DD → 10月16日 / Oct 16。 */
+export function shortDay(day: string): string {
+  if (!day) return "";
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(y!, m! - 1, d!).toLocaleDateString(currentLang() === "zh" ? "zh-CN" : "en", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 /** 从 markdown 中取前若干个字符的纯文本预览。 */
 export function plainPreview(md: string, max = 140): string {
   const t = md

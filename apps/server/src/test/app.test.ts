@@ -317,7 +317,7 @@ describe("studio, review and elements", () => {
     )!;
   });
 
-  it("audio overview keeps an editable script when no TTS is configured", async () => {
+  it("audio overview without TTS is ready with a script for system-voice playback", async () => {
     const a = await s.json<Artifact>(`/notebooks/${demo.id}/artifacts`, {
       method: "POST",
       json: { kind: "audio" },
@@ -325,7 +325,8 @@ describe("studio, review and elements", () => {
     await s.ctx.jobs.idle();
     const done = await s.json<Artifact>(`/artifacts/${a.id}`);
     expect(done.status).toBe("ready");
-    expect(done.error).toMatch(/TTS/);
+    expect(done.error).toBeNull();
+    expect(done.data?.kind === "audio" && done.data.audioUrl).toBeFalsy();
     expect(done.data?.kind === "audio" && done.data.script.length).toBeGreaterThan(3);
   });
 
@@ -546,12 +547,21 @@ describe("providers and models", () => {
 
   it("lists the catalog without a built-in local provider", async () => {
     const cat =
-      await s.json<{ kind: string; notes: string; models: Record<string, string[]> }[]>("/providers/catalog");
+      await s.json<
+        { kind: string; notes: string; capabilities: string[]; models: Record<string, string[]> }[]
+      >("/providers/catalog");
     expect(cat.find((c) => c.kind === "local")).toBeUndefined();
     expect(cat.find((c) => c.kind === "anthropic-compatible")).toBeTruthy();
     const anthropic = cat.find((c) => c.kind === "anthropic")!;
     expect(anthropic.notes).toMatch(/没有 Embedding/);
-    expect(anthropic.models.chat).toEqual(["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"]);
+    expect(anthropic.capabilities).toEqual(["chat", "search", "image"]);
+    expect(anthropic.models.chat).toEqual([
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-haiku-5-5",
+      "claude-fable-5-1",
+    ]);
+    expect(anthropic.models.search?.[0]).toBe("claude-haiku-5-5");
   });
 
   it("never returns the plaintext key, only hasKey and keyHint", async () => {
@@ -679,9 +689,11 @@ describe("providers and models", () => {
 
   it("manages model assignments with capability validation", async () => {
     const initial = await s.json<ModelAssignment[]>("/models/assignments");
+    // 新加的 OpenAI 提供方自动补上了还没分配的「图像」；已有的对话、Embedding 不受影响。
     expect(initial.map((a) => [a.capability, a.model])).toEqual([
       ["chat", "fake-chat"],
       ["embedding", "fake-embed"],
+      ["image", "gpt-image-2"],
     ]);
     const bad = await s.request("/models/assignments", {
       method: "PUT",

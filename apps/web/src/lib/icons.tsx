@@ -24,6 +24,7 @@ import {
   Type,
   Video,
 } from "lucide-react";
+import type { CSSProperties } from "react";
 
 const MAP: Record<string, LucideIcon> = {
   "file-text": FileText,
@@ -51,7 +52,17 @@ const MAP: Record<string, LucideIcon> = {
   clapperboard: Clapperboard,
 };
 
-export function Icon({ name, className }: { name: string; className?: string }) {
+export function Icon({
+  name,
+  className,
+  strokeWidth,
+  style,
+}: {
+  name: string;
+  className?: string;
+  strokeWidth?: number;
+  style?: CSSProperties;
+}) {
   const C = MAP[name] ?? FileText;
-  return <C className={className} />;
+  return <C className={className} strokeWidth={strokeWidth} style={style} />;
 }

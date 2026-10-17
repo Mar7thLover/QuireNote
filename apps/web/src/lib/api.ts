@@ -119,6 +119,46 @@ export interface AdminStats {
   embeddingModel: string;
 }
 
+export interface UsageTotals {
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  searches: number;
+  cost: number;
+  unpricedTokens: number;
+}
+
+export interface UsageSummary {
+  today: string;
+  budget: number | null;
+  month: UsageTotals;
+  week: UsageTotals;
+  prevWeek: UsageTotals;
+  daily: { day: string; tokens: number; cost: number }[];
+  byModel: { providerId: string; model: string; tokens: number; cost: number | null; calls: number }[];
+}
+
+export interface RecentNote {
+  id: string;
+  notebookId: string;
+  notebookTitle: string;
+  notebookColor: string;
+  notebookIcon: string;
+  title: string;
+  excerpt: string;
+  words: number;
+  tags: string[];
+  updatedAt: string;
+  openedAt: string | null;
+}
+
+export interface Overview {
+  writing: { words: number; notes: number; editedThisWeek: number; wordsThisWeek: number };
+  recent: RecentNote[];
+}
+
 export interface WebResult {
   title: string;
   url: string;
@@ -201,7 +241,10 @@ export const api = {
     create: (nb: string, input: NoteInput) => post<Note>(`/notebooks/${nb}/notes`, input),
     update: (id: string, input: Partial<NoteInput>) => patch<Note>(`/notes/${id}`, input),
     remove: (id: string) => del(`/notes/${id}`),
+    opened: (id: string) => post<{ ok: boolean }>(`/notes/${id}/opened`),
   },
+  overview: () => get<Overview>("/overview"),
+  usage: () => get<UsageSummary>("/usage/summary"),
 
   artifacts: {
     list: (nb: string) => get<Artifact[]>(`/notebooks/${nb}/artifacts`),

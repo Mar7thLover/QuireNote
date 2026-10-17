@@ -75,9 +75,10 @@ export function CommandItem({
   return (
     <CommandPrimitive.Item
       className={cn(
-        "flex h-9 cursor-default select-none items-center gap-2.5 rounded-md px-2.5 text-sm outline-none",
-        "data-[selected=true]:bg-accent-soft data-[selected=true]:text-accent-soft-fg data-[disabled=true]:opacity-40",
-        "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-fg-subtle data-[selected=true]:[&_svg]:text-accent-soft-fg",
+        "flex h-9 cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 text-sm text-fg-muted outline-none",
+        // 选中态用中性灰底（与悬停一致），不用点缀色：命令列表里点缀色会盖过内容本身。
+        "data-[selected=true]:bg-surface-hover data-[selected=true]:text-fg data-[disabled=true]:opacity-40",
+        "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-fg-subtle data-[selected=true]:[&_svg]:text-fg-muted",
         className,
       )}
       {...props}

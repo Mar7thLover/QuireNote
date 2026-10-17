@@ -63,7 +63,8 @@ export function buildCitationSystemPrompt(passages: Passage[], question = ""): s
     langHint(passages, question),
   ].join("\n");
   if (!passages.length) return `${rules}\n\n（当前没有可用的资料片段。）`;
-  return `${rules}\n\n# 资料片段\n\n${formatPassages(passages)}`;
+  // 片段总量由调用方控制（检索命中，或资料不多时的整份资料），这里不再截断。
+  return `${rules}\n\n# 资料片段\n\n${formatPassages(passages, Number.POSITIVE_INFINITY)}`;
 }
 
 // ───────────── Studio 生成物 ─────────────
@@ -577,4 +578,26 @@ export async function researchQueries(
   });
   const qs = draft.queries.map((q) => q.trim()).filter(Boolean);
   return qs.length ? qs.slice(0, 3) : [question];
+}
+
+/**
+ * 没有 Embedding 模型时的语义检索：让对话模型把提问改写成几组检索词（同义词、上下位概念、
+ * 中英对照、全称与缩写），再交给关键词检索。资料标题帮助模型使用资料里的说法。
+ */
+export async function expandQuery(ref: ModelRef, query: string, titles: string[] = []): Promise<string[]> {
+  const draft = await generateStructured(ref, {
+    schema: ResearchQueriesDraft,
+    name: "queries",
+    system: [
+      "你为一个个人资料库的全文检索改写查询。资料库只支持关键词匹配，不理解语义。",
+      "给出 4–8 个检索词或短语，每个 2–16 个字符，覆盖：问题里的核心概念、它们的同义词与常见说法、",
+      "上位或下位概念、专有名词的全称与缩写，以及中文与英文的对应说法。不要输出整句，不要重复。",
+    ].join(""),
+    prompt: `${titles.length ? `资料标题：${titles.slice(0, 20).join("；")}\n\n` : ""}提问：${query}`,
+  });
+  const seen = new Set<string>();
+  return draft.queries
+    .map((q) => q.trim())
+    .filter((q) => q.length >= 2 && !seen.has(q.toLowerCase()) && seen.add(q.toLowerCase()))
+    .slice(0, 8);
 }

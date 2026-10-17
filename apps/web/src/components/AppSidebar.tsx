@@ -5,6 +5,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Brain,
   ChevronDown,
+  ChevronUp,
   Database,
   House,
   Info,
@@ -21,7 +22,7 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import { currentLang, setLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
@@ -91,7 +92,33 @@ function Item({
   );
 }
 
-/** 可展开的分组（Notebook、设置）。收起侧栏时只剩图标，点击直达。 */
+/**
+ * 展开 / 收起的过渡：高度从 0 长到内容高度。from="below" 时内容贴着底边，
+ * 最靠近触发行的一项先出现、列表向上长出来；收起时原路退回。
+ */
+function Reveal({ open, from, children }: { open: boolean; from: "above" | "below"; children: ReactNode }) {
+  return (
+    <div
+      inert={!open}
+      className="grid transition-[grid-template-rows,opacity] duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+      style={{ gridTemplateRows: open ? "1fr" : "0fr", opacity: open ? 1 : 0 }}
+    >
+      <div
+        className={cn(
+          "flex min-h-0 flex-col gap-0.5 overflow-hidden",
+          from === "below" ? "justify-end pb-0.5" : "pt-0.5",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 可展开的分组（Notebook、设置）。收起侧栏时只剩图标，点击直达。
+ * 底部的设置组向上展开：子项从「设置」这一行升起，「设置」本身留在原位。
+ */
 function Group({
   collapsed,
   icon,
@@ -99,7 +126,9 @@ function Group({
   isActive,
   to,
   params,
-  defaultOpen,
+  open,
+  onOpenChange,
+  direction = "down",
   children,
 }: {
   collapsed: boolean;
@@ -108,27 +137,41 @@ function Group({
   isActive: boolean;
   to: string;
   params?: Record<string, string>;
-  defaultOpen: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  direction?: "down" | "up";
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   if (collapsed)
     return <Item collapsed icon={icon} label={label} isActive={isActive} to={to} params={params} />;
+  const Chevron = direction === "up" ? ChevronUp : ChevronDown;
+  const header = (
+    <Item
+      collapsed={false}
+      icon={icon}
+      label={label}
+      onClick={() => onOpenChange(!open)}
+      trailing={
+        <Chevron
+          aria-hidden
+          className={cn(
+            "size-4 shrink-0 text-fg-subtle transition-transform duration-[220ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+            direction === "up" ? open && "rotate-180" : !open && "-rotate-90",
+          )}
+          strokeWidth={1.6}
+        />
+      }
+    />
+  );
+  const list = (
+    <Reveal open={open} from={direction === "up" ? "below" : "above"}>
+      {children}
+    </Reveal>
+  );
   return (
-    <div className="flex flex-col gap-0.5">
-      <Item
-        collapsed={false}
-        icon={icon}
-        label={label}
-        onClick={() => setOpen((o) => !o)}
-        trailing={
-          <ChevronDown
-            className={cn("size-4 shrink-0 text-fg-subtle transition-transform", !open && "-rotate-90")}
-            strokeWidth={1.6}
-          />
-        }
-      />
-      {open ? <div className="flex flex-col gap-0.5">{children}</div> : null}
+    <div className="flex flex-col">
+      {direction === "up" ? list : header}
+      {direction === "up" ? header : list}
     </div>
   );
 }
@@ -155,6 +198,14 @@ export function AppSidebar({
   const dark = resolvedMode(mode) === "dark";
   const inSettings = path.startsWith("/settings");
   const settingsSection = inSettings ? (path.split("/")[2] ?? "models") : null;
+  const groups = useUi((s) => s.sidebarGroups);
+  const setGroup = (key: keyof typeof groups, open: boolean) =>
+    useUi.getState().set({ sidebarGroups: { ...useUi.getState().sidebarGroups, [key]: open } });
+  // 进入设置页时展开设置组（从命令面板、首页链接进入也一样）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 只在进出设置页时触发
+  useEffect(() => {
+    if (inSettings && !useUi.getState().sidebarGroups.settings) setGroup("settings", true);
+  }, [inSettings]);
   const list: Notebook[] = [...(notebooks.data ?? [])].sort(
     (a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt),
   );
@@ -221,7 +272,8 @@ export function AppSidebar({
           label={t("nav.notebooks")}
           to="/"
           isActive={!!notebookId}
-          defaultOpen
+          open={groups.notebooks}
+          onOpenChange={(o) => setGroup("notebooks", o)}
         >
           {list.slice(0, 12).map((nb) => (
             <Link
@@ -259,7 +311,9 @@ export function AppSidebar({
           label={t("nav.settings")}
           to="/settings"
           isActive={inSettings}
-          defaultOpen={inSettings}
+          open={groups.settings}
+          onOpenChange={(o) => setGroup("settings", o)}
+          direction="up"
         >
           {SETTINGS_SECTIONS.map((s) => (
             <Link

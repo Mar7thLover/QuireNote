@@ -8,6 +8,12 @@ import type { ProviderRecord, Store } from "./store/types";
 /** 早期版本内置的离线 provider id；遗留的分配一律视为未配置。 */
 export const LEGACY_LOCAL_PROVIDER_ID = "local";
 
+/** 本地日期 YYYY-MM-DD（用量按用户所在时区的自然日统计）。 */
+export function localDay(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export const CAP_LABEL: Record<Capability, string> = {
   chat: "对话",
   embedding: "Embedding",
@@ -52,6 +58,9 @@ export class ModelResolver {
       baseUrl: p.baseUrl,
       apiKey,
       headers,
+      onUsage: (e) => {
+        void this.store.usage.add({ ...e, day: localDay() }).catch(() => {});
+      },
       ...(this.fetchImpl ? { fetch: this.fetchImpl } : {}),
     };
   }
@@ -93,6 +102,13 @@ export class ModelResolver {
   /** Embedding 模型；未配置时返回 null，检索只用关键词。 */
   embedding(): Promise<ModelRef | null> {
     return this.resolve("embedding");
+  }
+
+  /** 检索用的模型：有 Embedding 用向量；没有时用对话模型扩展检索词（都没有就只做关键词检索）。 */
+  async retrieval(): Promise<{ embedding: ModelRef | null; expand: ModelRef | null }> {
+    const embedding = await this.embedding();
+    if (embedding) return { embedding, expand: null };
+    return { embedding: null, expand: await this.resolve("chat").catch(() => null) };
   }
 
   /** 当前 embedding 模型的唯一键（providerId:model），未配置时为 null。 */

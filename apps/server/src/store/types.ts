@@ -158,6 +158,27 @@ export interface SettingsRepo {
   all(): Promise<Record<string, unknown>>;
 }
 
+/** 按天、按模型累计的 AI 用量。 */
+export interface UsageRow {
+  /** 本地日期 YYYY-MM-DD。 */
+  day: string;
+  providerId: string;
+  model: string;
+  kind: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  searches: number;
+}
+
+export interface UsageRepo {
+  add(row: Omit<UsageRow, "calls">): Promise<void>;
+  /** since 含当天（YYYY-MM-DD）。 */
+  list(since?: string): Promise<UsageRow[]>;
+}
+
 export interface AssignmentRepo {
   list(): Promise<ModelAssignment[]>;
   get(capability: Capability): Promise<ModelAssignment | null>;
@@ -186,6 +207,7 @@ export interface Store {
   undo: EntityRepo<UndoRecord>;
   assignments: AssignmentRepo;
   settings: SettingsRepo;
+  usage: UsageRepo;
   /** 在一个事务中执行（实现可以退化为顺序执行）。 */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
   /** 数据库占用字节数。 */

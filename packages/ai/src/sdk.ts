@@ -28,6 +28,11 @@ function anthropic(p: ProviderRuntime) {
   const apiKey = p.kind === "anthropic-compatible" ? (p.apiKey ?? "") : requireKey(p);
   return createAnthropic({ baseURL: baseUrlOf(p), apiKey, headers: extraHeaders(p), fetch: p.fetch });
 }
+/** Anthropic 服务端工具（联网搜索等）。 */
+export function anthropicTools(p: ProviderRuntime) {
+  return anthropic(p).tools;
+}
+
 function openai(p: ProviderRuntime) {
   // OpenAI 兼容接口复用 OpenAI 的语音接口；本地服务通常不校验 Key，但 SDK 需要一个值（否则会读宿主环境变量）。
   const apiKey = p.kind === "openai" ? requireKey(p) : p.apiKey || "no-key";

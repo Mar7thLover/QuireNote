@@ -1,7 +1,8 @@
-import { experimental_generateVideo, generateImage } from "ai";
+import { experimental_generateVideo, generateImage, generateText } from "ai";
 import { request, requestBytes, requestJson } from "./http";
-import { baseUrlOf, errorMessage, imageModel, requireKey, videoModel } from "./sdk";
+import { baseUrlOf, errorMessage, imageModel, languageModel, requireKey, videoModel } from "./sdk";
 import { AiError, type BinaryResult, type ModelRef, type ProviderRuntime, UnsupportedError } from "./types";
+import { reportUsage } from "./usage";
 
 export interface MediaOptions {
   /** 轮询间隔（毫秒），测试时可设为 0。 */
@@ -157,9 +158,58 @@ export async function generateImageFile(
       return download(p, await replicateRun(ref, { prompt, aspect_ratio: "16:9" }, opts));
     case "comfyui":
       return comfyRun(ref, prompt, opts);
+    case "anthropic":
+    case "anthropic-compatible":
+      return claudeSvg(ref, prompt);
     default:
       throw new UnsupportedError(`provider 类型 ${p.kind} 不支持图像生成`);
   }
+}
+
+/**
+ * 去掉 SVG 里一切可执行或外链的内容。图片通过 /api/files 同源提供，直接打开时也不能执行脚本。
+ * 只保留第一个 <svg>…</svg>。
+ */
+export function sanitizeSvg(raw: string): string | null {
+  const m = raw.match(/<svg[\s\S]*<\/svg>/i);
+  if (!m) return null;
+  let svg = m[0];
+  const unsafe = "script|foreignObject|iframe|object|embed|audio|video|image";
+  svg = svg.replace(new RegExp(`<(${unsafe})\\b[\\s\\S]*?<\\/\\1\\s*>`, "gi"), "");
+  svg = svg.replace(new RegExp(`<(${unsafe})\\b[^>]*\\/?>`, "gi"), "");
+  svg = svg.replace(/\s(on[a-z]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  svg = svg.replace(/\s((?:xlink:)?href)\s*=\s*("(?!#)[^"]*"|'(?!#)[^']*')/gi, "");
+  svg = svg.replace(/url\(\s*['"]?(?!#)[^)]*\)/gi, "none");
+  svg = svg.replace(/@import[^;]*;?/gi, "");
+  if (!/xmlns=/.test(svg.slice(0, 200)))
+    svg = svg.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  return svg;
+}
+
+/** Claude 没有位图生成接口，但能画矢量插图：生成一张自包含的 SVG。 */
+async function claudeSvg(ref: ModelRef, prompt: string): Promise<BinaryResult> {
+  let text: string;
+  try {
+    const result = await generateText({
+      model: languageModel(ref.provider, ref.model),
+      instructions: [
+        "You are an illustrator who draws in SVG.",
+        "Reply with ONE complete, self-contained <svg> element and nothing else: no prose, no code fences.",
+        'Use viewBox="0 0 1600 900" with width="1600" height="900", and fill the whole canvas with a background.',
+        "Style: calm editorial illustration, flat shapes with subtle tonal layering, a restrained warm palette (ivory, clay, sand, slate, muted green), clean geometry, clear focal point.",
+        "Avoid text unless a short label is essential. No scripts, no external images or fonts, no <foreignObject>.",
+      ].join("\n"),
+      prompt,
+      maxRetries: 1,
+    });
+    reportUsage(ref, "image", result.usage);
+    text = result.text;
+  } catch (err) {
+    throw new AiError(`插图生成失败：${errorMessage(err)}`);
+  }
+  const svg = sanitizeSvg(text);
+  if (!svg) throw new AiError("插图生成失败：模型没有返回 SVG");
+  return { data: new TextEncoder().encode(svg), mediaType: "image/svg+xml" };
 }
 
 /** 文生视频（Veo / fal / Replicate）。 */

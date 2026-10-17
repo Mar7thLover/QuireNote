@@ -50,7 +50,15 @@ export function download(data: Uint8Array, filename: string, mime: string, inlin
 export function fileResponse(c: Context, data: Uint8Array, mime: string): Response {
   const range = c.req.header("range");
   const size = data.byteLength;
-  const base = { "content-type": mime, "accept-ranges": "bytes", "cache-control": "private, max-age=3600" };
+  const base: Record<string, string> = {
+    "content-type": mime,
+    "accept-ranges": "bytes",
+    "cache-control": "private, max-age=3600",
+    // 生成的 SVG 已清洗过；直接打开时再禁掉脚本与外链，作为第二道保险。
+    ...(mime.startsWith("image/svg")
+      ? { "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox" }
+      : {}),
+  };
   const m = range ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null;
   if (m && (m[1] || m[2])) {
     let start = m[1] ? Number(m[1]) : size - Number(m[2]);

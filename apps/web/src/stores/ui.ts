@@ -8,6 +8,10 @@ interface UiState {
   focusMode: boolean;
   /** 工作区侧栏只显示图标（记住在本机）。 */
   sidebarCollapsed: boolean;
+  /** 侧栏分组的展开状态（跨页面保持，切换页面时不跳动）。 */
+  sidebarGroups: { notebooks: boolean; settings: boolean };
+  /** 内置使用手册（打开时定位到的章节）。 */
+  manual: string | null;
   addSourceOpen: boolean;
   addSourceTab: "upload" | "url" | "paste" | "record" | "search";
   shortcutsOpen: boolean;
@@ -40,6 +44,8 @@ export const useUi = create<UiState>()((set) => ({
   paletteSeed: "",
   focusMode: false,
   sidebarCollapsed: loadSidebarCollapsed(),
+  sidebarGroups: { notebooks: true, settings: false },
+  manual: null,
   addSourceOpen: false,
   addSourceTab: "upload",
   shortcutsOpen: false,
