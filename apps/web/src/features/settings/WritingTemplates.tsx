@@ -36,7 +36,6 @@ export function NoteTemplates() {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px] leading-relaxed text-fg-subtle">{t("templates.noteTemplatesDesc")}</p>
       <div className="flex flex-col gap-3 md:flex-row md:items-start">
         <div className="flex shrink-0 flex-col gap-1 md:w-60">
           <Button size="sm" variant="primary" className="mb-1 self-start" onClick={create}>
@@ -149,7 +148,6 @@ export function NotebookTemplates() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["notebookTemplates"] });
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px] leading-relaxed text-fg-subtle">{t("templates.notebookTemplatesDesc")}</p>
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         {(templates.data ?? []).map((x, i) => (
           <div

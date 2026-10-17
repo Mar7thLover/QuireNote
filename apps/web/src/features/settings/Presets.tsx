@@ -34,17 +34,24 @@ type Tab = "presets" | "notes" | "notebooks";
 export function PresetSettings() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("presets");
+  const head = {
+    presets: [t("presets.tabPresets"), t("presets.presetsDesc")],
+    notes: [t("presets.tabNoteTemplates"), t("templates.noteTemplatesDesc")],
+    notebooks: [t("presets.tabNotebookTemplates"), t("templates.notebookTemplatesDesc")],
+  }[tab] as [string, string];
   return (
-    <SettingsSection title={t("settings.presets")} description={t("presets.pageDesc")}>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-4">
+    <>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-6">
         <TabsList>
           <TabsTrigger value="presets">{t("presets.tabPresets")}</TabsTrigger>
           <TabsTrigger value="notes">{t("presets.tabNoteTemplates")}</TabsTrigger>
           <TabsTrigger value="notebooks">{t("presets.tabNotebookTemplates")}</TabsTrigger>
         </TabsList>
       </Tabs>
-      {tab === "presets" ? <ChatPresets /> : tab === "notes" ? <NoteTemplates /> : <NotebookTemplates />}
-    </SettingsSection>
+      <SettingsSection title={head[0]} description={head[1]}>
+        {tab === "presets" ? <ChatPresets /> : tab === "notes" ? <NoteTemplates /> : <NotebookTemplates />}
+      </SettingsSection>
+    </>
   );
 }
 

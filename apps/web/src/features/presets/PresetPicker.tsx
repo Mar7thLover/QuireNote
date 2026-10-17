@@ -60,6 +60,7 @@ export function PresetPicker({
             <DropdownMenuCheckboxItem
               key={p.id}
               checked={effective?.id === p.id}
+              className={p.description ? "h-auto py-1.5" : undefined}
               onSelect={() => onChange(p.id === (notebookDefault ?? DEFAULT_PRESET_ID) ? null : p.id)}
             >
               <span className="min-w-0 flex-1">

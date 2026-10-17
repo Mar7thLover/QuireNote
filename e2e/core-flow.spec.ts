@@ -316,6 +316,55 @@ test.describe("阅读器：高亮与编辑资料", () => {
   });
 });
 
+test.describe("小说写作", () => {
+  test("从「小说项目」新建 → 写作面板 → 写梗概 → 按大纲起草 → 加到这一章末尾；对话默认用写作搭档", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "新建 Notebook" }).first().click();
+    await page.getByRole("button", { name: /小说项目/ }).click();
+    await page.getByPlaceholder("Notebook 标题").fill("E2E 小说");
+    await page.getByRole("button", { name: "新建", exact: true }).click();
+    await expect(page).toHaveURL(/\/n\/nb_/);
+    const nbId = /\/n\/(nb_\w+)/.exec(page.url())![1];
+
+    // 小说项目自动打开写作面板，稿件里已有第一卷第一章
+    await expect(page.getByRole("tab", { name: "稿件" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "卷名" })).toHaveValue("第一卷");
+    await expect(
+      page.getByRole("list", { name: "第一卷" }).getByRole("button", { name: "第一章" }),
+    ).toBeVisible();
+
+    // 大纲：写梗概（停笔后自动保存），再按大纲起草
+    await page.getByRole("tab", { name: "大纲" }).click();
+    const saved = page.waitForResponse(
+      (r) => r.url().endsWith(`/api/notebooks/${nbId}`) && r.request().method() === "PATCH",
+    );
+    await page.getByLabel("梗概").first().fill("林岚在雾天抵达雾港。");
+    await saved;
+    await page.getByRole("button", { name: "按大纲起草" }).click();
+    const append = page.getByRole("button", { name: "加到这一章末尾" });
+    await expect(append).toBeEnabled({ timeout: 30_000 });
+    await append.click();
+
+    // 起草的正文写进了第一章（E2E 接的是假模型，回答里带「测试模型」）
+    await expect
+      .poll(async () => {
+        const notes = (await (await page.request.get(`/api/notebooks/${nbId}/notes`)).json()) as {
+          title: string;
+          markdown: string;
+        }[];
+        return notes.find((n) => n.title === "第一章")?.markdown ?? "";
+      })
+      .toContain("测试模型");
+
+    // 这本 Notebook 的默认回答风格是写作搭档
+    await expect(page.getByRole("button", { name: "回答风格" })).toContainText("写作搭档");
+
+    expect((await page.request.delete(`/api/notebooks/${nbId}`)).ok()).toBe(true);
+  });
+});
+
 test.describe("移动端 @mobile", () => {
   test("底部导航切换面板", async ({ page }) => {
     await page.goto("/");

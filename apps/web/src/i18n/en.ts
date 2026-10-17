@@ -157,6 +157,9 @@ export const en: Messages = {
       "Characters, places, factions and objects are lorebook entries: when the text mentions a name, its settings go to the AI. Advanced options live in the lorebook panel.",
     newCast: "New",
     openLorebook: "Open in lorebook",
+    castName: "Name",
+    castKeys: "Also known as",
+    castContent: "Settings",
     keysPlaceholder: "Aliases and nicknames (comma-separated; the name is used when empty)",
     castContentPlaceholder: "Looks, personality, history, relationships…",
     type_character: "Characters",
@@ -194,7 +197,8 @@ export const en: Messages = {
     isDefault: "default",
     makeDefault: "Make it this notebook's default",
     manage: "Manage presets & templates…",
-    pageDesc: "Chat presets set how answers are written; templates start new notes and notebooks quickly.",
+    presetsDesc:
+      "How the AI answers: tone, format and parameters. Switch it under the chat box, or make it a notebook's default style.",
     tabPresets: "Chat presets",
     tabNoteTemplates: "Note templates",
     tabNotebookTemplates: "Notebook templates",
@@ -238,6 +242,7 @@ export const en: Messages = {
     addedStyle: 'Added the answering style "{{name}}" — pick it from the style switcher in the chat box',
   },
   plugins: {
+    builtinTitle: "Built-in plugins",
     desc: "Optional features beyond the notebook itself. Turn on what you need; switched-off plugins add nothing to the interface.",
     keepData:
       "Turning a plugin off only hides its entry points; notes, lorebooks, rules and presets you already imported stay.",

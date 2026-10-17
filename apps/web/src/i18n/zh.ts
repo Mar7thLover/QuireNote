@@ -151,6 +151,9 @@ export const zh = {
       "人物、地点、势力和物品都是知识书条目：正文里提到名字时，对应的设定会交给 AI。高级选项在知识书面板里。",
     newCast: "新建",
     openLorebook: "在知识书里打开",
+    castName: "名字",
+    castKeys: "别名",
+    castContent: "设定",
     keysPlaceholder: "别名、称呼（用顿号分隔；留空时用名字）",
     castContentPlaceholder: "外貌、性格、经历、和其他人物的关系……",
     type_character: "人物",
@@ -188,7 +191,8 @@ export const zh = {
     isDefault: "默认",
     makeDefault: "设为这本 Notebook 的默认",
     manage: "管理预设与模板…",
-    pageDesc: "对话预设决定回答的风格；模板用来快速新建笔记和 Notebook。",
+    presetsDesc:
+      "决定 AI 怎么回答：语气、格式和参数。在对话输入框下方切换，也可以设为一本 Notebook 的默认风格。",
     tabPresets: "对话预设",
     tabNoteTemplates: "笔记模板",
     tabNotebookTemplates: "Notebook 模板",
@@ -230,6 +234,7 @@ export const zh = {
     addedStyle: "已添加问答风格「{{name}}」，在对话输入框的风格切换里可以选用",
   },
   plugins: {
+    builtinTitle: "内置插件",
     desc: "笔记本本体之外的可选功能。按需打开，不用的就关着，界面里不会出现它们的入口。",
     keepData: "关掉插件只会隐藏它的入口；已经导入的笔记、知识书、规则和预设都会保留。",
     sillytavern: {

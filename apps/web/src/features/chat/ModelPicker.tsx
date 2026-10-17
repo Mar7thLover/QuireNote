@@ -56,7 +56,7 @@ export function ModelPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-96 w-72 overflow-y-auto">
         <DropdownMenuLabel>{t("chat.model")}</DropdownMenuLabel>
-        <DropdownMenuCheckboxItem checked={!usable} onSelect={() => onChange(null)}>
+        <DropdownMenuCheckboxItem checked={!usable} className="h-auto py-1.5" onSelect={() => onChange(null)}>
           <span className="min-w-0 flex-1">
             <span className="block">{t("chat.modelDefault")}</span>
             <span className="block truncate text-[11px] text-fg-subtle">

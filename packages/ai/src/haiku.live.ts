@@ -316,7 +316,11 @@ describe.skipIf(!key)(`live: ${model}`, () => {
       style: { instructions: "每个回答的第一行只写「【速答】」三个字，从第二行开始作答。" },
     });
     const a = await collect(
-      streamChat(haiku, { system: styled.system, messages: [{ role: "user", content: question }], temperature: 0.2 }),
+      streamChat(haiku, {
+        system: styled.system,
+        messages: [{ role: "user", content: question }],
+        temperature: 0.2,
+      }),
     );
     expect(a.trim().split("\n")[0]).toContain("【速答】");
     expect(a).toContain("1956");
@@ -325,12 +329,16 @@ describe.skipIf(!key)(`live: ${model}`, () => {
       style: { instructions: "Always answer in English." },
       instructions: "无论提问用什么语言，都用简体中文回答。",
     });
-    const b = await collect(streamChat(haiku, { system: conflict.system, messages: [{ role: "user", content: question }] }));
+    const b = await collect(
+      streamChat(haiku, { system: conflict.system, messages: [{ role: "user", content: question }] }),
+    );
     const han = (b.match(/\p{Script=Han}/gu) ?? []).length;
     expect(han / Math.max(1, b.replace(/\s/g, "").length)).toBeGreaterThan(0.3);
   });
 
-  const lore = { loreAfter: "林岚：二十六岁，左手有旧烧伤，从不在人前摘下手套。灯塔：雾港的灯塔每隔七秒扫过一次海面。" };
+  const lore = {
+    loreAfter: "林岚：二十六岁，左手有旧烧伤，从不在人前摘下手套。灯塔：雾港的灯塔每隔七秒扫过一次海面。",
+  };
 
   it("drafts a chapter from its outline, using the lorebook, as plain prose", async () => {
     const text = await collect(

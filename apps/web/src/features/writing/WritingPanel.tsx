@@ -419,6 +419,13 @@ function ChapterOutline({
   const [busy, setBusy] = useState<"check" | "summary" | null>(null);
   const abort = useRef<AbortController | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
+  // 起草结果在卡片底部，开始和写完时各滚一次，让正文和「加到这一章末尾」在视野里
+  const draftRef = useRef<HTMLDivElement>(null);
+  const drafting = draft !== null;
+  const draftDone = draft?.done ?? false;
+  useEffect(() => {
+    if (drafting || draftDone) draftRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [drafting, draftDone]);
   const summary = typeof note.props.summary === "string" ? note.props.summary : "";
 
   const runDraft = async () => {
@@ -564,31 +571,33 @@ function ChapterOutline({
         </p>
       ) : null}
       {draft ? (
-        <Panel>
-          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap font-serif text-[14px] leading-relaxed">
-            {draft.text || "…"}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                abort.current?.abort();
-                setDraft(null);
-              }}
-            >
-              {t("writing.discard")}
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              disabled={!draft.done || !draft.text.trim()}
-              onClick={appendDraft}
-            >
-              {t("writing.appendToChapter")}
-            </Button>
-          </div>
-        </Panel>
+        <div ref={draftRef} className="scroll-mb-3">
+          <Panel>
+            <div className="max-h-72 overflow-y-auto whitespace-pre-wrap font-serif text-[14px] leading-relaxed">
+              {draft.text || "…"}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  abort.current?.abort();
+                  setDraft(null);
+                }}
+              >
+                {t("writing.discard")}
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={!draft.done || !draft.text.trim()}
+                onClick={appendDraft}
+              >
+                {t("writing.appendToChapter")}
+              </Button>
+            </div>
+          </Panel>
+        </div>
       ) : null}
       {issues ? (
         <Panel>
@@ -611,6 +620,16 @@ function ChapterOutline({
         </Panel>
       ) : null}
     </div>
+  );
+}
+
+function CastField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: 输入框作为子元素传进来
+    <label className="flex flex-col gap-1">
+      <span className="text-[12px] text-fg-subtle">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -770,29 +789,32 @@ function CastEntry({
         </span>
       </button>
       {open ? (
-        <div className="flex flex-col gap-2 border-t border-border p-3">
-          <Input
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            onBlur={commit}
-            aria-label={t("lorebook.namePlaceholder")}
-            placeholder={t("lorebook.namePlaceholder")}
-          />
-          <Input
-            value={draft.keys}
-            onChange={(e) => setDraft({ ...draft, keys: e.target.value })}
-            onBlur={commit}
-            placeholder={t("writing.keysPlaceholder")}
-            aria-label={t("lorebook.keys")}
-          />
-          <Textarea
-            value={draft.content}
-            rows={6}
-            onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-            onBlur={commit}
-            placeholder={t("writing.castContentPlaceholder")}
-            aria-label={t("lorebook.content")}
-          />
+        <div className="flex flex-col gap-2.5 border-t border-border p-3">
+          <CastField label={t("writing.castName")}>
+            <Input
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              onBlur={commit}
+              placeholder={t("lorebook.namePlaceholder")}
+            />
+          </CastField>
+          <CastField label={t("writing.castKeys")}>
+            <Input
+              value={draft.keys}
+              onChange={(e) => setDraft({ ...draft, keys: e.target.value })}
+              onBlur={commit}
+              placeholder={t("writing.keysPlaceholder")}
+            />
+          </CastField>
+          <CastField label={t("writing.castContent")}>
+            <Textarea
+              value={draft.content}
+              rows={6}
+              onChange={(e) => setDraft({ ...draft, content: e.target.value })}
+              onBlur={commit}
+              placeholder={t("writing.castContentPlaceholder")}
+            />
+          </CastField>
         </div>
       ) : null}
     </div>

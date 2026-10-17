@@ -8,7 +8,7 @@ export function PluginSettings() {
   const { t } = useTranslation();
   const plugins = usePlugins();
   return (
-    <SettingsSection title={t("settings.plugins")} description={t("plugins.desc")}>
+    <SettingsSection title={t("plugins.builtinTitle")} description={t("plugins.desc")}>
       <div className="flex flex-col gap-3">
         {plugins.isLoading ? <Skeleton className="h-40 rounded-xl" /> : null}
         {PLUGIN_CATALOG.map((p) => {

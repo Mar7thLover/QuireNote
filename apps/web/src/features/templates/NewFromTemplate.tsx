@@ -41,6 +41,7 @@ export function NewFromTemplate({ notebookId }: { notebookId: string }) {
           ) : (
             <DropdownMenuItem
               key={tpl.id}
+              className={tpl.description ? "h-auto py-1.5" : undefined}
               onSelect={() =>
                 createFromNoteTemplate(notebookId, tpl).catch((e: Error) => toast.error(e.message))
               }
