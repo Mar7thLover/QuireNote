@@ -192,14 +192,75 @@
 .tiptap .selectedCell {
   background: var(--accent-soft);
 }
+/* 提示块：左侧一条细色线 + 小标签，按类型取色（低饱和，不抢正文） */
 .tiptap .callout {
+  --callout: var(--fg-subtle);
   display: flex;
-  gap: 0.6em;
-  margin: 0.8em 0;
-  padding: 0.75em 1em;
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
+  align-items: baseline;
+  gap: 0.75em;
+  margin: 0.9em 0;
+  padding: 0.7em 1em;
+  border-left: 2px solid var(--callout);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: color-mix(in srgb, var(--callout) 7%, transparent);
   color: var(--fg);
+}
+.tiptap .callout[data-kind="tip"] {
+  --callout: var(--success);
+}
+.tiptap .callout[data-kind="important"] {
+  --callout: var(--accent);
+}
+.tiptap .callout[data-kind="warning"] {
+  --callout: var(--warning);
+}
+.tiptap .callout[data-kind="caution"] {
+  --callout: var(--danger);
+}
+.tiptap .callout-label {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--callout);
+  user-select: none;
+}
+.tiptap .callout > div {
+  min-width: 0;
+  flex: 1;
+}
+
+/* 正则渲染：匹配到的原文在光标离开时隐藏，原位置显示卡片或替换后的文字 */
+.tiptap .qn-rule-raw {
+  display: none;
+}
+.tiptap .qn-rule-card {
+  display: block;
+  margin: 0.6em 0;
+  cursor: text;
+}
+.tiptap .qn-rule-card iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  pointer-events: none;
+}
+.tiptap .qn-rule-text {
+  cursor: text;
+}
+
+/* 嵌入块被选中时的描边 */
+.tiptap .qn-selected {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+  border-radius: var(--radius-md);
+}
+.tiptap .qn-media {
+  text-align: center;
+}
+.tiptap .qn-media img,
+.tiptap .qn-media video {
+  margin-inline: auto;
 }
 .tiptap .ProseMirror-gapcursor:after {
   border-top-color: var(--fg);
@@ -243,4 +304,22 @@
   100% {
     background: color-mix(in srgb, var(--accent) 22%, transparent);
   }
+}
+
+/* 行内规则（给对白、动作描写上色等）：模板里的 --card-* 变量映射到当前主题 */
+.qn-inline-rule,
+.tiptap .qn-rule-inline {
+  --card-bg: var(--surface);
+  --card-fg: var(--fg);
+  --card-muted: var(--fg-muted);
+  --card-accent: var(--accent);
+  --card-border: var(--border);
+  --card-radius: var(--radius-md);
+}
+.tiptap .qn-rule-inline {
+  cursor: text;
+}
+.qn-inline-card {
+  display: block;
+  margin: 0.4em 0;
 }

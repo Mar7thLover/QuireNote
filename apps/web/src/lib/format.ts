@@ -1,3 +1,4 @@
+import { markdownExcerpt } from "@quirenote/core";
 import { currentLang } from "@/i18n";
 
 export function relativeTime(iso: string): string {
@@ -62,12 +63,7 @@ export function shortDay(day: string): string {
 
 /** 从 markdown 中取前若干个字符的纯文本预览。 */
 export function plainPreview(md: string, max = 140): string {
-  const t = md
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/[#>*_`~\-[\]()!|]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return t.length > max ? `${t.slice(0, max)}…` : t;
+  return markdownExcerpt(md, max);
 }
 
 export function greetingKey(): "greeting_morning" | "greeting_afternoon" | "greeting_evening" {

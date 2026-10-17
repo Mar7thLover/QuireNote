@@ -1,9 +1,10 @@
 /** 带引用的对话：消息树、分支、重新生成；SSE 事件 user → start → delta* → citations → done。 */
-import { buildCitationSystemPrompt, type ChatTurn, streamChat, truncate } from "@quirenote/ai";
+import { buildCitationPrompt, type ChatTurn, streamChat, truncate } from "@quirenote/ai";
 import { type Conversation, type Message, newId, nowIso } from "@quirenote/core";
 import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf, notFound } from "../errors";
+import { loreForChat } from "./lorebook";
 import { activeSources, gatherPassages } from "./passages";
 
 export const DEFAULT_CONVERSATION_TITLE = "新对话";
@@ -120,6 +121,12 @@ export async function runChat(
           order: "relevance",
         });
 
+  // 知识书：按本次提问和最近几条消息触发；Notebook 说明随系统提示词一起给模型。
+  const [nb, lore] = await Promise.all([
+    store.notebooks.get(conv.notebookId),
+    loreForChat(ctx, conv.notebookId, history, user.content),
+  ]);
+
   const assistant: Message = {
     id: newId("msg"),
     conversationId,
@@ -127,6 +134,7 @@ export async function runChat(
     role: "assistant",
     content: "",
     citations: [],
+    ...(lore.used.length ? { lore: lore.used } : {}),
     model: `${chat.provider.id}:${chat.model}`,
     status: "streaming",
     createdAt: nowIso(),
@@ -139,11 +147,18 @@ export async function runChat(
     .slice(-12)
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
   turns.push({ role: "user", content: user.content });
+  insertAtDepth(turns, lore.atDepth);
+  const prompt = buildCitationPrompt(passages, user.content, {
+    instructions: nb?.aiInstructions,
+    loreBefore: lore.before,
+    loreAfter: lore.after,
+  });
 
   let text = "";
   try {
     for await (const delta of streamChat(chat, {
-      system: buildCitationSystemPrompt(passages, user.content),
+      system: prompt.system,
+      ...(prompt.tail ? { systemTail: prompt.tail } : {}),
       messages: turns,
       ...(signal ? { abortSignal: signal } : {}),
     })) {
@@ -165,6 +180,22 @@ export async function runChat(
   await emit("citations", citations);
   await emit("done", final);
   return final;
+}
+
+/**
+ * 「指定深度」的知识书条目插到倒数第 depth 条消息之前（0 = 最后）。
+ * system 身份用一条带标记的 user 消息表达；深度 0 的 assistant 会变成预填，模型不接受，按 user 处理。
+ */
+export function insertAtDepth(
+  turns: ChatTurn[],
+  items: { depth: number; role: "system" | "user" | "assistant"; content: string }[],
+): void {
+  for (const it of [...items].sort((a, b) => b.depth - a.depth)) {
+    const at = Math.max(0, turns.length - it.depth);
+    const role = it.role === "assistant" && it.depth > 0 ? "assistant" : "user";
+    const content = it.role === "system" || role !== it.role ? `【背景设定】\n${it.content}` : it.content;
+    turns.splice(it.depth === 0 ? turns.length : at, 0, { role, content });
+  }
 }
 
 async function totalChunkChars(ctx: AppContext, sourceIds: string[]): Promise<number> {

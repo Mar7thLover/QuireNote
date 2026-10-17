@@ -39,6 +39,7 @@ export const persister = createAsyncStoragePersister({
 export const qk = {
   notebooks: ["notebooks"] as const,
   notebook: (id: string) => ["notebook", id] as const,
+  lorebook: (id: string) => ["lorebook", id] as const,
   sources: (nb: string) => ["sources", nb] as const,
   source: (id: string) => ["source", id] as const,
   content: (id: string) => ["source-content", id] as const,

@@ -17,12 +17,16 @@ export function cacheOptions(ref: ModelRef) {
  * 系统提示词（含资料片段）单独设一个缓存断点：新开对话、换个问题，只要资料没变也能命中缓存。
  * 其他提供方原样传字符串。
  */
-function instructionsFor(ref: ModelRef, system: string) {
-  return isAnthropic(ref) ? { role: "system" as const, content: system, providerOptions: EPHEMERAL } : system;
+function instructionsFor(ref: ModelRef, system: string, tail?: string) {
+  if (!isAnthropic(ref)) return tail ? `${system}\n\n${tail}` : system;
+  const head = { role: "system" as const, content: system, providerOptions: EPHEMERAL };
+  return tail ? [head, { role: "system" as const, content: tail }] : head;
 }
 
 export interface ChatRequest {
   system: string;
+  /** 放在缓存断点之后的系统提示（每轮会变的内容，如触发的知识书条目）。 */
+  systemTail?: string;
   messages: ChatTurn[];
   abortSignal?: AbortSignal;
 }
@@ -32,7 +36,7 @@ export async function* streamChat(ref: ModelRef, req: ChatRequest): AsyncGenerat
   const model = languageModel(ref.provider, ref.model);
   const result = streamText({
     model,
-    instructions: instructionsFor(ref, req.system),
+    instructions: instructionsFor(ref, req.system, req.systemTail),
     messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
     abortSignal: req.abortSignal,
     maxRetries: 1,

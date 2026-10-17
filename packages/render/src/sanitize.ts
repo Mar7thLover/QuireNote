@@ -22,7 +22,7 @@ export function setDefaultHtmlParser(parser: HtmlParser | null): void {
   defaultParser = parser;
 }
 
-function resolveParser(options: SanitizeOptions): HtmlParser {
+export function resolveParser(options: SanitizeOptions): HtmlParser {
   if (options.parser) return options.parser;
   if (defaultParser) return defaultParser;
   const Ctor = (globalThis as { DOMParser?: new () => HtmlParser }).DOMParser;

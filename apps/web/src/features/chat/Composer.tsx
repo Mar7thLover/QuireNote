@@ -1,6 +1,7 @@
 import { Button, cn, Tooltip } from "@quirenote/ui";
 import { ArrowUp, BookOpen, Quote, Square, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNotebookBackground } from "@/features/lorebook/useBackground";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { useChatDraft } from "@/lib/ai";
@@ -24,6 +25,7 @@ export function Composer({
 }) {
   const { t } = useTranslation();
   const sources = useSources(notebookId);
+  const background = useNotebookBackground(notebookId);
   const draft = useChatDraft();
   const [text, setText] = useState("");
   const [only, setOnly] = useState<string[] | null>(onlySource ? [onlySource] : null);
@@ -58,7 +60,7 @@ export function Composer({
   const ready = (sources.data ?? []).filter((s) => s.status === "ready");
   const selected = ready.filter((s) => s.selected);
   const scope = only ? ready.filter((s) => only.includes(s.id)) : selected;
-  const canSend = !!text.trim() && scope.length > 0 && !streaming;
+  const canSend = !!text.trim() && (scope.length > 0 || background) && !streaming;
 
   const submit = () => {
     if (!canSend) return;
@@ -136,7 +138,13 @@ export function Composer({
               submit();
             }
           }}
-          placeholder={scope.length ? t("chat.placeholder") : t("chat.placeholderNoSources")}
+          placeholder={
+            scope.length
+              ? t("chat.placeholder")
+              : background
+                ? t("chat.placeholderLore")
+                : t("chat.placeholderNoSources")
+          }
           className="block max-h-56 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14.5px] leading-relaxed outline-none placeholder:text-fg-subtle"
           aria-label={t("chat.placeholder")}
         />

@@ -69,6 +69,9 @@ importers:
       '@quirenote/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@quirenote/card':
+        specifier: workspace:*
+        version: link:../../packages/card
       '@quirenote/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -133,6 +136,9 @@ importers:
       '@fontsource/noto-serif-sc':
         specifier: 5.3.1
         version: 5.3.1
+      '@quirenote/card':
+        specifier: workspace:*
+        version: link:../../packages/card
       '@quirenote/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -305,6 +311,21 @@ importers:
       ai:
         specifier: ^7.0.139
         version: 7.0.139(zod@4.6.7)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  packages/card:
+    dependencies:
+      '@quirenote/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quirenote/render':
+        specifier: workspace:*
+        version: link:../render
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       zod:
         specifier: ^4.6.7
         version: 4.6.7

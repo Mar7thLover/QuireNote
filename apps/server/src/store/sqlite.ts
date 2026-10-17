@@ -42,6 +42,21 @@ const DOC_TABLES = [
   "undo_log",
 ] as const;
 
+/** 「索引列 + JSON 文档」形式的表。 */
+function createDocTable(db: DB, t: string): void {
+  db.exec(`CREATE TABLE IF NOT EXISTS ${t} (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL DEFAULT 'local',
+        notebook_id TEXT,
+        ref_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        data TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS ${t}_nb ON ${t}(owner_id, notebook_id);
+      CREATE INDEX IF NOT EXISTS ${t}_ref ON ${t}(owner_id, ref_id);`);
+}
+
 const MIGRATIONS: ((db: DB) => void)[] = [
   (db) => {
     for (const t of DOC_TABLES) {
@@ -134,6 +149,10 @@ const MIGRATIONS: ((db: DB) => void)[] = [
         PRIMARY KEY (owner_id, day, provider_id, model, kind)
       );
     `);
+  },
+  // 笔记里的资源（图片、视频…）、知识书条目、链接预览缓存
+  (db) => {
+    for (const t of ["assets", "lore_entries", "link_previews"]) createDocTable(db, t);
   },
 ];
 
@@ -766,6 +785,9 @@ export class SqliteStore implements Store {
   readonly assignments;
   readonly settings;
   readonly usage;
+  readonly assets;
+  readonly lore;
+  readonly linkPreviews;
 
   constructor(
     private readonly path: string,
@@ -812,6 +834,13 @@ export class SqliteStore implements Store {
     this.assignments = new SqliteAssignmentRepo(this);
     this.settings = new SqliteSettingsRepo(this);
     this.usage = new SqliteUsageRepo(this);
+    this.assets = new SqliteEntityRepo<import("@quirenote/core").Asset>(this, "assets", nb);
+    this.lore = new SqliteEntityRepo<import("@quirenote/core").LoreEntry>(this, "lore_entries", nb);
+    this.linkPreviews = new SqliteEntityRepo<import("./types").LinkPreview>(
+      this,
+      "link_previews",
+      () => ({}),
+    );
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

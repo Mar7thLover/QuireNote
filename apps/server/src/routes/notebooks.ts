@@ -5,6 +5,8 @@ import {
   newId,
   nowIso,
   Props,
+  patchOf,
+  RenderPack,
   type Source,
   type SourceContent,
 } from "@quirenote/core";
@@ -21,7 +23,11 @@ import { editSourceText, revertSourceText } from "../services/source-edit";
 import { createFileSource, createJsonSource } from "../services/sources";
 import { download, must, readJson, readUpload } from "./util";
 
-const NotebookPatch = NotebookInput.partial().extend({ pinned: z.boolean().optional() });
+const NotebookPatch = patchOf(NotebookInput).extend({
+  pinned: z.boolean().optional(),
+  aiInstructions: z.string().max(50_000).optional(),
+  render: RenderPack.optional(),
+});
 
 const JsonSource = z.object({
   kind: z.enum(["url", "text", "markdown", "youtube", "search"]),

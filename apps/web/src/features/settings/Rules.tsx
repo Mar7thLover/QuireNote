@@ -7,6 +7,7 @@ import { Markdown } from "@/components/Markdown";
 import { useRenderStore } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
 import { SettingsSection } from "@/routes/settings";
+import { NotebookRules } from "./NotebookRules";
 
 const SCOPES: RuleScope[] = ["chat", "note", "artifact"];
 
@@ -14,7 +15,7 @@ export function RuleSettings() {
   const { t } = useTranslation();
   const { rules, setRules, disabledBuiltins, toggleBuiltin, templates } = useRenderStore();
   const [test, setTest] = useState(
-    Object.values(builtinRuleSamples).join("\n\n") + "\n\n普通段落不会被替换。",
+    `${Object.values(builtinRuleSamples).join("\n\n")}\n\n${t("render.testSample")}`,
   );
   const tplOptions = [...builtinTemplates, ...templates].map((x) => ({ value: x.id, label: x.name }));
   const sorted = [...rules].sort((a, b) => a.order - b.order);
@@ -38,7 +39,7 @@ export function RuleSettings() {
     <>
       <SettingsSection
         title={t("render.rules")}
-        description="匹配 AI 输出或笔记中的特定模式，替换为模板卡片或文本。正则在 Web Worker 中执行，单条规则超过 300ms 会被终止。"
+        description={t("render.rulesDesc")}
         action={
           <Button
             size="sm"
@@ -48,7 +49,7 @@ export function RuleSettings() {
                 ...rules,
                 {
                   id: newId("rule"),
-                  name: "新规则",
+                  name: t("render.newRuleName"),
                   enabled: true,
                   pattern: "【概念：([^】]+)】",
                   flags: "g",
@@ -81,13 +82,15 @@ export function RuleSettings() {
           ))}
           {sorted.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-fg-subtle">
-              还没有自定义规则，内置规则见下方。
+              {t("render.noRules")}
             </p>
           ) : null}
         </div>
       </SettingsSection>
 
-      <SettingsSection title="内置规则">
+      <NotebookRules />
+
+      <SettingsSection title={t("render.builtinRules")}>
         <div className="overflow-hidden rounded-xl border border-border bg-surface">
           {builtinRules.map((r, i) => (
             <div
@@ -108,10 +111,7 @@ export function RuleSettings() {
         </div>
       </SettingsSection>
 
-      <SettingsSection
-        title={t("render.testInput")}
-        description="下方实时展示规则作用于「笔记」范围时的渲染效果。"
-      >
+      <SettingsSection title={t("render.testInput")} description={t("render.testDesc")}>
         <div className="grid gap-4 lg:grid-cols-2">
           <Textarea
             value={test}
@@ -213,14 +213,14 @@ function RuleCard({
                 ),
               })
             }
-            placeholder="捕获组=变量，如 1=name, 2=definition"
+            placeholder={t("render.slotsPlaceholder")}
             className="font-mono text-[12.5px]"
           />
         ) : (
           <Input
             value={r.replacement}
             onChange={(e) => onChange({ replacement: e.target.value })}
-            placeholder={`${t("render.replacement")}（支持 $1）`}
+            placeholder={`${t("render.replacement")}${t("render.replacementHint")}`}
             className="font-mono text-[12.5px]"
           />
         )}

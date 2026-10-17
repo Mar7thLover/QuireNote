@@ -137,7 +137,7 @@ export function createRuleRunner({
     rules: readonly RenderRule[],
     options: ApplyOptions,
   ): Promise<RenderResult> {
-    let segments = normalizeSegments(toSegments(input));
+    let segments = normalizeSegments(toSegments(input, options.offsets));
     const errors: RuleError[] = [];
     for (const rule of planRules(rules, options)) {
       if (disposed) throw new Error("RuleRunner 已销毁");

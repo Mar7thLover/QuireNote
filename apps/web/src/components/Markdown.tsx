@@ -4,7 +4,7 @@ import { FileText } from "lucide-react";
 import { memo, type ReactNode, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { RenderedSegments } from "@/features/render/RenderedSegments";
+import { INLINE_PREFIX, RenderedSegments } from "@/features/render/RenderedSegments";
 import { useWorkspace } from "@/stores/workspace";
 
 /** 把 `[1]`、`[2, 3]` 改写为 `[1](#cite-1)` 链接，交给自定义 a 组件渲染成徽标。 */
@@ -44,6 +44,7 @@ export const Markdown = memo(function Markdown({
   const components = useMemo<Components>(
     () => ({
       a: ({ href, children }) => {
+        if (href?.startsWith(INLINE_PREFIX)) return null;
         if (href?.startsWith("#cite-")) {
           const n = Number(href.slice(6));
           return <CiteBadge n={n} citation={citations?.find((c) => c.n === n)} />;
@@ -57,8 +58,21 @@ export const Markdown = memo(function Markdown({
     }),
     [citations],
   );
-  const body = (src: string) => (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+  const body = (src: string, inline?: ReadonlyMap<string, ReactNode>) => (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={
+        inline?.size
+          ? {
+              ...components,
+              a: (props) =>
+                props.href?.startsWith(INLINE_PREFIX)
+                  ? (inline.get(props.href) ?? null)
+                  : (components.a as (p: typeof props) => ReactNode)(props),
+            }
+          : components
+      }
+    >
       {src}
     </ReactMarkdown>
   );

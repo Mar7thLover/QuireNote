@@ -1,4 +1,4 @@
-import type { Citation, Message } from "@quirenote/core";
+import type { Citation, Message, UsedLore } from "@quirenote/core";
 import { Button, cn, Textarea, Tooltip, TypingDots, toast } from "@quirenote/ui";
 import {
   BookmarkPlus,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { CitationPreview, Markdown } from "@/components/Markdown";
+import { useNotebookBackground } from "@/features/lorebook/useBackground";
 import { createNote } from "@/features/notes/actions";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
@@ -130,7 +131,7 @@ export function MessageItem({
 
   return (
     <div className="group">
-      <AssistantBody text={m.content} citations={m.citations} error={m.status === "error"} />
+      <AssistantBody text={m.content} citations={m.citations} lore={m.lore} error={m.status === "error"} />
       <div className="mt-2 flex items-center gap-0.5">
         {branch}
         <CopyButton text={m.content} />
@@ -238,7 +239,17 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function AssistantBody({ text, citations, error }: { text: string; citations: Citation[]; error?: boolean }) {
+function AssistantBody({
+  text,
+  citations,
+  lore,
+  error,
+}: {
+  text: string;
+  citations: Citation[];
+  lore?: UsedLore[];
+  error?: boolean;
+}) {
   return (
     <div
       draggable={false}
@@ -253,7 +264,43 @@ function AssistantBody({ text, citations, error }: { text: string; citations: Ci
         scope="chat"
         className={cn("prose-serif", error && "text-danger")}
       />
-      {citations.length ? <CitationList citations={citations} /> : null}
+      {citations.length || lore?.length ? (
+        <div className="mt-3 flex flex-wrap items-start gap-x-2">
+          {citations.length ? <CitationList citations={citations} /> : null}
+          {lore?.length ? <LoreUsed lore={lore} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** 这条回答用到的知识书条目：默认只显示一行，点开看名称，点名称打开知识书。 */
+function LoreUsed({ lore }: { lore: UsedLore[] }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs text-fg-subtle hover:bg-surface-hover hover:text-fg focus-ring"
+      >
+        {t("chat.loreUsed")}
+      </button>
+      {open ? (
+        <div className="mt-1.5 flex flex-wrap gap-1.5 px-1.5">
+          {lore.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => useWorkspace.getState().open({ kind: "lorebook", title: t("nav.lorebook") })}
+              className="rounded-md bg-surface-sunken px-2 py-0.5 text-xs text-fg-muted hover:text-fg"
+            >
+              {l.name || t("common.untitled")}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -265,7 +312,7 @@ function CitationList({ citations }: { citations: Citation[] }) {
   const bySource = new Map<string, Citation[]>();
   for (const c of citations) bySource.set(c.sourceTitle, [...(bySource.get(c.sourceTitle) ?? []), c]);
   return (
-    <div className="mt-3">
+    <div className={cn(open && "basis-full")}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -316,6 +363,7 @@ export function ChatEmpty({ notebookId, onAsk }: { notebookId: string; onAsk: (q
   const { t } = useTranslation();
   const sources = useSources(notebookId);
   const ready = (sources.data ?? []).filter((s) => s.status === "ready" && s.selected);
+  const lore = useNotebookBackground(notebookId) && !ready.length;
   const suggestions = ready.length
     ? [
         "用三句话概括这些资料的核心观点",
@@ -326,8 +374,12 @@ export function ChatEmpty({ notebookId, onAsk }: { notebookId: string; onAsk: (q
     : [];
   return (
     <div className="flex flex-col items-center pt-12 text-center">
-      <h3 className="font-serif text-[24px] font-normal">{t("chat.emptyTitle")}</h3>
-      <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-fg-subtle">{t("chat.emptyDesc")}</p>
+      <h3 className="font-serif text-[24px] font-normal">
+        {t(lore ? "chat.emptyTitleLore" : "chat.emptyTitle")}
+      </h3>
+      <p className="mt-2 max-w-sm text-[13.5px] leading-relaxed text-fg-subtle">
+        {t(lore ? "chat.emptyDescLore" : "chat.emptyDesc")}
+      </p>
       {suggestions.length ? (
         <div className="mt-6 grid w-full max-w-lg gap-2">
           <p className="text-left text-xs font-medium text-fg-subtle">{t("chat.suggestions")}</p>

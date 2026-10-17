@@ -14,7 +14,9 @@ export function PanelShell({
   return (
     <div className={cn("flex h-full min-h-0 flex-col bg-bg text-fg", className)}>
       {toolbar ? (
-        <div className="flex h-11 shrink-0 items-center gap-1 border-b border-border px-3">{toolbar}</div>
+        <div className="@container flex h-11 min-w-0 shrink-0 items-center gap-1 border-b border-border px-3">
+          {toolbar}
+        </div>
       ) : null}
       <div className="relative min-h-0 flex-1">{children}</div>
     </div>

@@ -29,10 +29,13 @@ export const FAKE_AI_ENV: NodeJS.ProcessEnv = {
 const fakeOpenAI = createFakeOpenAI();
 
 /** 发往假模型地址的请求交给假模型，其余交给测试自己的 mock（没有时报错，避免误连外网）。 */
-function routeAiFetch(custom?: typeof fetch): typeof fetch {
+function routeAiFetch(custom?: typeof fetch, spy?: (url: string, body: unknown) => void): typeof fetch {
   return ((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-    if (url.startsWith(FAKE_BASE_URL)) return fakeOpenAI(input, init);
+    if (url.startsWith(FAKE_BASE_URL)) {
+      if (spy && typeof init?.body === "string") spy(url, JSON.parse(init.body));
+      return fakeOpenAI(input, init);
+    }
     if (custom) return custom(input, init);
     return Promise.reject(new TypeError(`测试中不允许访问 ${url}`));
   }) as typeof fetch;
@@ -43,6 +46,8 @@ export async function makeServer(
     seed?: boolean;
     /** 测试自己的 AI 请求 mock；发往假模型的请求不经过它。 */
     aiFetch?: typeof fetch;
+    /** 记录发往假模型的请求体（检查提示词）。 */
+    aiSpy?: (url: string, body: unknown) => void;
     fetch?: typeof fetch;
     /** 额外的环境变量（与 FAKE_AI_ENV 合并）。 */
     env?: NodeJS.ProcessEnv;
@@ -62,7 +67,7 @@ export async function makeServer(
   };
   const env = { ...(opts.fakeAi === false ? {} : FAKE_AI_ENV), ...opts.env };
   const server = await boot(config, {
-    aiFetch: routeAiFetch(opts.aiFetch),
+    aiFetch: routeAiFetch(opts.aiFetch, opts.aiSpy),
     ...(opts.fetch ? { fetch: opts.fetch } : {}),
     env,
   });

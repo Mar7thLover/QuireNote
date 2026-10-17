@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | GET | `/notebooks` | `Notebook[]`，带 `stats` |
 | POST | `/notebooks` | body `NotebookInput` → `Notebook` |
-| GET / PATCH / DELETE | `/notebooks/:nb` | PATCH body 为 `NotebookInput` 的部分字段 + `pinned` |
+| GET / PATCH / DELETE | `/notebooks/:nb` | PATCH body 为 `NotebookInput` 的部分字段 + `pinned`、`aiInstructions`（AI 说明）、`render`（只对这本生效的渲染包 `RenderPack`）；只改给出的字段 |
 | GET | `/notebooks/:nb/export` | 整本导出 zip（Markdown + 原始文件 + `notebook.json`） |
 | POST | `/import` | multipart `file`（导出的 zip）→ `Notebook` |
 
@@ -56,12 +56,54 @@ POST body：`{ content?: string, parentId: string|null, sourceIds?: string[], re
 SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` → 多个 `delta` `{text}` →
 `citations` `Citation[]`（服务端已校验编号真实存在，未知编号被剔除）→ `done`（最终 `Message`）；出错时 `error` `{message}`。
 
+这一轮触发的知识书条目记在助手消息的 `lore` 上：`{id, name, trigger}[]`，`trigger` 为 `constant` / `direct` / `recursive` / `sticky`。
+没有勾选资料时，Notebook 有知识书或 AI 说明也可以对话，回答不带引用。
+
 ## 笔记
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET / POST | `/notebooks/:nb/notes` | POST body `NoteInput` |
 | GET / PATCH / DELETE | `/notes/:id` | PATCH body 为 `NoteInput` 的部分字段 |
+
+## 资源与链接预览
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/notebooks/:nb/assets` | multipart `file` → `Asset`（`201`）；正文用 `asset://<id>` 引用。同一 Notebook 里内容相同的文件只存一份 |
+| GET | `/assets/:id` | 资源文件（支持 `Range`） |
+| GET | `/link-preview?url=` | `{url, title, description, image, site}`；只抓 http(s)，结果缓存一周 |
+
+## 知识书
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notebooks/:nb/lorebook` | `{settings: LorebookSettings, entries: LoreEntry[]}` |
+| PATCH | `/notebooks/:nb/lorebook` | 整本设置的部分字段 → `LorebookSettings` |
+| POST | `/notebooks/:nb/lorebook/entries` | `LoreEntryInput` → `LoreEntry`（`201`），没给的字段取默认值 |
+| PATCH / DELETE | `/lorebook/entries/:id` | PATCH 只改给出的字段 |
+| POST | `/notebooks/:nb/lorebook/test` | `{text}` → `{entries, trimmed, tokens}`，每项 `{id, name, trigger, tokens, position}` |
+| POST | `/notebooks/:nb/lorebook/from-elements?lang=` | 从元素生成条目（同名跳过）→ `{created}` |
+| GET | `/notebooks/:nb/lorebook/export?format=quire\|sillytavern` | 下载 QuireNote 格式或酒馆世界书 JSON |
+
+## Quire 卡
+
+格式见 [CARD_SPEC.md](./CARD_SPEC.md)。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notes/:id/card` | 单条笔记卡 |
+| GET | `/notebooks/:nb/card` | 整本 Notebook 卡 |
+| POST | `/cards/preview` | multipart `file` + `lang` → `CardPreview`（不写入） |
+| POST | `/cards/import` | multipart `file` + `lang` + 可选 `notebookId`（合并进已有 Notebook）→ `{notebookId, created, notes, sources, lore, rules, assets, warnings}`（`201`） |
+
+导出参数（query）：`format=json|quire`（`json` 内联资源为 `data:` URL；`quire` 为压缩包）、`render`、`lorebook`、`instructions`（默认 `1`）、
+`sources`（默认 `0`）、`creator`。PNG 卡由前端用 JSON 画封面后写入 `tEXt` 块。
+
+导入接受 Quire 卡（PNG / JSON / `.quire`）、酒馆角色卡（PNG / JSON / CHARX）、世界书 JSON、正则脚本 JSON；
+认不出或损坏时返回 `400`，`error.code` 为 `invalid_card`、`unknown_format` 或 `no_card_data`（PNG 里没有卡片数据）。
+`CardPreview`：`{format, kind, name, summary, creator, creatorNotes, version, tags, cover, notes: {title, chars}[], sources,
+lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, templates, assets, aiInstructions, warnings}`。
 
 ## Studio 生成物
 
@@ -267,6 +309,8 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 - 对话：所选资料的分块总字数不超过 6 万（配置了 Embedding 时 2 万）时，整份按原文顺序交给模型，不做检索；超过时检索 + 按资料均匀补足（12,000 字以内）。
 
 ### Notebook 导出 / 导入
+
+- 备份包同时带上知识书条目与整本设置、资源文件（`files/assets/*`），导入时资源 id 重新生成并改写正文里的 `asset://` 引用。
 
 - `GET /notebooks/:nb/export` → `<标题>.quirenote.zip`：`notebook.json`（`format: "quirenote-notebook", version: 1`，含资料全文、分块、笔记、生成物、元素、复习卡与记录、视图、属性、对话与消息）、`markdown/notes|sources|artifacts/*.md`、`files/sources/<id>/*`（原始文件）、`files/media/*`（生成的媒体）、`README.md`。
 - `POST /import`：所有 id 重新生成（引用随之更新），返回新的 `Notebook`（带 `stats`）；向量不随包导出，导入后自动排入该笔记本的 `reindex` 任务。

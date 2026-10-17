@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { LorebookSettings, RenderPack, UsedLore } from "./card";
+import { CardTemplate, RenderRule } from "./render-schema";
 
 /** 通用字段：所有条目预留 ownerId，便于以后切到多用户。 */
 const base = {
@@ -22,6 +24,12 @@ export const Notebook = z.object({
   icon: z.string().default("📓"),
   color: z.string().default("indigo"),
   pinned: z.boolean().default(false),
+  /** 和这本 Notebook 对话时附加给 AI 的说明（相当于角色卡的 system_prompt）。 */
+  aiInstructions: z.string().max(50_000).optional(),
+  /** 知识书的整本设置；条目单独存储。 */
+  lorebook: LorebookSettings.optional(),
+  /** 只对这本 Notebook 生效的渲染包（导入卡片时带来，可以手动设为全局）。 */
+  render: RenderPack.optional(),
   /** 列表展示用的统计，服务端计算后带回。 */
   stats: z
     .object({ sources: z.number(), notes: z.number(), artifacts: z.number(), elements: z.number() })
@@ -135,6 +143,8 @@ export const Message = z.object({
   role: MessageRole,
   content: z.string(),
   citations: z.array(Citation).default([]),
+  /** 这条回答用到的知识书条目（只记 id 与名称）。 */
+  lore: z.array(UsedLore).optional(),
   model: z.string().nullable().default(null),
   status: z.enum(["done", "streaming", "error"]).default("done"),
   createdAt: z.string(),
@@ -460,35 +470,7 @@ export const DbView = z.object({
 export type DbView = z.infer<typeof DbView>;
 
 // ───────────── Rendering (rules + templates + theme) ─────────────
-export const RuleScope = z.enum(["chat", "note", "artifact"]);
-export type RuleScope = z.infer<typeof RuleScope>;
-export const RenderRule = z.object({
-  id: z.string(),
-  name: z.string(),
-  enabled: z.boolean(),
-  pattern: z.string(),
-  flags: z.string().default("g"),
-  /** 替换为模板组件（templateId），或纯文本替换（replacement，支持 $1）。 */
-  templateId: z.string().nullable(),
-  replacement: z.string().default(""),
-  /** 捕获组 → 模板变量名映射，例如 { "1": "term" }。 */
-  slots: z.record(z.string(), z.string()).default({}),
-  scopes: z.array(RuleScope),
-  order: z.number(),
-});
-export type RenderRule = z.infer<typeof RenderRule>;
-
-export const CardTemplate = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().default(""),
-  html: z.string(),
-  css: z.string(),
-  /** 变量插槽及其示例值，用于编辑器预览。 */
-  slots: z.array(z.object({ name: z.string(), sample: z.string() })),
-  builtin: z.boolean().default(false),
-});
-export type CardTemplate = z.infer<typeof CardTemplate>;
+export { CardTemplate, RenderRule, RuleScope } from "./render-schema";
 
 export const ThemeSettings = z.object({
   mode: z.enum(["light", "dark", "system"]),

@@ -1,10 +1,10 @@
 import { ELEMENT_TYPE_META, type ElementType } from "@quirenote/core";
 import { Tag } from "@quirenote/ui";
-import { mergeAttributes, Node } from "@tiptap/core";
+import { mergeAttributes, Node, textblockTypeInputRule } from "@tiptap/core";
 import { type NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
-import { RenderedSegments } from "@/features/render/RenderedSegments";
+import { RenderedSegments, withInline } from "@/features/render/RenderedSegments";
 import { useWorkspace } from "@/stores/workspace";
 
 declare module "@tiptap/core" {
@@ -15,8 +15,8 @@ declare module "@tiptap/core" {
 }
 
 /**
- * 模板卡片块：内容是一段卡片语法（如 `【术语：名称｜定义】`），
- * 渲染时交给正则规则引擎和沙箱模板；Markdown 序列化为原文，保证可移植。
+ * 旧版的模板卡片块（早期笔记里保存的节点）。现在卡片语法就是普通段落里的文字，
+ * 由编辑器里的规则渲染（ruleDecorations.ts）；这个节点只用来正确显示和导出旧笔记。
  */
 export const CardEmbed = Node.create({
   name: "cardEmbed",
@@ -37,21 +37,7 @@ export const CardEmbed = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["div", mergeAttributes({ "data-card-embed": "", "data-raw": HTMLAttributes.raw })];
   },
-  markdownTokenName: "quirenoteCard",
-  markdownTokenizer: {
-    name: "quirenoteCard",
-    level: "block",
-    start: (src: string) => src.search(/(^|\n)【/),
-    tokenize: (src: string) => {
-      const m = /^【[^】\n]{1,2000}】[ \t]*(?:\n|$)/.exec(src);
-      return m ? { type: "quirenoteCard", raw: m[0], text: m[0].trim() } : undefined;
-    },
-  },
-  parseMarkdown: (token) => ({
-    type: "cardEmbed",
-    attrs: { raw: (token.text as string) ?? token.raw?.trim() ?? "" },
-  }),
-  renderMarkdown: (node) => `${(node.attrs?.raw as string) ?? ""}\n\n`,
+  renderMarkdown: (node) => `${(node.attrs?.raw as string) ?? ""}`,
   addCommands() {
     return {
       insertCard:
@@ -94,7 +80,7 @@ function CardView({ node, updateAttributes, selected, editor }: NodeViewProps) {
             <RenderedSegments
               text={raw}
               scope="note"
-              renderText={(t) => <p className="text-fg-muted">{t}</p>}
+              renderText={(t, inline) => <p className="text-fg-muted">{withInline(t, inline)}</p>}
             />
           </div>
           {editor.isEditable ? (
@@ -215,24 +201,77 @@ function ElementTagView({ node }: NodeViewProps) {
   );
 }
 
-/** 提示块。Markdown 序列化为 `> [!tip] …`，与内置提示卡规则一致。 */
+const CALLOUT_KINDS = ["tip", "note", "important", "warning", "caution"] as const;
+type CalloutKind = (typeof CALLOUT_KINDS)[number];
+const CALLOUT_LABEL: Record<CalloutKind, string> = {
+  tip: "提示",
+  note: "备注",
+  important: "重要",
+  warning: "注意",
+  caution: "警告",
+};
+
+/**
+ * 提示块。Markdown 写作 `> [!tip] 内容`（另有 note / important / warning / caution），
+ * 与 GitHub、Obsidian 的写法一致；在空行开头输入 `[!tip] ` 也会变成提示块。
+ */
 export const Callout = Node.create({
   name: "callout",
   group: "block",
   content: "inline*",
   defining: true,
+  addAttributes() {
+    return {
+      kind: {
+        default: "tip",
+        parseHTML: (el) => (el as HTMLElement).getAttribute("data-kind") ?? "tip",
+        renderHTML: (attrs) => ({ "data-kind": attrs.kind }),
+      },
+    };
+  },
   parseHTML() {
     return [{ tag: "div[data-callout]" }];
   },
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
+    const kind = (node.attrs.kind as CalloutKind) ?? "tip";
     return [
       "div",
       mergeAttributes(HTMLAttributes, { "data-callout": "", class: "callout" }),
-      ["span", { contenteditable: "false" }, "💡"],
+      ["span", { contenteditable: "false", class: "callout-label" }, CALLOUT_LABEL[kind] ?? "提示"],
       ["div", 0],
     ];
   },
-  renderMarkdown: (node, h) => `> [!tip] ${h.renderChildren(node.content ?? [])}\n\n`,
+  markdownTokenName: "quirenoteCallout",
+  markdownTokenizer: {
+    name: "quirenoteCallout",
+    level: "block",
+    start: (src: string) => src.search(/(^|\n)> ?\[!/),
+    tokenize: (src: string) => {
+      const m = /^> ?\[!(tip|note|important|warning|caution)\][ \t]*([^\n]*)(?:\n|$)/i.exec(src);
+      return m
+        ? { type: "quirenoteCallout", raw: m[0], kind: m[1]!.toLowerCase(), text: m[2] ?? "" }
+        : undefined;
+    },
+  },
+  parseMarkdown: (token, helpers) => ({
+    type: "callout",
+    attrs: { kind: token.kind as string },
+    content:
+      (token.text as string)?.trim() && helpers.tokenizeInline
+        ? helpers.parseInline(helpers.tokenizeInline(token.text as string))
+        : [],
+  }),
+  renderMarkdown: (node, h) =>
+    `> [!${(node.attrs?.kind as string) ?? "tip"}] ${h.renderChildren(node.content ?? [])}`,
+  addInputRules() {
+    return [
+      textblockTypeInputRule({
+        find: /^\[!(tip|note|important|warning|caution)\]\s$/,
+        type: this.type,
+        getAttributes: (m) => ({ kind: m[1] }),
+      }),
+    ];
+  },
   addCommands() {
     return {
       setCallout:

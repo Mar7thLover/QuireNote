@@ -27,8 +27,11 @@ export function validateRulePattern(pattern: string, flags: string): string | nu
   }
 }
 
-export function toSegments(input: string | readonly Segment[]): Segment[] {
-  if (typeof input === "string") return input === "" ? [] : [{ type: "text", text: input }];
+export function toSegments(input: string | readonly Segment[], offsets = false): Segment[] {
+  if (typeof input === "string")
+    return input === ""
+      ? []
+      : [offsets ? { type: "text", text: input, from: 0, to: input.length } : { type: "text", text: input }];
   return input.map((s) => (s.type === "text" ? { ...s } : { ...s, vars: { ...s.vars } }));
 }
 
@@ -41,9 +44,17 @@ export function normalizeSegments(segments: readonly Segment[]): Segment[] {
       const last = out[out.length - 1];
       if (last?.type === "text") {
         last.text += seg.text;
+        if (last.from !== undefined && seg.to !== undefined) {
+          last.to = seg.to;
+          if (seg.replaced) last.replaced = true;
+        } else {
+          delete last.from;
+          delete last.to;
+          delete last.replaced;
+        }
         continue;
       }
-      out.push({ type: "text", text: seg.text });
+      out.push({ ...seg });
     } else {
       out.push(seg);
     }
@@ -65,7 +76,8 @@ export function varsFromMatch(rule: RenderRule, m: MatchInfo): Record<string, st
   }
   for (const [key, varName] of Object.entries(rule.slots)) {
     if (!varName) continue;
-    const value = /^\d+$/.test(key) ? m.groups[Number(key) - 1] : m.named?.[key];
+    // 组号 0 表示整个匹配（酒馆的 {{match}} / $&）。
+    const value = key === "0" ? m.match : /^\d+$/.test(key) ? m.groups[Number(key) - 1] : m.named?.[key];
     vars[varName] = (value ?? "").trim();
   }
   return vars;
@@ -93,10 +105,25 @@ export function applyMatches(
     const matches = global ? all : consumedFirst ? [] : all.slice(0, 1);
     if (matches.length > 0) consumedFirst = true;
     let cursor = 0;
+    // 有偏移且文字未被替换过时，可以精确换算到原文位置；替换过的段只能整体对应。
+    const base = seg.from;
+    const exact = base !== undefined && !seg.replaced;
+    const at = (a: number, b: number) =>
+      base === undefined
+        ? {}
+        : exact
+          ? { from: base + a, to: base + b }
+          : { from: base, to: seg.to, replaced: true };
+    const piece = (a: number, b: number): Segment => ({
+      type: "text",
+      text: seg.text.slice(a, b),
+      ...at(a, b),
+    });
     for (const m of matches) {
       if (m.index < cursor) continue;
       if (rule.templateId && m.match === "") continue; // 空匹配不产出卡片
-      out.push({ type: "text", text: seg.text.slice(cursor, m.index) });
+      out.push(piece(cursor, m.index));
+      const end = m.index + m.match.length;
       if (rule.templateId) {
         out.push({
           type: "card",
@@ -104,13 +131,19 @@ export function applyMatches(
           vars: varsFromMatch(rule, m),
           raw: m.match,
           ruleId: rule.id,
+          ...at(m.index, end),
         });
       } else {
-        out.push({ type: "text", text: expandReplacement(rule.replacement, m, seg.text) });
+        const range = at(m.index, end);
+        out.push({
+          type: "text",
+          text: expandReplacement(rule.replacement, m, seg.text),
+          ...(base === undefined ? {} : { ...range, replaced: true }),
+        });
       }
-      cursor = m.index + m.match.length;
+      cursor = end;
     }
-    out.push({ type: "text", text: seg.text.slice(cursor) });
+    out.push(piece(cursor, seg.text.length));
   }
   return normalizeSegments(out);
 }
@@ -128,7 +161,7 @@ export function applyRulesSync(
   rules: readonly RenderRule[],
   options: ApplyOptions = {},
 ): RenderResult {
-  let segments = normalizeSegments(toSegments(input));
+  let segments = normalizeSegments(toSegments(input, options.offsets));
   const errors: RuleError[] = [];
   for (const rule of planRules(rules, options)) {
     const invalid = validateRulePattern(rule.pattern, rule.flags);

@@ -30,6 +30,7 @@ import {
   Database,
   Globe,
   LayoutTemplate,
+  LibraryBig,
   Loader2,
   type LucideIcon,
   Maximize2,
@@ -46,6 +47,7 @@ import { AppShell } from "@/components/AppSidebar";
 import { MobileWorkspace } from "@/features/mobile/MobileWorkspace";
 import { createNote } from "@/features/notes/actions";
 import { PANEL_COMPONENTS } from "@/features/panels";
+import { useRenderStore } from "@/features/render/store";
 import { AddSourceDialog } from "@/features/sources/AddSourceDialog";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -79,6 +81,7 @@ const ACTIVITY: { kind: PanelKind; icon: LucideIcon; shortcut?: string }[] = [
   { kind: "elements", icon: Boxes },
   { kind: "database", icon: Database },
   { kind: "review", icon: Repeat },
+  { kind: "lorebook", icon: LibraryBig },
   { kind: "search", icon: Globe, shortcut: SHORTCUTS.search },
 ];
 
@@ -100,6 +103,11 @@ export function WorkspacePage({
   useEffect(() => {
     useWorkspace.setState({ notebookId });
   }, [notebookId]);
+
+  // 这本 Notebook 自带的渲染包（导入卡片时带来）
+  useEffect(() => {
+    if (notebook.data) useRenderStore.getState().setNotebookPack(notebookId, notebook.data.render);
+  }, [notebookId, notebook.data]);
 
   return (
     <>

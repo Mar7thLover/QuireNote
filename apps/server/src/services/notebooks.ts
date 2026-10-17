@@ -2,6 +2,7 @@ import { type Notebook, newId, nowIso } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { deleteSourceCascade } from "../ingest/pipeline";
 import type { NotebookRecord } from "../store/types";
+import { deleteNotebookAssets } from "./assets";
 import { deleteConversation } from "./chat";
 import { deleteArtifact } from "./studio";
 
@@ -55,5 +56,7 @@ export async function deleteNotebook(ctx: AppContext, id: string): Promise<boole
   await store.properties.deleteWhere(f);
   await store.undo.deleteWhere(f);
   await store.highlights.deleteWhere(f);
+  await store.lore.deleteWhere(f);
+  await deleteNotebookAssets(ctx, id);
   return store.notebooks.delete(id);
 }

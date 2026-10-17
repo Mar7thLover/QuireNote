@@ -4,12 +4,14 @@
  */
 import type {
   Artifact,
+  Asset,
   Capability,
   Chunk,
   Conversation,
   DbView,
   Element,
   Job,
+  LoreEntry,
   Message,
   ModelAssignment,
   Note,
@@ -158,6 +160,18 @@ export interface SettingsRepo {
   all(): Promise<Record<string, unknown>>;
 }
 
+/** 链接预览缓存（id 为 URL 的哈希）。 */
+export interface LinkPreview {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  image: string | null;
+  site: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** 按天、按模型累计的 AI 用量。 */
 export interface UsageRow {
   /** 本地日期 YYYY-MM-DD。 */
@@ -208,6 +222,9 @@ export interface Store {
   assignments: AssignmentRepo;
   settings: SettingsRepo;
   usage: UsageRepo;
+  assets: EntityRepo<Asset>;
+  lore: EntityRepo<LoreEntry>;
+  linkPreviews: EntityRepo<LinkPreview>;
   /** 在一个事务中执行（实现可以退化为顺序执行）。 */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
   /** 数据库占用字节数。 */

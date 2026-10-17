@@ -10,12 +10,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@quirenote/ai": "workspace:*",
-    "@quirenote/core": "workspace:*",
-    "@quirenote/render": "workspace:*",
     "@hono/node-server": "^2.1.5",
     "@hono/zod-validator": "^0.9.1",
     "@mozilla/readability": "^0.6.0",
+    "@quirenote/ai": "workspace:*",
+    "@quirenote/card": "workspace:*",
+    "@quirenote/core": "workspace:*",
+    "@quirenote/render": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "fflate": "^0.8.3",
     "hono": "^4.13.13",

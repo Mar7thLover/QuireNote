@@ -1,0 +1,19 @@
+{
+  "name": "@quirenote/card",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@quirenote/core": "workspace:*",
+    "@quirenote/render": "workspace:*",
+    "fflate": "^0.8.3",
+    "zod": "^4.6.7"
+  }
+}

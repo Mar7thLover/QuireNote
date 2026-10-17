@@ -11,12 +11,13 @@ import {
   Skeleton,
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, CreditCard, FileText, MoreHorizontal, Pin, Trash2, X } from "lucide-react";
+import { Check, Copy, CreditCard, FileText, MoreHorizontal, Pin, Share2, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
+import { useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { type EditorChange, QuireNoteEditor } from "../editor/QuireNoteEditor";
 
@@ -233,11 +234,11 @@ function NoteMenu({ notebookId, note }: { notebookId: string; note: Note }) {
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => update.mutate({ pinned: !note.pinned })}>
           <Pin />
-          {note.pinned ? "取消置顶" : "置顶"}
+          {note.pinned ? t("home.unpin") : t("home.pin")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => update.mutate({ kind: note.kind === "card" ? "note" : "card" })}>
           {note.kind === "card" ? <FileText /> : <CreditCard />}
-          {note.kind === "card" ? "转为笔记" : "转为卡片"}
+          {note.kind === "card" ? t("notes.toNote") : t("notes.toFlashcard")}
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() =>
@@ -247,7 +248,24 @@ function NoteMenu({ notebookId, note }: { notebookId: string; note: Note }) {
           }
         >
           <Copy />
-          复制 Markdown
+          {t("notes.copyMarkdown")}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() =>
+            useUi.getState().set({
+              shareCard: {
+                kind: "note",
+                id: note.id,
+                name:
+                  queryClient.getQueryData<Note>(qk.note(note.id))?.title ||
+                  note.title ||
+                  t("common.untitled"),
+              },
+            })
+          }
+        >
+          <Share2 />
+          {t("cards.menuShare")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem danger onSelect={() => confirm(t("notes.deleteConfirm")) && remove.mutate()}>

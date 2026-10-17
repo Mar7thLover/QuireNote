@@ -1,5 +1,7 @@
 import type { AgentProposal } from "@quirenote/core";
 import { create } from "zustand";
+import type { ImportRequest } from "@/features/cards/ImportCardDialog";
+import type { ShareTarget } from "@/features/cards/ShareCardDialog";
 
 interface UiState {
   paletteOpen: boolean;
@@ -16,6 +18,10 @@ interface UiState {
   addSourceTab: "upload" | "url" | "paste" | "record" | "search";
   shortcutsOpen: boolean;
   newNotebookOpen: boolean;
+  /** 正在分享为卡片的笔记或 Notebook。 */
+  shareCard: ShareTarget | null;
+  /** 正在预览导入的卡片文件。 */
+  importCard: ImportRequest | null;
   /** 待确认的 Agent 改动。 */
   proposal: { notebookId: string; proposal: AgentProposal } | null;
   /** 正在拖拽的条目（资料拖进对话、片段拖进笔记）。 */
@@ -50,6 +56,8 @@ export const useUi = create<UiState>()((set) => ({
   addSourceTab: "upload",
   shortcutsOpen: false,
   newNotebookOpen: false,
+  shareCard: null,
+  importCard: null,
   proposal: null,
   dragging: null,
   openPalette: (seed = "") => set({ paletteOpen: true, paletteSeed: seed }),

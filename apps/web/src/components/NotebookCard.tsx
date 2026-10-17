@@ -16,11 +16,12 @@ import {
 } from "@quirenote/ui";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Download, MoreHorizontal, Pin, PinOff, Trash2 } from "lucide-react";
+import { Download, MoreHorizontal, Pin, PinOff, Share2, Trash2 } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
+import { useUi } from "@/stores/ui";
 
 /** 首页的 Notebook 卡片：色带、标题、简介、资料与笔记数；右键或「…」可置顶、导出、删除。 */
 export function NotebookCard({ nb }: { nb: Notebook }) {
@@ -54,6 +55,12 @@ export function NotebookCard({ nb }: { nb: Notebook }) {
       <Item onSelect={() => window.open(api.notebooks.exportUrl(nb.id))}>
         <Download />
         {t("common.export")}
+      </Item>
+      <Item
+        onSelect={() => useUi.getState().set({ shareCard: { kind: "notebook", id: nb.id, name: nb.title } })}
+      >
+        <Share2 />
+        {t("cards.menuShare")}
       </Item>
       <Sep />
       <Item danger onSelect={onDelete}>

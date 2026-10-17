@@ -19,6 +19,7 @@ import {
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
 import { extFromMime } from "../files";
+import { notebookContextFor } from "./lorebook";
 import { concatAudio, detectFfmpeg, renderSlidesVideo } from "./media";
 import { activeSources, gatherPassages } from "./passages";
 
@@ -98,9 +99,12 @@ export async function runArtifactJob(
     });
     await progress(0.15, "生成内容");
     const chat = await ctx.models.chat();
+    const titles = [...new Set(passages.map((p) => p.title ?? ""))].join(" ");
+    const notebook = await notebookContextFor(ctx, art.notebookId, `${payload.instructions ?? ""} ${titles}`);
     const data = await generateArtifactData(chat, {
       kind: art.kind,
       passages,
+      notebook,
       ...(payload.autoTitle ? {} : { title: art.title }),
       ...(payload.instructions ? { instructions: payload.instructions } : {}),
     });

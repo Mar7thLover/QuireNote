@@ -24,6 +24,9 @@ const DatabasePanel = lazy(() =>
 );
 const ReviewPanel = lazy(() => import("./review/ReviewPanel").then((m) => ({ default: m.ReviewPanel })));
 const SearchPanel = lazy(() => import("./search/SearchPanel").then((m) => ({ default: m.SearchPanel })));
+const LorebookPanel = lazy(() =>
+  import("./lorebook/LorebookPanel").then((m) => ({ default: m.LorebookPanel })),
+);
 
 export interface PanelBodyProps {
   notebookId: string;
@@ -48,6 +51,7 @@ export const PANEL_BODIES: Record<PanelKind, ComponentType<PanelBodyProps>> = {
   database: ({ notebookId }) => <DatabasePanel notebookId={notebookId} />,
   review: ({ notebookId }) => <ReviewPanel notebookId={notebookId} />,
   search: ({ notebookId }) => <SearchPanel notebookId={notebookId} />,
+  lorebook: ({ notebookId }) => <LorebookPanel notebookId={notebookId} />,
 };
 
 export function PanelFallback() {

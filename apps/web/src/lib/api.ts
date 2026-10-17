@@ -3,6 +3,7 @@ import type {
   Artifact,
   ArtifactData,
   ArtifactKind,
+  Asset,
   Capability,
   Chunk,
   Citation,
@@ -10,6 +11,9 @@ import type {
   DbView,
   Element,
   Job,
+  LorebookSettings,
+  LoreEntry,
+  LoreEntryInput,
   Message,
   ModelAssignment,
   ModelChoice,
@@ -22,6 +26,7 @@ import type {
   ProviderHeadersPatch,
   ProviderInput,
   ProviderModel,
+  RenderPack,
   ReviewCard,
   Source,
   SourceContent,
@@ -159,6 +164,67 @@ export interface Overview {
   recent: RecentNote[];
 }
 
+export interface LinkPreviewInfo {
+  url: string;
+  title: string;
+  description: string;
+  image: string | null;
+  site: string;
+}
+
+export interface LoreTestResult {
+  entries: { id: string; name: string; trigger: string; tokens: number; position: string }[];
+  trimmed: { id: string; name: string; trigger: string; tokens: number; position: string }[];
+  tokens: number;
+}
+
+export interface CardPreview {
+  format: string;
+  kind: "note" | "notebook";
+  name: string;
+  summary: string;
+  creator: string;
+  creatorNotes: string;
+  version: string;
+  tags: string[];
+  cover: string | null;
+  notes: { title: string; chars: number }[];
+  sources: number;
+  lore: { total: number; constant: { name: string; content: string }[] };
+  rules: { total: number; disabled: string[] };
+  templates: number;
+  assets: number;
+  aiInstructions: string;
+  warnings: string[];
+}
+
+export interface CardImportResult {
+  notebookId: string;
+  created: boolean;
+  notes: number;
+  sources: number;
+  lore: number;
+  rules: number;
+  assets: number;
+  warnings: string[];
+}
+
+export interface CardExportOptions {
+  format: "json" | "quire";
+  render?: boolean;
+  lorebook?: boolean;
+  sources?: boolean;
+  instructions?: boolean;
+  creator?: string;
+}
+
+const cardQuery = (o: CardExportOptions) =>
+  new URLSearchParams(
+    Object.entries(o)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [k, typeof v === "boolean" ? (v ? "1" : "0") : String(v)]),
+  ).toString();
+
 export interface WebResult {
   title: string;
   url: string;
@@ -173,8 +239,10 @@ export const api = {
     list: () => get<Notebook[]>("/notebooks"),
     get: (id: string) => get<Notebook>(`/notebooks/${id}`),
     create: (input: NotebookInput) => post<Notebook>("/notebooks", input),
-    update: (id: string, input: Partial<NotebookInput> & { pinned?: boolean }) =>
-      patch<Notebook>(`/notebooks/${id}`, input),
+    update: (
+      id: string,
+      input: Partial<NotebookInput> & { pinned?: boolean; aiInstructions?: string; render?: RenderPack },
+    ) => patch<Notebook>(`/notebooks/${id}`, input),
     remove: (id: string) => del(`/notebooks/${id}`),
     exportUrl: (id: string) => `${apiBase()}/notebooks/${id}/export`,
     import: (file: File) => {
@@ -244,6 +312,47 @@ export const api = {
     opened: (id: string) => post<{ ok: boolean }>(`/notes/${id}/opened`),
   },
   overview: () => get<Overview>("/overview"),
+  linkPreview: (url: string) => get<LinkPreviewInfo>(`/link-preview?url=${encodeURIComponent(url)}`),
+  assets: {
+    upload: (nb: string, file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      return post<Asset>(`/notebooks/${nb}/assets`, fd);
+    },
+    url: (id: string) => `${apiBase()}/assets/${encodeURIComponent(id)}`,
+  },
+  lorebook: {
+    get: (nb: string) =>
+      get<{ settings: LorebookSettings; entries: LoreEntry[] }>(`/notebooks/${nb}/lorebook`),
+    updateSettings: (nb: string, settings: Partial<LorebookSettings>) =>
+      patch<LorebookSettings>(`/notebooks/${nb}/lorebook`, settings),
+    create: (nb: string, input: LoreEntryInput) =>
+      post<LoreEntry>(`/notebooks/${nb}/lorebook/entries`, input),
+    update: (id: string, input: LoreEntryInput) => patch<LoreEntry>(`/lorebook/entries/${id}`, input),
+    remove: (id: string) => del(`/lorebook/entries/${id}`),
+    test: (nb: string, text: string) => post<LoreTestResult>(`/notebooks/${nb}/lorebook/test`, { text }),
+    fromElements: (nb: string, lang: string) =>
+      post<{ created: number }>(`/notebooks/${nb}/lorebook/from-elements?lang=${lang}`),
+    exportUrl: (nb: string, format: "quire" | "sillytavern") =>
+      `${apiBase()}/notebooks/${nb}/lorebook/export?format=${format}`,
+  },
+  cards: {
+    noteUrl: (id: string, o: CardExportOptions) => `${apiBase()}/notes/${id}/card?${cardQuery(o)}`,
+    notebookUrl: (nb: string, o: CardExportOptions) => `${apiBase()}/notebooks/${nb}/card?${cardQuery(o)}`,
+    preview: (file: File, lang: string) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      return post<CardPreview>("/cards/preview", fd);
+    },
+    import: (file: File, lang: string, notebookId?: string | null) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      if (notebookId) fd.append("notebookId", notebookId);
+      return post<CardImportResult>("/cards/import", fd);
+    },
+  },
   usage: () => get<UsageSummary>("/usage/summary"),
 
   artifacts: {

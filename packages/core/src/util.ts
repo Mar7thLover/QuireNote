@@ -92,3 +92,26 @@ export const ELEMENT_TYPE_META: Record<ElementType, { label: string; labelEn: st
 
 /** 文本类生成物（统一用 markdown 数据）。 */
 export const MARKDOWN_ARTIFACTS: ArtifactKind[] = ["report", "briefing", "study_guide", "faq", "infographic"];
+
+/**
+ * 笔记的纯文本摘要（列表预览、卡片简介）：去掉代码块、图片与资源引用、HTML、提示块标记和标题行，
+ * 链接只留文字。全是标题时退回用标题文字。
+ */
+export function markdownExcerpt(md: string, max = 140): string {
+  const body = md
+    .replace(/```[\s\S]*?```/g, "\n")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/asset:\/\/[\w.-]+/g, " ")
+    .replace(/<[^>\n]+>/g, " ")
+    .replace(/^\s*>\s*\[![a-z]+\][+-]?/gim, " ");
+  const lines = body.split("\n").map((l) => l.replace(/^\s*(?:[-+*]|\d+[.)])\s+/, ""));
+  const text = lines.filter((l) => !/^\s*#{1,6}\s/.test(l)).join(" ");
+  const clean = (s: string) =>
+    s
+      .replace(/[#>*_`~|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const out = clean(text) || clean(body);
+  return out.length > max ? `${out.slice(0, max)}…` : out;
+}

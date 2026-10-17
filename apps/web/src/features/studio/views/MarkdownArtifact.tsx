@@ -10,6 +10,7 @@ export function MarkdownArtifact({ artifact, data, onChange, notebookId }: Artif
         notebookId={notebookId}
         initialDoc={null}
         initialMarkdown={data.markdown}
+        scope="artifact"
         onChange={({ markdown }) => onChange({ kind: "markdown", markdown })}
       />
     </div>

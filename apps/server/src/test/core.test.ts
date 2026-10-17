@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Chunk } from "@quirenote/core";
+import { type Chunk, markdownExcerpt } from "@quirenote/core";
 import { DEMO_SOURCES } from "@quirenote/core/fixtures";
 import { describe, expect, it } from "vitest";
 import { chunkText, joinPages, pageAt } from "../chunking";
@@ -220,5 +220,24 @@ describe("config", () => {
   it("refuses to reset the repo root or a filesystem root", () => {
     expect(() => resetDataDir(REPO_ROOT)).toThrow();
     expect(() => resetDataDir(join(REPO_ROOT, ".."))).toThrow();
+  });
+});
+
+describe("markdownExcerpt", () => {
+  it("去掉图片、资源引用、HTML、提示块标记和标题行，链接只留文字", () => {
+    const md = [
+      "# 标题",
+      "![头像](asset://ast_x1.png)",
+      "> [!tip] 先看结论",
+      "正文里有 [链接](https://a.b) 和 <b>粗体</b>。",
+      "```js\nconst x = 1;\n```",
+      "- 列表项",
+    ].join("\n");
+    expect(markdownExcerpt(md)).toBe("先看结论 正文里有 链接 和 粗体 。 列表项");
+  });
+
+  it("全是标题时用标题文字；超长截断", () => {
+    expect(markdownExcerpt("## 只有标题")).toBe("只有标题");
+    expect(markdownExcerpt("字".repeat(10), 4)).toBe("字字字字…");
   });
 });

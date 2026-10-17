@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 
@@ -98,6 +99,65 @@ test.describe("引导与布局", () => {
     await sidebar.getByRole("button", { name: "收起侧栏" }).click();
     await expect(sidebar.getByRole("button", { name: "资料" })).not.toContainText("资料");
     await sidebar.getByRole("button", { name: "展开侧栏" }).click();
+  });
+});
+
+test.describe("Quire 卡", () => {
+  test("把 Notebook 分享为 JSON 和 PNG 卡，再从首页导入（先预览）", async ({ page }) => {
+    await page.goto("/");
+    const share = async (format: RegExp) => {
+      await page
+        .getByRole("main")
+        .getByRole("link")
+        .filter({ has: page.getByRole("heading", { name: "人工智能简史", exact: true }) })
+        .click({ button: "right" });
+      await page.getByRole("menuitem", { name: "分享为 Quire 卡…" }).click();
+      const dialog = page.getByRole("dialog", { name: "把 Notebook 分享为 Quire 卡" });
+      await dialog.getByRole("button", { name: format }).click();
+      await dialog.getByLabel("作者").fill("E2E");
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        dialog.getByRole("button", { name: "下载" }).click(),
+      ]);
+      await expect(dialog).toBeHidden();
+      return { name: download.suggestedFilename(), buffer: readFileSync((await download.path())!) };
+    };
+    const importFile = async (file: { name: string; buffer: Buffer }, mimeType: string) => {
+      await page.goto("/");
+      await page.locator('main input[type="file"]').setInputFiles({ ...file, mimeType });
+      return page.getByRole("dialog", { name: "导入卡片" });
+    };
+
+    const json = await share(/^JSON/);
+    expect(json.name).toBe("人工智能简史.quire.json");
+    expect(JSON.parse(json.buffer.toString("utf8")).data).toMatchObject({ kind: "notebook", creator: "E2E" });
+
+    const png = await share(/PNG 图片/);
+    expect(png.name).toBe("人工智能简史.png");
+    expect([...png.buffer.subarray(1, 4)].map((c) => String.fromCharCode(c)).join("")).toBe("PNG");
+
+    // PNG：预览里有封面、来源格式和作者
+    let dialog = await importFile(png, "image/png");
+    await expect(dialog.getByRole("heading", { name: "人工智能简史" })).toBeVisible();
+    await expect(dialog).toContainText("Quire 卡 · PNG");
+    await expect(dialog).toContainText("作者 E2E");
+    await expect(dialog.locator("img")).toBeVisible();
+    await dialog.getByRole("button", { name: "取消" }).click();
+    await expect(dialog).toBeHidden();
+
+    // JSON：导入成一本新的 Notebook
+    dialog = await importFile(json, "application/json");
+    await expect(dialog).toContainText("Quire 卡 · JSON");
+    await dialog.getByRole("button", { name: "导入", exact: true }).click();
+    await expect(page).toHaveURL(/\/n\/nb_/);
+    await expect(page.getByText("已导入")).toBeVisible();
+    // 侧栏的 Notebook 列表随之刷新（不整页刷新，整页刷新会先读到本地缓存的旧快照）
+    await expect(
+      page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "人工智能简史" }),
+    ).toHaveCount(2);
+    // 删掉导入的副本，后面的用例按名字找原来那本
+    const copyId = /\/n\/(nb_\w+)/.exec(page.url())![1];
+    expect((await page.request.delete(`/api/notebooks/${copyId}`)).ok()).toBe(true);
   });
 });
 

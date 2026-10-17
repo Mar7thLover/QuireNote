@@ -224,10 +224,10 @@ function resolvePath(dir: string, href: string): string {
   return out.join("/");
 }
 
-const UA =
+export const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36 QuireNote/0.1";
 
-async function fetchWithTimeout(
+export async function fetchWithTimeout(
   fetchImpl: typeof fetch,
   url: string,
   init: RequestInit = {},
@@ -278,7 +278,7 @@ export async function fetchUrl(
   return { doc: { ...doc, mime }, bytes, mime };
 }
 
-function decodeHtml(bytes: Uint8Array, contentType: string | null): string {
+export function decodeHtml(bytes: Uint8Array, contentType: string | null): string {
   const head = new TextDecoder("latin1").decode(bytes.slice(0, 2048));
   const charset =
     /charset=([\w-]+)/i.exec(contentType ?? "")?.[1] ??

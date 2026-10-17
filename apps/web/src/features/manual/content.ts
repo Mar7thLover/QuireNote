@@ -11,10 +11,12 @@ import {
   Gauge,
   Globe,
   Highlighter,
+  LibraryBig,
   MessageSquareQuote,
   NotebookPen,
   PlugZap,
   Repeat,
+  Share2,
   Sparkles,
 } from "lucide-react";
 
@@ -35,6 +37,8 @@ const ICONS: Record<string, LucideIcon> = {
   chat: MessageSquareQuote,
   reading: Highlighter,
   notes: NotebookPen,
+  lorebook: LibraryBig,
+  cards: Share2,
   studio: Sparkles,
   research: Globe,
   review: Repeat,
@@ -119,8 +123,40 @@ Anthropic 没有 Embedding 接口。这时由对话模型把提问扩展成多�
 ### AI 草稿
 在笔记里可以让 AI 改写、扩写、翻译、总结，结果先以草稿形式出现，确认后才写入。
 
+### 图片、视频与网页
+- **图片**：直接粘贴或拖进笔记，或用斜杠菜单「图片 / 视频 / 音频」上传；文件保存在 Notebook 里，分享卡片时一起带走。
+- **视频、音频**：上传后显示播放器；单独一行的 YouTube、Bilibili 链接会变成嵌入播放器。
+- **网页链接**：单独一行的网址显示为带标题和缩略图的预览卡。
+- **HTML 块**：斜杠菜单「HTML 块」，在沙箱里显示，不会执行脚本。
+- **提示框**：行首输入 \`> [!tip]\`（还有 note、important、warning、caution）。
+
+### 卡片语法与正则规则
+写 \`【术语：名称｜定义】\` 这样的格式会显示成卡片；在 **设置 → 正则规则** 里可以自己定义「什么文字显示成什么样」。规则只改显示，存下来和交给 AI 的仍是原文。点一下卡片就回到原文编辑。
+
 ### 最近打开
 首页的「最近打开」按打开时间排列，点一下就回到那条笔记。`,
+  },
+  {
+    id: "lorebook",
+    title: "知识书与 AI 说明",
+    summary: "写下设定、术语和规矩：对话里出现关键词时，对应的条目才交给 AI；AI 说明每次都会附上。",
+    body: `### 知识书是什么
+知识书是一组「关键词 → 背景文字」条目，用法和酒馆（SillyTavern）的世界书一样。对话里出现关键词时，对应的文字才交给 AI，作为背景参考；它不会被当成可以引用的资料，回答里的 [n] 仍只指向资料原文。
+
+在 Notebook 里打开 **知识书** 面板：
+- **新建条目**：填关键词（用顿号或逗号分隔，写成 \`/正则/\` 按正则匹配）和正文。
+- **常驻**：不看关键词，每轮都插入。
+- **插入位置**：资料片段之前、之后，或插在对话的倒数第几条消息处。
+- **更多选项**：次关键词、触发概率、分组、保持与冷却轮数等。
+- **从元素生成**：把这本 Notebook 已有的元素（概念、人物、术语）变成条目。
+
+顶部的测试栏可以输入一句话，看会触发哪些条目、哪些因为超出预算被裁掉。
+
+### AI 说明
+知识书面板的「AI 说明」页写给 AI 的要求，例如语气、扮演的角色、回答格式，每次对话和 Studio 生成都会附上。
+
+### 回答里用到了哪些条目
+每条回答下方可以展开「用到的知识书」。没有勾选资料时，有知识书或 AI 说明的 Notebook 也能对话，这时回答依据知识书，不带引用。`,
   },
   {
     id: "studio",
@@ -199,7 +235,32 @@ Claude 模型按 Anthropic 官方标价估算，包含缓存读写的折扣与�
 资料、笔记、对话都保存在服务端的数据目录里；API Key 加密保存，从不回传给浏览器。
 
 ### 备份与恢复
-**设置 → 数据管理** 可以下载整库备份，或从备份恢复。单个 Notebook 可以在首页卡片的菜单里导出为 zip，再在首页「导入」。`,
+**设置 → 数据管理** 可以下载整库备份，或从备份恢复。单个 Notebook 可以在首页卡片的菜单里导出为 zip，再在首页「导入」。备份是本机搬家用的完整快照；要分享给别人，用「Quire 卡」。`,
+  },
+  {
+    id: "cards",
+    title: "分享与导入卡片",
+    summary: "把笔记或整本 Notebook 分享成一个文件（PNG 卡发图即分享）；也能直接导入酒馆的角色卡和世界书。",
+    body: `### 分享为 Quire 卡
+- **单条笔记**：笔记右上角「…」→「分享为 Quire 卡…」。
+- **整本 Notebook**：首页卡片的菜单 →「分享为 Quire 卡…」，可以选择是否附带渲染规则、知识书、AI 说明和资料原文（资料默认不带，注意版权）。对话记录不会导出。
+
+三种格式内容相同：
+- **PNG 图片**：带封面，数据藏在图片里，发图即分享。微信、QQ 等会压缩图片，请按「原图」或「文件」发送。
+- **JSON**：纯文本，适合放进 Git。
+- **.quire**：压缩包，图片和视频原样打包，适合大的 Notebook。
+
+### 导入
+把卡片拖进首页，或点「导入」、在命令面板选「导入卡片…」。导入前会先显示预览：作者、包含的内容、常驻的知识书条目、AI 说明，以及会被停用的规则。可以导入成新的 Notebook，或合并进已有的。
+
+### 酒馆（SillyTavern）的文件
+可以直接导入角色卡（PNG、JSON、CHARX）、世界书和正则脚本：
+- 角色卡变成一本 Notebook：角色设定和开场白是笔记，角色书是知识书，系统提示词是 AI 说明，头像是封面。
+- 正则脚本变成这本 Notebook 自己的渲染规则；只改显示的规则直接启用，改写提示词的规则导入为停用。
+- 知识书可以导出回酒馆世界书格式。
+
+### 卡片带来的规则
+卡片里的渲染规则只在它自己的 Notebook 里生效，不会改变你其他笔记的显示。想在所有 Notebook 里使用，到 **设置 → 正则规则 → Notebook 自带的规则** 点「设为全局」。`,
   },
 ];
 
@@ -282,8 +343,41 @@ Type \`/\` for headings, lists, quotes, code and tables. Snippets from sources o
 ### AI drafts
 Ask AI to rewrite, expand, translate or summarize; the result appears as a draft and is only applied when you accept it.
 
+### Images, video and web pages
+- **Images**: paste or drop them into a note, or use the slash menu's "Image / video / audio" upload; files are stored in the notebook and travel with shared cards.
+- **Video and audio**: uploaded files show a player; a YouTube or Bilibili link on its own line becomes an embedded player.
+- **Links**: a URL on its own line shows a preview with title and thumbnail.
+- **HTML blocks**: slash menu "HTML block", rendered in a sandbox with scripts disabled.
+- **Callouts**: start a line with \`> [!tip]\` (also note, important, warning, caution).
+
+### Card syntax and regex rules
+Text like \`【术语：name｜definition】\` renders as a card, and **Settings → Regex rules** lets you define your own "this text shows like that". Rules only change the display; what's stored and sent to the AI stays the original text. Click a card to edit the source.
+
 ### Recently opened
 The home page lists notes by when you last opened them; one click takes you back.`,
+  },
+  {
+    id: "lorebook",
+    title: "Lorebook & AI instructions",
+    summary:
+      "Write down settings, terms and rules: entries reach the AI only when their keywords come up; AI instructions go with every turn.",
+    body: `### What a lorebook is
+A lorebook is a set of "keywords → background text" entries, the same idea as SillyTavern's world info. When a keyword comes up in chat, its text is given to the AI as background. Entries are never treated as citable sources; the [n] markers in answers still point only at your sources.
+
+Open the **Lorebook** panel in a notebook:
+- **New entry**: keywords (comma-separated; write \`/regex/\` for a regular expression) and the content.
+- **Always on**: inserted every turn, regardless of keywords.
+- **Position**: before or after the sources, or a given number of messages from the end of the chat.
+- **More options**: secondary keywords, probability, groups, sticky and cooldown turns.
+- **From elements**: turn the notebook's elements (concepts, people, terms) into entries.
+
+The test bar at the top shows which entries a sentence would trigger, and which would be cut for budget.
+
+### AI instructions
+The "AI instructions" tab holds what the AI should always know — tone, a role to play, answer format. It's added to every chat and Studio generation.
+
+### Which entries an answer used
+Expand "Lorebook used" under an answer. Without any sources selected, a notebook with a lorebook or AI instructions can still chat; answers then draw on the lorebook and carry no citations.`,
   },
   {
     id: "studio",
@@ -367,7 +461,33 @@ Set a monthly budget on the home page's "This month" card. The ring shows how mu
 Sources, notes and conversations are stored in the server's data directory; API keys are encrypted and never sent to the browser.
 
 ### Backup and restore
-**Settings → Data** downloads a full backup or restores one. A single notebook can be exported as a zip from its card menu on the home page and brought back with **Import**.`,
+**Settings → Data** downloads a full backup or restores one. A single notebook can be exported as a zip from its card menu on the home page and brought back with **Import**. Backups are full snapshots for moving between your own machines; to share with others, use a Quire card.`,
+  },
+  {
+    id: "cards",
+    title: "Sharing & importing cards",
+    summary:
+      "Share a note or a whole notebook as one file (a PNG card shares like a picture); SillyTavern character cards and world info import directly.",
+    body: `### Share as a Quire card
+- **One note**: the note's "…" menu → "Share as Quire card…".
+- **A whole notebook**: the card menu on the home page → "Share as Quire card…". Choose whether to include render rules, the lorebook, AI instructions and source text (sources are off by default — mind copyright). Conversations are never exported.
+
+All three formats hold the same content:
+- **PNG image**: has a cover and hides the data inside the image, so it shares like a picture. Chat apps that recompress images strip the data; send the original file.
+- **JSON**: plain text, good for Git.
+- **.quire**: a zip with images and videos as files, for large notebooks.
+
+### Importing
+Drop a card onto the home page, click **Import**, or pick "Import card…" in the command palette. A preview comes first: the creator, what's inside, always-on lorebook entries, AI instructions and any rules that will be turned off. Import into a new notebook or merge into an existing one.
+
+### SillyTavern files
+Character cards (PNG, JSON, CHARX), world info and regex scripts import directly:
+- A character card becomes a notebook: the character and greetings are notes, the character book is the lorebook, the system prompt becomes AI instructions, the avatar the cover.
+- Regex scripts become the notebook's own render rules; display-only scripts are enabled, ones that rewrite the prompt are imported turned off.
+- A lorebook can be exported back to SillyTavern world info.
+
+### Rules that come with a card
+A card's render rules only apply inside its own notebook and never change how your other notes look. To use one everywhere, go to **Settings → Regex rules → Notebook rules** and choose "Make global".`,
   },
 ];
 

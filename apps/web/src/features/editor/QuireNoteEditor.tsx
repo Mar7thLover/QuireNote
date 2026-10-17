@@ -11,7 +11,9 @@ import {
   DropdownMenuTrigger,
   Separator,
   Tooltip,
+  toast,
 } from "@quirenote/ui";
+import { Extension } from "@tiptap/core";
 import Highlight from "@tiptap/extension-highlight";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
@@ -42,9 +44,12 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import type { TransformAction } from "@/lib/ai";
+import { api } from "@/lib/api";
 import { DND_SNIPPET, useUi } from "@/stores/ui";
 import { AiDraft, type AiRequest } from "./AiDraft";
+import { HtmlBlock, LinkPreview, Media, VideoEmbed, videoEmbedUrl } from "./embeds";
 import { Callout, CardEmbed, CitationNode, ElementTag } from "./nodes";
+import { RuleDecorations } from "./ruleDecorations";
 import { SlashCommand } from "./slash";
 
 export interface EditorChange {
@@ -59,6 +64,7 @@ export function QuireNoteEditor({
   onChange,
   className,
   autofocus,
+  scope = "note",
 }: {
   notebookId: string;
   initialDoc: unknown;
@@ -66,6 +72,8 @@ export function QuireNoteEditor({
   onChange: (c: EditorChange) => void;
   className?: string;
   autofocus?: boolean;
+  /** 正则规则的作用范围：笔记或生成物。 */
+  scope?: "note" | "artifact";
 }) {
   const { t } = useTranslation();
   const [ai, setAi] = useState<AiRequest | null>(null);
@@ -90,8 +98,15 @@ export function QuireNoteEditor({
       CitationNode,
       ElementTag,
       Callout,
+      Media,
+      HtmlBlock,
+      VideoEmbed,
+      LinkPreview,
+      UrlLineToEmbed,
+      RuleDecorations.configure({ scope }),
       SlashCommand.configure({
         ai: (action, ed) => aiRef.current(action === "summarize" ? "summarize" : action, ed),
+        upload: () => fileRef.current?.click(),
       }),
     ],
     content: (initialDoc as JSONContent | null) ?? initialMarkdown ?? "",
@@ -99,7 +114,40 @@ export function QuireNoteEditor({
     autofocus: autofocus ? "end" : false,
     editorProps: {
       attributes: { class: "tiptap prose prose-serif max-w-none focus:outline-none" },
+      handlePaste: (view, event) => {
+        const files = mediaFiles(event.clipboardData?.files);
+        if (files.length) {
+          event.preventDefault();
+          void uploadRef.current(files);
+          return true;
+        }
+        // 空段落里粘贴一个网址：直接变成链接预览 / 视频播放器
+        const text = event.clipboardData?.getData("text/plain")?.trim() ?? "";
+        const { $from, empty } = view.state.selection;
+        if (
+          empty &&
+          /^https?:\/\/\S+$/.test(text) &&
+          $from.parent.type.name === "paragraph" &&
+          $from.parent.content.size === 0
+        ) {
+          event.preventDefault();
+          editorRef.current
+            ?.chain()
+            .focus()
+            .insertContent({ type: videoEmbedUrl(text) ? "videoEmbed" : "linkPreview", attrs: { url: text } })
+            .run();
+          return true;
+        }
+        return false;
+      },
       handleDrop: (view, event) => {
+        const dropped = mediaFiles(event.dataTransfer?.files);
+        if (dropped.length) {
+          event.preventDefault();
+          const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+          void uploadRef.current(dropped, pos);
+          return true;
+        }
         const snippet = event.dataTransfer?.getData(DND_SNIPPET);
         if (!snippet) return false;
         const pos =
@@ -127,6 +175,24 @@ export function QuireNoteEditor({
   });
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
+
+  // 上传图片 / 视频 / 音频为资源，插入 `asset://` 引用
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<(files: File[], pos?: number) => Promise<void>>(async () => {});
+  uploadRef.current = async (files, pos) => {
+    for (const file of files) {
+      try {
+        const asset = await api.assets.upload(notebookId, file);
+        const node = { type: "media", attrs: { src: `asset://${asset.id}`, alt: "" } };
+        const ed = editorRef.current;
+        if (!ed) return;
+        if (pos !== undefined) ed.chain().focus().insertContentAt(pos, node).run();
+        else ed.chain().focus().insertContent(node).run();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      }
+    }
+  };
 
   aiRef.current = (action, ed, extra) => {
     const { from, to, empty } = ed.state.selection;
@@ -181,6 +247,18 @@ export function QuireNoteEditor({
         </Tooltip>
       </BubbleMenu>
       <EditorContent editor={editor} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,video/*,audio/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          const files = mediaFiles(e.target.files);
+          e.target.value = "";
+          if (files.length) void uploadRef.current(files);
+        }}
+      />
       {ai ? (
         <AiDraft
           key={`${ai.action}-${ai.from}-${ai.label}`}
@@ -193,6 +271,38 @@ export function QuireNoteEditor({
     </div>
   );
 }
+
+function mediaFiles(list: FileList | null | undefined): File[] {
+  return [...(list ?? [])].filter((f) => /^(image|video|audio)\//.test(f.type));
+}
+
+/** 段落里只有一个网址时按回车：变成链接预览 / 视频播放器。 */
+const UrlLineToEmbed = Extension.create({
+  name: "urlLineToEmbed",
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        const { $from, empty } = editor.state.selection;
+        if (
+          !empty ||
+          $from.parent.type.name !== "paragraph" ||
+          $from.parentOffset !== $from.parent.content.size
+        )
+          return false;
+        const text = $from.parent.textContent.trim();
+        if (!/^https?:\/\/\S+$/.test(text) || $from.depth !== 1) return false;
+        const start = $from.before();
+        return editor
+          .chain()
+          .insertContentAt({ from: start, to: $from.after() }, [
+            { type: videoEmbedUrl(text) ? "videoEmbed" : "linkPreview", attrs: { url: text } },
+            { type: "paragraph" },
+          ])
+          .run();
+      },
+    };
+  },
+});
 
 function actionKey(a: TransformAction): string {
   return (

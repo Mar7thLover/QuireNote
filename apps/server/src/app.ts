@@ -7,6 +7,7 @@ import type { AppContext } from "./context";
 import { toApiError } from "./errors";
 import { aiRoutes } from "./routes/ai";
 import { chatRoutes } from "./routes/chat";
+import { contentRoutes } from "./routes/content";
 import { notebookRoutes } from "./routes/notebooks";
 import { studioRoutes } from "./routes/studio";
 import { systemRoutes } from "./routes/system";
@@ -53,6 +54,7 @@ export function createApp(
   chatRoutes(api, ctx);
   studioRoutes(api, ctx);
   aiRoutes(api, ctx);
+  contentRoutes(api, ctx);
   app.route("/api", api);
 
   // 一体化部署：托管前端构建产物，非 API 路径回退到 index.html（SPA 路由）

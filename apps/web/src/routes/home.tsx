@@ -33,12 +33,13 @@ import {
   Telescope,
   Upload,
 } from "lucide-react";
-import { type ReactNode, useMemo, useRef, useState } from "react";
+import { type DragEvent, type ReactNode, useMemo, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AppShell } from "@/components/AppSidebar";
 import { hasAsked } from "@/components/GettingStarted";
 import { BudgetRing, UsageBars } from "@/components/home/UsageBars";
 import { NotebookCard } from "@/components/NotebookCard";
+import { CARD_ACCEPT } from "@/features/cards/CardDialogs";
 import { manualSections } from "@/features/manual/content";
 import { currentLang, useTranslation } from "@/i18n";
 import { api, type RecentNote, type UsageSummary } from "@/lib/api";
@@ -68,6 +69,13 @@ export function HomePage() {
       navigate({ to: "/n/$notebookId", params: { notebookId: nb.id } });
     },
   });
+  /** 备份包（.zip）走原来的整本恢复；其余是卡片，先预览再导入。 */
+  const importFile = (f: File) => {
+    if (/\.zip$/i.test(f.name)) importNb.mutate(f);
+    else useUi.getState().set({ importCard: { file: f } });
+  };
+  const [dropping, setDropping] = useState(false);
+  const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes("Files");
 
   const list = useMemo(
     () =>
@@ -82,7 +90,29 @@ export function HomePage() {
       <div className="md:hidden">
         <AppHeader />
       </div>
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <main
+        className="relative min-h-0 flex-1 overflow-y-auto"
+        onDragOver={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          setDropping(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+        }}
+        onDrop={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          setDropping(false);
+          const f = e.dataTransfer.files[0];
+          if (f) importFile(f);
+        }}
+      >
+        {dropping ? (
+          <div className="pointer-events-none fixed inset-3 z-40 grid place-items-center rounded-2xl border-2 border-dashed border-border-strong bg-bg/80 text-[15px] text-fg-muted">
+            {t("cards.dropToImport")}
+          </div>
+        ) : null}
         <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-10 px-5 pt-8 pb-14 sm:px-10 sm:pt-12">
           <header className="flex flex-wrap items-center gap-2.5">
             <h1 className="mr-auto font-serif text-[30px] leading-tight font-normal">
@@ -109,11 +139,11 @@ export function HomePage() {
             <input
               ref={fileRef}
               type="file"
-              accept=".zip"
+              accept={`.zip,${CARD_ACCEPT}`}
               hidden
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) importNb.mutate(f);
+                if (f) importFile(f);
                 e.target.value = "";
               }}
             />

@@ -1,10 +1,12 @@
 /** Notebook 整本导出 / 导入（zip），以及全量备份 / 恢复。 */
 import {
   type Artifact,
+  type Asset,
   type Chunk,
   type Conversation,
   type DbView,
   type Element,
+  type LoreEntry,
   type Message,
   type Note,
   newId,
@@ -19,6 +21,7 @@ import { ApiError, badRequest, notFound } from "../errors";
 import { safeName } from "../files";
 import { sourceFileDir } from "../ingest/pipeline";
 import type { Highlight, NotebookRecord, ReviewCardRecord, ReviewLog, SourceText } from "../store/types";
+import { ASSET_DIR } from "./assets";
 import { withStats } from "./notebooks";
 import { originalTextPath } from "./source-edit";
 import { MEDIA_DIR } from "./studio";
@@ -42,6 +45,9 @@ export interface NotebookExport {
   properties: PropertyDef[];
   conversations: Conversation[];
   messages: Message[];
+  /** 知识书条目与笔记资源（较早的导出没有这两项）。 */
+  lore?: LoreEntry[];
+  assets?: Asset[];
 }
 
 function slug(s: string, i: number): string {
@@ -101,6 +107,8 @@ export async function exportNotebook(
     properties: await store.properties.list(f),
     conversations,
     messages,
+    lore: await store.lore.list(f),
+    assets: await store.assets.list(f),
   };
   const zip: Zippable = { "notebook.json": strToU8(JSON.stringify(data, null, 2)) };
   zip["README.md"] = strToU8(
@@ -129,6 +137,10 @@ export async function exportNotebook(
     const original = await ctx.files.get(originalTextPath(s.id));
     if (original) zip[`files/${originalTextPath(s.id)}`] = original;
   }
+  for (const a of data.assets ?? []) {
+    const bytes = await ctx.files.get(`${ASSET_DIR}/${a.id}`);
+    if (bytes) zip[`files/${ASSET_DIR}/${a.id}`] = bytes;
+  }
   for (const name of mediaNames(data.artifacts)) {
     const bytes = await ctx.files.get(`${MEDIA_DIR}/${name}`);
     if (bytes) zip[`files/${MEDIA_DIR}/${name}`] = bytes;
@@ -153,6 +165,7 @@ function collectIds(data: NotebookExport): string[] {
     ...data.properties.map((x) => x.id),
     ...data.conversations.map((x) => x.id),
     ...data.messages.map((x) => x.id),
+    ...(data.lore ?? []).map((x) => x.id),
   ];
   return [...new Set(ids.filter((x) => typeof x === "string" && x.length >= 6))];
 }
@@ -191,7 +204,14 @@ export async function importNotebook(
     throw badRequest("notebook.json 不是合法 JSON");
   }
   if (parsed.format !== "quirenote-notebook") throw badRequest("不是 QuireNote 导出的 Notebook");
-  const { text, map } = remapIds(raw, collectIds(parsed));
+  const remapped = remapIds(raw, collectIds(parsed));
+  const { map } = remapped;
+  // 资源 id 带扩展名（决定显示方式），单独换新 id 并保留扩展名。
+  const assetMap = new Map(
+    (parsed.assets ?? []).map((a) => [a.id, `${newId("ast")}.${a.id.split(".").pop() ?? "bin"}`]),
+  );
+  let text = remapped.text;
+  for (const [from, to] of assetMap) text = text.split(from).join(to);
   const data = JSON.parse(text) as NotebookExport;
   const { store } = ctx;
   const owner = store.ownerId;
@@ -216,6 +236,8 @@ export async function importNotebook(
   for (const p of data.properties ?? []) await store.properties.insert(p);
   for (const c of data.conversations ?? []) await store.conversations.insert({ ...c, ownerId: owner });
   for (const m of data.messages ?? []) await store.messages.insert(m);
+  for (const l of data.lore ?? []) await store.lore.insert(l);
+  for (const a of data.assets ?? []) await store.assets.insert(a);
   // 文件：路径里的旧 id 同样替换。
   const idRe = map.size
     ? new RegExp([...map.keys()].map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g")
@@ -223,6 +245,11 @@ export async function importNotebook(
   for (const [path, bytes] of Object.entries(files)) {
     if (!path.startsWith("files/") || path.endsWith("/")) continue;
     const rel = path.slice("files/".length);
+    if (rel.startsWith(`${ASSET_DIR}/`)) {
+      const id = rel.slice(ASSET_DIR.length + 1);
+      if (assetMap.has(id)) await ctx.files.put(`${ASSET_DIR}/${assetMap.get(id)}`, bytes);
+      continue;
+    }
     if (!rel.startsWith("sources/") && !rel.startsWith("source-edits/") && !rel.startsWith(`${MEDIA_DIR}/`))
       continue;
     await ctx.files.put(idRe ? rel.replace(idRe, (m) => map.get(m) ?? m) : rel, bytes);

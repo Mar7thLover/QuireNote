@@ -10,13 +10,15 @@
 | --- | --- |
 | 资料 | PDF / URL / 文本 / Markdown / DOCX / EPUB / 图片 OCR / 音视频转写 / YouTube 字幕；阅读器支持原文对照、划词提问、高亮批注、摘录卡片、AI 标注重点 |
 | 对话 | 只依据勾选资料回答，关键结论带可点击引用（悬浮预览、跳转原文高亮）；消息树支持分支、编辑、重新生成；任意消息一键存为卡片 / 笔记 |
-| 编辑器 | Tiptap 块编辑；`/` 斜杠命令；选中文字弹出 AI 菜单（解释、改写、扩写、精简、翻译、找出处、出题）；`Ctrl+J` 自定义指令；引用 / 卡片 / 元素标签等自定义节点；AI 结果需确认后写入 |
+| 编辑器 | Tiptap 块编辑；`/` 斜杠命令；选中文字弹出 AI 菜单（解释、改写、扩写、精简、翻译、找出处、出题）；`Ctrl+J` 自定义指令；引用 / 卡片 / 元素标签等自定义节点；AI 结果需确认后写入；图片 / 视频 / 音频上传、YouTube 与 Bilibili 嵌入、沙箱 HTML 块、链接预览、提示框；卡片语法与自定义规则在编辑器里即时渲染 |
 | Agent | `Ctrl+K` 命令面板支持自然语言操作，AI 的增删改先以 diff 预览，确认后生效，并可撤销 |
 | Studio | 报告、简报、学习指南、FAQ、时间线、思维导图、闪卡、测验、数据表格、信息图、幻灯片、音频概览、视频概览、配图；全部可编辑，可用自然语言让 AI 修改局部 |
 | 学习 | FSRS 间隔重复复习；闪卡、测验、元素可一键加入复习，掌握度回写到元素 |
 | 元素分析 | 抽取概念、术语、人物、事件、日期、数据、论点、公式、问题；列表 / 表格 / 关系图；合并、补充定义、追问、批量出卡、回溯出处 |
 | 数据库视图 | 笔记 / 资料 / 生成物 / 元素都可用表格、看板、画廊、日历查看，支持自定义属性、筛选、排序、分组 |
-| 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP）；内置 7 套模板；`.quirenote-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景） |
+| 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP），句中的简单模板原地渲染；内置 7 套模板；`.quirenote-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景）；卡片带来的规则只对自己的 Notebook 生效，可设为全局 |
+| 知识书 | 关键词触发的背景条目（常驻、次关键词逻辑、概率、分组、保持 / 冷却 / 延迟、递归、预算），按位置插入对话与 Studio 提示词，不进引用；每本 Notebook 的 AI 说明；测试栏；从元素生成；回答下方可展开用到的条目 |
+| Quire 卡 | 单条笔记或整本 Notebook 连同资源、渲染规则、知识书打包成 PNG（数据藏在封面里）/ JSON / `.quire`；导入先预览；直接读取酒馆（SillyTavern）角色卡 V1–V3（PNG / JSON / CHARX）、世界书和正则脚本，知识书可导出为世界书。规格见 [docs/CARD_SPEC.md](docs/CARD_SPEC.md) |
 | 联网搜索 | Tavily / Brave / SearXNG，快速搜索结果一键加入资料；深度研究多轮检索后自动导入并出报告 |
 | 模型 | Claude、OpenAI、Gemini、Ollama、OpenAI 兼容、ElevenLabs、fal、Replicate、ComfyUI 等；按能力（对话 / Embedding / 搜索 / TTS / STT / 图像 / 视频）分别指定；每个提供方可登记自己的模型列表、自定义请求头；对话里可随时切换模型 |
 | 工作区 | dockview 可拆分、拖拽、浮动的面板与标签页；布局预设（研究 / 写作 / 学习 / 专注）和自定义预设；专注模式；移动端底部导航 + 推入式详情页 |
@@ -31,9 +33,11 @@ apps/mobile      Capacitor 壳（iOS / Android）
 packages/core    共享 zod schema 与类型、示例数据
 packages/ui      设计系统：tokens、组件、动效
 packages/render  正则规则引擎、模板渲染、HTML/CSS 清洗、.quirenote-theme
+packages/card    Quire 卡读写（PNG tEXt / JSON / ZIP）、酒馆格式转换、知识书触发引擎
 packages/ai      基于 Vercel AI SDK 的多 Provider 抽象（含测试用的假 OpenAI 兼容模型）
 e2e/             Playwright 端到端测试
 docs/API.md      前后端接口契约
+docs/CARD_SPEC.md  Quire 卡规格（字段、知识书触发规则、封装、与酒馆的兼容）
 ```
 
 ## 快速开始
@@ -93,4 +97,5 @@ docker compose up -d --build
 - API Key 用 AES-256-GCM 加密存储，任何接口都只返回 `hasKey` 和末四位。
 - 模板在 `sandbox="allow-same-origin"`（无 `allow-scripts`）的 iframe 中渲染，srcdoc 带严格 CSP，HTML/CSS 先经过清洗。
 - 正则在 Web Worker 中执行，单条规则超时 300ms 即终止并重建 Worker。
+- 导入的卡片按不可信内容处理：规则与知识书正则键做回溯风险检测，有风险的导入为停用；知识书条目在提示词里标明是背景参考而非指令；外链图片下载为本地资源；解压前检查大小与路径。
 - 服务端 CORS 只放行本机来源和 Capacitor；默认单用户，所有表预留 `owner_id`。

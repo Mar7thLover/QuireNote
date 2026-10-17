@@ -9,6 +9,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  ImagePlus,
   Lightbulb,
   List,
   ListOrdered,
@@ -36,6 +37,8 @@ export interface SlashItem {
 
 /** AI 斜杠命令由编辑器宿主注入（需要 notebookId 等上下文）。 */
 export type AiSlashHandler = (action: "continue" | "summarize" | "outline", editor: Editor) => void;
+/** 上传图片 / 视频 / 音频（需要 notebookId），由编辑器宿主注入。 */
+export type UploadSlashHandler = (editor: Editor) => void;
 
 function basicItems(): SlashItem[] {
   const t = (k: string) => i18n.t(`editor.${k}`);
@@ -65,6 +68,12 @@ function basicItems(): SlashItem[] {
       e.chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
     ),
     block("divider", Minus, "divider hr 分割线", (e) => e.chain().setHorizontalRule().run()),
+    block("html", Code2, "html 网页 代码 美化 嵌入", (e) =>
+      e
+        .chain()
+        .insertContent({ type: "htmlBlock", attrs: { code: "", editing: true } })
+        .run(),
+    ),
   ];
 }
 
@@ -89,14 +98,15 @@ function cardItems(): SlashItem[] {
         group: "card" as const,
         icon: ScrollText,
         keywords: `card 卡片 模板 ${ruleId} ${CARD_LABELS[key] ?? ""}`,
+        // 卡片语法就是普通文字：插入后换到下一行，光标离开，卡片立刻渲染出来。
         run: (editor: Editor, range: Range) => {
-          editor.chain().focus().deleteRange(range).insertCard(sample).run();
+          editor.chain().focus().deleteRange(range).insertContent(sample).splitBlock().run();
         },
       };
     });
 }
 
-export function slashItems(ai: AiSlashHandler, query: string): SlashItem[] {
+export function slashItems(ai: AiSlashHandler, query: string, upload?: UploadSlashHandler): SlashItem[] {
   const t = (k: string) => i18n.t(`editor.${k}`);
   const aiItem = (
     id: "continue" | "summarize" | "outline",
@@ -119,6 +129,21 @@ export function slashItems(ai: AiSlashHandler, query: string): SlashItem[] {
     aiItem("summarize", "slash_ai_summary", Sparkles, "summary 总结 资料"),
     aiItem("outline", "slash_ai_outline", ListTree, "outline 大纲"),
     ...basicItems(),
+    ...(upload
+      ? [
+          {
+            id: "media",
+            title: t("slash_media"),
+            group: "basic" as const,
+            icon: ImagePlus,
+            keywords: "image video audio 图片 视频 音频 上传 插图",
+            run: (editor: Editor, range: Range) => {
+              editor.chain().focus().deleteRange(range).run();
+              upload(editor);
+            },
+          },
+        ]
+      : []),
     ...cardItems(),
   ];
   const q = query.toLowerCase().trim();
@@ -207,20 +232,20 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>(function Sl
   );
 });
 
-export const SlashCommand = Extension.create<{ ai: AiSlashHandler }>({
+export const SlashCommand = Extension.create<{ ai: AiSlashHandler; upload?: UploadSlashHandler }>({
   name: "slashCommand",
   addOptions() {
     return { ai: () => {} };
   },
   addProseMirrorPlugins() {
-    const ai = this.options.ai;
+    const { ai, upload } = this.options;
     return [
       Suggestion<SlashItem>({
         editor: this.editor,
         char: "/",
         startOfLine: false,
         allowSpaces: false,
-        items: ({ query }) => slashItems(ai, query),
+        items: ({ query }) => slashItems(ai, query, upload),
         command: ({ editor, range, props }) => props.run(editor, range),
         render: () => {
           let renderer: ReactRenderer<ListHandle, SuggestionProps<SlashItem>> | null = null;

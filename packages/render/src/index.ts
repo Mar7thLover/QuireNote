@@ -21,6 +21,7 @@ export {
   timelineTemplate,
 } from "./builtin/templates";
 export { applyRulesSync, planRules, validateRulePattern } from "./engine";
+export { renderInlineHtml } from "./inline";
 export { collectMatches, expandReplacement } from "./matcher";
 export {
   createRuleRunner,

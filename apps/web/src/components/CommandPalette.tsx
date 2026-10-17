@@ -18,6 +18,7 @@ import {
   Boxes,
   Brain,
   Database,
+  FileInput,
   FilePlus2,
   FileText,
   Globe,
@@ -25,6 +26,7 @@ import {
   Keyboard,
   Languages,
   LayoutPanelLeft,
+  LibraryBig,
   MessagesSquare,
   NotebookPen,
   Plus,
@@ -36,6 +38,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { pickCardFile } from "@/features/cards/CardDialogs";
 import { createNote } from "@/features/notes/actions";
 import { currentLang, setLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -53,6 +56,7 @@ const PANELS: { kind: PanelKind; icon: typeof BookOpen; shortcut?: string }[] = 
   { kind: "elements", icon: Boxes },
   { kind: "database", icon: Database },
   { kind: "review", icon: Repeat },
+  { kind: "lorebook", icon: LibraryBig },
   { kind: "search", icon: Globe, shortcut: SHORTCUTS.search },
 ];
 
@@ -201,6 +205,13 @@ export function CommandPalette() {
                   {t("home.newNotebook")}
                 </CommandItem>
               )}
+              <CommandItem
+                value={`import card sillytavern quire ${t("cards.menuImport")}`}
+                icon={<FileInput />}
+                onSelect={run(() => pickCardFile(notebookId))}
+              >
+                {t("cards.menuImport")}
+              </CommandItem>
               <CommandItem
                 value={`theme dark light ${t("command.toggleTheme")}`}
                 icon={<SunMoon />}

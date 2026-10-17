@@ -8,6 +8,7 @@ import {
   Database,
   Ellipsis,
   Globe,
+  LibraryBig,
   type LucideIcon,
   MessagesSquare,
   NotebookPen,
@@ -35,6 +36,7 @@ const MORE: { kind: PanelKind; icon: LucideIcon }[] = [
   { kind: "elements", icon: Boxes },
   { kind: "review", icon: Repeat },
   { kind: "database", icon: Database },
+  { kind: "lorebook", icon: LibraryBig },
   { kind: "search", icon: Globe },
 ];
 
