@@ -1,6 +1,6 @@
 /** 对话预设：内置 / 自定义、对话里生效、导入导出（含酒馆预设与角色卡问答风格）。 */
 import type { ChatPreset, Conversation, Notebook } from "@quirenote/core";
-import { strToU8 } from "fflate";
+import { strToU8, zipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeServer, readSse, type TestServer } from "./helpers";
 
@@ -218,6 +218,14 @@ describe("预设的导入导出", () => {
     expect(r.preset.snippets).toEqual([
       { content: "Stay in character.", position: "before_question", role: "system" },
     ]);
+    // CHARX 里的角色卡同样可以
+    const charx = zipSync({
+      "card.json": strToU8(JSON.stringify({ ...card, data: { ...card.data, name: "Bea" } })),
+    });
+    const fromCharx = await upload("/cards/import", charx, "Bea.charx", { as: "preset", lang: "en" });
+    expect(fromCharx.status).toBe(201);
+    expect(((await fromCharx.json()) as { preset: ChatPreset }).preset.name).toBe("Bea");
+
     const world = { entries: { "0": { uid: 0, key: ["k"], content: "c" } } };
     const bad = await upload("/cards/import", strToU8(JSON.stringify(world)), "w.json", { as: "preset" });
     expect(bad.status).toBe(400);

@@ -13,6 +13,10 @@ import { stMessages } from "./messages";
 
 export const PLUGIN_ID = "sillytavern";
 
+/** 角色卡的几种格式（PNG / JSON / CHARX）：可以导入为 Notebook，也可以导入为问答风格。 */
+export const CHARACTER_FORMATS = ["st-card-png", "st-card-json", "st-charx"];
+export const isCharacterFormat = (format: string) => CHARACTER_FORMATS.includes(format);
+
 /** CHARX 的 assets：`embeded://`（规格原文拼写）或 `embedded://` 指向压缩包内路径。 */
 function attachCharxAssets(raw: unknown, card: QuireCard, files: Map<string, Uint8Array>): void {
   const data = (raw as { data?: { assets?: unknown } }).data;

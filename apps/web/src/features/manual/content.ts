@@ -8,6 +8,7 @@ import {
   Command,
   Database,
   Drama,
+  Feather,
   FileStack,
   Gauge,
   Globe,
@@ -15,6 +16,7 @@ import {
   LibraryBig,
   MessageSquareQuote,
   NotebookPen,
+  PenLine,
   PlugZap,
   Repeat,
   Share2,
@@ -41,6 +43,8 @@ const ICONS: Record<string, LucideIcon> = {
   reading: Highlighter,
   notes: NotebookPen,
   lorebook: LibraryBig,
+  presets: Feather,
+  writing: PenLine,
   cards: Share2,
   studio: Sparkles,
   research: Globe,
@@ -140,6 +144,9 @@ Anthropic 没有 Embedding 接口。这时由对话模型把提问扩展成多�
 ### 卡片语法与正则规则
 写 \`【术语：名称｜定义】\` 这样的格式会显示成卡片；在 **设置 → 正则规则** 里可以自己定义「什么文字显示成什么样」。规则只改显示，存下来和交给 AI 的仍是原文。点一下卡片就回到原文编辑。
 
+### 从模板新建
+笔记面板「新建」旁边的小箭头可以从模板新建：读书笔记、课程笔记、会议记录、人物小传、世界观条目。任意笔记的「…」菜单里可以「存为模板」，模板在 **设置 → 预设与模板** 里管理。
+
 ### 最近打开
 首页的「最近打开」按打开时间排列，点一下就回到那条笔记。`,
   },
@@ -164,6 +171,56 @@ Anthropic 没有 Embedding 接口。这时由对话模型把提问扩展成多�
 
 ### 回答里用到了哪些条目
 每条回答下方可以展开「用到的知识书」。没有勾选资料时，有知识书或 AI 说明的 Notebook 也能对话，这时回答依据知识书，不带引用。`,
+  },
+  {
+    id: "presets",
+    title: "回答风格与模板",
+    summary: "对话预设决定 AI 怎么回答，可以随时切换；模板用来快速新建笔记和 Notebook。",
+    body: `### 回答风格（对话预设）
+对话输入框下方的「回答风格」可以随时切换：
+- **研究助理**（默认）：依据资料回答，结论带引用。
+- **通俗讲解**：像给没有背景的朋友讲，先结论再举例。
+- **提问式复习**：先提问引导你回忆，再纠正补充。
+- **写作搭档**：帮你构思、续写、改写和润色，保持你的文风。
+
+菜单里的「设为这本 Notebook 的默认」让这本 Notebook 的新对话都用这个风格。
+
+### 自己写一个
+**设置 → 预设与模板 → 对话预设**：内置的不能改，可以「复制」一份再改。可以写：
+- **要求**：语气、立场、扮演的角色。
+- **回答格式**：篇幅、结构。
+- **温度、Top P、最长输出**：留空用模型默认。
+- **附加片段**：放在系统提示开头、资料之后，或紧贴在提问之前。
+
+预设和 Notebook 的 AI 说明叠加使用；两者冲突时以 AI 说明为准。预设可以导出成文件分享。
+
+### 模板
+- **笔记模板**：新建笔记时选用，\`{{日期}}\` \`{{时间}}\` \`{{星期}}\` \`{{标题}}\` 会自动填上。
+- **Notebook 模板**：新建 Notebook 时选「研究课题」「读书会」「小说项目」，或你自己存的模板。首页 Notebook 卡片的菜单里可以「存为模板」，带上笔记、知识书、AI 说明、默认风格和稿件，不带资料和对话。`,
+  },
+  {
+    id: "writing",
+    title: "写小说",
+    summary: "稿件按卷章组织，每章写梗概和场景节拍，AI 按大纲起草、续写并检查设定是否前后一致。",
+    body: `### 开始
+新建 Notebook 时选 **小说项目**：自带第一卷第一章、故事梗概、主角和世界观笔记、一本「人物与设定」知识书，默认回答风格是写作搭档，并打开 **写作** 面板。别的 Notebook 也可以从左侧打开写作面板。
+
+### 稿件
+每一章就是一篇笔记，用同一个编辑器写。稿件页可以新建卷和章节、把已有笔记加进来、拖动调整顺序，看每章和全书的字数与目标。移出稿件不会删除笔记。
+
+### 大纲
+每章写一两句梗概和若干场景节拍，然后：
+- **按大纲起草 / 接着写**：AI 参考本章大纲、前文提要和人物设定写出草稿，确认后「加到这一章末尾」。
+- **检查设定一致性**：对照知识书和前面的章节，摘出正文里矛盾的句子并给出建议。
+- **更新摘要**：为这一章生成摘要，后面的章节续写时作为「前文提要」。
+
+在章节正文里用斜杠菜单的「AI 续写」，同样会带上前文提要、本章大纲和设定。
+
+### 人物与设定
+人物、地点、势力、物品都是知识书条目：正文里提到名字或别名时，对应的设定才交给 AI。高级选项在知识书面板里。
+
+### 导出
+写作面板右上角可以把整部稿件按卷章顺序导出为 Markdown、Word（.docx）或电子书（.epub）。`,
   },
   {
     id: "studio",
@@ -383,6 +440,9 @@ Ask AI to rewrite, expand, translate or summarize; the result appears as a draft
 ### Card syntax and regex rules
 Text like \`【术语：name｜definition】\` renders as a card, and **Settings → Regex rules** lets you define your own "this text shows like that". Rules only change the display; what's stored and sent to the AI stays the original text. Click a card to edit the source.
 
+### From a template
+The small arrow next to "New" in the notes panel starts a note from a template: reading notes, lecture notes, meeting notes, character sheet, world entry. Any note's "…" menu can "Save as template"; manage templates in **Settings → Presets & templates**.
+
 ### Recently opened
 The home page lists notes by when you last opened them; one click takes you back.`,
   },
@@ -408,6 +468,58 @@ The "AI instructions" tab holds what the AI should always know — tone, a role 
 
 ### Which entries an answer used
 Expand "Lorebook used" under an answer. Without any sources selected, a notebook with a lorebook or AI instructions can still chat; answers then draw on the lorebook and carry no citations.`,
+  },
+  {
+    id: "presets",
+    title: "Answer styles & templates",
+    summary:
+      "Chat presets set how the AI answers and can be switched any time; templates start notes and notebooks quickly.",
+    body: `### Answer styles (chat presets)
+Switch the "Answer style" under the chat box at any time:
+- **Research assistant** (default): answers from your sources, with citations.
+- **Plain explanation**: like explaining to a friend with no background — conclusion first, then examples.
+- **Quiz me**: asks questions to help you recall, then corrects and fills gaps.
+- **Writing partner**: helps you brainstorm, continue, rewrite and polish, keeping your voice.
+
+"Make it this notebook's default" in the menu makes new chats in the notebook use that style.
+
+### Write your own
+**Settings → Presets & templates → Chat presets**: built-in presets are read-only; "Copy" one to change it. You can set:
+- **Instructions**: tone, stance, a role to play.
+- **Answer format**: length and structure.
+- **Temperature, Top P, max output**: leave empty for the model's defaults.
+- **Extra snippets**: placed at the start of the system prompt, after the sources, or right before the question.
+
+A preset works together with the notebook's AI instructions; when they conflict, the AI instructions win. Presets can be exported as files to share.
+
+### Templates
+- **Note templates**: pick one when creating a note; \`{{date}}\` \`{{time}}\` \`{{weekday}}\` \`{{title}}\` are filled in automatically.
+- **Notebook templates**: when creating a notebook, choose "Research project", "Reading club", "Novel project", or a template you saved. The menu on a notebook card on the home page has "Save as template", which keeps notes, lorebook, AI instructions, default style and manuscript, but not sources or chats.`,
+  },
+  {
+    id: "writing",
+    title: "Writing a novel",
+    summary:
+      "Organize the manuscript into parts and chapters, outline each chapter, and let the AI draft, continue and check consistency.",
+    body: `### Getting started
+Choose **Novel project** when creating a notebook: it comes with part one / chapter one, premise, protagonist and setting notes, a "Characters & setting" lorebook and the Writing partner style, and opens the **Writing** panel. Any other notebook can open the Writing panel from the left bar too.
+
+### Manuscript
+Each chapter is a note written in the same editor. The manuscript tab adds parts and chapters, brings in existing notes, reorders them by dragging, and shows word counts against your goals. Removing a chapter from the manuscript keeps the note.
+
+### Outline
+Give each chapter a synopsis and scene beats, then:
+- **Draft from outline / Continue from outline**: the AI drafts using the chapter outline, a recap of earlier chapters and your character settings; confirm with "Add to the end of the chapter".
+- **Check consistency**: compares the chapter with the lorebook and earlier chapters, quotes the sentences that contradict them and suggests fixes.
+- **Update summary**: summarizes the chapter; later chapters use it as their recap.
+
+"AI continue" from the slash menu inside a chapter uses the same recap, outline and settings.
+
+### Characters & setting
+Characters, places, factions and objects are lorebook entries: their settings reach the AI only when the text mentions a name or alias. Advanced options live in the lorebook panel.
+
+### Export
+The top-right of the Writing panel exports the whole manuscript, in order, as Markdown, Word (.docx) or e-book (.epub).`,
   },
   {
     id: "studio",

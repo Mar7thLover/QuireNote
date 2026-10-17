@@ -20,6 +20,9 @@ export interface ImportRequest {
   notebookId?: string | null;
 }
 
+/** 酒馆角色卡的格式（与 @quirenote/plugin-sillytavern 的 CHARACTER_FORMATS 一致）：可以导入为问答风格。 */
+const CHARACTER_FORMATS = ["st-card-png", "st-card-json", "st-charx"];
+
 export function ImportCardDialog({
   request,
   onClose,
@@ -114,7 +117,7 @@ export function ImportCardDialog({
         </div>
 
         <div className="flex shrink-0 flex-col gap-4 border-t border-border px-5 pt-4 pb-5">
-          {p?.format.startsWith("st-card") ? (
+          {p && CHARACTER_FORMATS.includes(p.format) ? (
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={t("presets.importAs")}>
               <span className="text-[13px] font-medium text-fg-muted">{t("presets.importAs")}</span>
               <div className="grid grid-cols-2 gap-2">

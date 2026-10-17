@@ -1,7 +1,12 @@
 /** 笔记资源、链接预览、知识书、Quire 卡的导入导出。 */
 import { CardError, cardToZip, parseCardFile } from "@quirenote/card";
 import { LorebookSettingsPatch, LoreEntryInput } from "@quirenote/core";
-import { characterToPreset, lorebookToWorldInfo, PLUGIN_ID as ST } from "@quirenote/plugin-sillytavern";
+import {
+  characterToPreset,
+  isCharacterFormat,
+  lorebookToWorldInfo,
+  PLUGIN_ID as ST,
+} from "@quirenote/plugin-sillytavern";
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";
@@ -182,7 +187,7 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
     const { parsed, form } = await parseUpload(ctx, c);
     // 角色卡也可以导入为问答风格（对话预设），在任何 Notebook 的对话里切换使用
     if (form.as === "preset") {
-      if (parsed.importer !== ST || !parsed.format.startsWith("st-card"))
+      if (parsed.importer !== ST || !isCharacterFormat(parsed.format))
         throw badRequest("只有角色卡可以导入为问答风格", "not_character");
       const raw = parsed.card.data.extensions.sillytavern as Record<string, unknown>;
       const preset = await createPreset(ctx, characterToPreset(raw, String(form.lang ?? "zh")));

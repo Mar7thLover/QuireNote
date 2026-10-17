@@ -3,6 +3,6 @@
  * 世界书、正则脚本和对话预设，并把知识书、预设导出回酒馆格式。
  */
 export * from "./convert";
-export { PLUGIN_ID, sillytavernImporter } from "./importer";
+export { CHARACTER_FORMATS, isCharacterFormat, PLUGIN_ID, sillytavernImporter } from "./importer";
 export { type StMessages, stMessages } from "./messages";
 export * from "./presets";

@@ -2,11 +2,12 @@
 
 Quire 卡把一条笔记或一整本 Notebook 装进一个文件：笔记、资料（原文件、全文、高亮）、Studio 生成物、元素与复习卡、
 知识书，连同用到的图片、视频和渲染规则。对方导入后就是一本可以直接读、直接提问的 Notebook。
-PNG 版本把数据藏在封面图里，像酒馆角色卡一样发图即分享、拖进来即导入；QuireNote 也能直接读取酒馆
-（SillyTavern）的角色卡、世界书和正则脚本。
+PNG 版本把数据藏在封面图里，像酒馆角色卡一样发图即分享、拖进来即导入；启用「酒馆兼容」插件后，QuireNote
+也能读取酒馆（SillyTavern）的角色卡、世界书、正则脚本和对话预设。
 
-实现位置：字段定义 `packages/core/src/card.ts`；读写与转换 `packages/card`（`parse.ts`、`png.ts`、
-`sillytavern.ts`）；知识书触发 `packages/card/src/lore.ts`；服务端导入导出 `apps/server/src/services/cards.ts`。
+实现位置：字段定义 `packages/core/src/card.ts`；读写 `packages/card`（`parse.ts`、`png.ts`，导入插件接口
+`importer.ts`）；知识书触发 `packages/card/src/lore.ts`；酒馆格式的转换在插件包 `packages/plugin-sillytavern`
+（`convert.ts`、`presets.ts`）；服务端导入导出 `apps/server/src/services/cards.ts`，插件开关 `apps/server/src/plugins.ts`。
 
 ## 一张卡里装什么
 
@@ -40,7 +41,7 @@ PNG 版本把数据藏在封面图里，像酒馆角色卡一样发图即分享�
 | `language` | string | 否 | 主要语言（ISO 639-1） |
 | `created_at` / `modified_at` | number | 否 | Unix 秒；0 表示未知 |
 | `source` | string[] | 否 | 来源链接或 ID |
-| `notebook` | `{title, description, icon, color}` | 否 | 导入为新 Notebook 时用的外观 |
+| `notebook` | `{title, description, icon, color, default_preset_id?, manuscript?}` | 否 | 导入为新 Notebook 时用的外观；默认回答风格与小说稿件，见下 |
 | `notes` | `CardNote[]` | 是（可为空） | `{id, title, markdown, tags, kind: "note" \| "card"}`；`card` 是闪卡 |
 | `sources` | `CardSource[]` | 否 | 资料，见下 |
 | `artifacts` | `CardArtifact[]` | 否 | `{id, kind, title, data, source_ids, instructions}`；`data` 与 QuireNote 的生成物数据同形，音频 / 视频 / 配图写成 `asset://<id>` |
@@ -57,6 +58,14 @@ PNG 版本把数据藏在封面图里，像酒馆角色卡一样发图即分享�
 `{start, end, color, note}[]`（偏移指向 `text`）。`file` 是原始文件（PDF、DOCX、音视频……）对应的资源 id，资源类型为
 `source`；只有 `.quire` 压缩包带原始文件，JSON 和 PNG 卡里为 `null`。导入时全文、分页、高亮原样还原，分块在本地
 重建，向量由后台任务补，不调用对话模型。
+
+**默认回答风格** `notebook.default_preset_id`：新对话默认用的对话预设。内置预设（`builtin.research`、`builtin.plain`、
+`builtin.quiz`、`builtin.writer`）在任何 QuireNote 里都有效；自定义预设不随卡片带走，对方没有同 id 的预设时忽略。
+只在导入为新 Notebook 时生效，合并进已有 Notebook 时不改对方的设置。
+
+**稿件** `notebook.manuscript`：`{volumes: {title, chapters: {note_id, synopsis, beats, target}[]}[], target}`，
+小说项目的卷章顺序、每章梗概、场景节拍和目标字数；`note_id` 指向 `notes` 里的笔记（章节正文就是笔记）。
+导入时按新的笔记 id 改写，找不到笔记的章节丢弃；合并进已有 Notebook 时，卷追加在原稿件后面。
 
 **资源**：`type` 为 `image`、`video`、`audio`、`font`、`cover`、`source`，自定义类型以 `x_` 开头。`uri` 可以是
 `embedded://assets/<type>/<file>`（压缩包内路径）、`data:` URL（JSON 与 PNG 卡内联）或 `https://` 外链。
@@ -206,6 +215,7 @@ PNG 的坑：微信、QQ 等会压缩图片并丢掉文本块，必须按「原�
 **导入**
 
 - 把 PNG、JSON、`.quire`、酒馆的 `.png` / `.json` / `.charx` 拖进首页，或点「导入」，或在命令面板选「导入卡片…」。
+  酒馆文件需要启用「酒馆兼容」插件；没启用时预览里提示「启用后继续」，点一下就能接着导入。
 - 先弹出预览：封面、卡名、作者与版本、来源格式、包含多少笔记 / 资料 / 生成物 / 元素 / 复习卡 / 知识书条目 /
   规则 / 资源；资料标题（以及其中几份带原始文件）、作者的话、AI 说明、常驻知识书条目和会被停用的规则单独列出。
 - 选「新建一本 Notebook」或合并进已有的 Notebook。合并时条目和规则追加、重名的自动改名；AI 说明只在原来为空时
@@ -235,7 +245,12 @@ PNG 的坑：微信、QQ 等会压缩图片并丢掉文本块，必须按「原�
 
 ## 与酒馆的兼容
 
-可以读入：角色卡 V1 / V2 / V3（PNG、JSON、CHARX）、独立世界书 JSON、正则脚本 JSON；可以写出世界书 JSON。
+这部分是内置插件「酒馆兼容」（`sillytavern`），在「设置 → 插件」里开关。新安装默认关闭；库里已经有酒馆导入的
+数据（知识书条目带 `extensions.sillytavern`、规则 id 以 `st_` 开头）时自动视为开启。关掉只隐藏入口，已经导入的
+笔记、知识书、规则和预设照常使用。插件只做数据转换（实现 `CardImporter` 的 `fromJson` / `fromZip` /
+`fromPngText`），不碰数据库和网络，为以后在 Worker 里运行第三方插件预留。
+
+可以读入：角色卡 V1 / V2 / V3（PNG、JSON、CHARX）、独立世界书 JSON、正则脚本 JSON、对话补全预设；可以写出世界书 JSON 和对话预设。
 原始字段完整保存在 `extensions.sillytavern`，再导出回酒馆时不丢。PNG 里同时有 `ccv3` 和 `chara` 时只读 `ccv3`。
 导入时生成的标题、小节名和提示跟随界面语言。
 
@@ -295,6 +310,29 @@ PNG 的坑：微信、QQ 等会压缩图片并丢掉文本块，必须按「原�
 | `disabled` | `enabled` 取反 | |
 
 替换串里的 `<script>` 会被清洗掉，依赖脚本的交互状态栏、小游戏不会工作，只保留静态样式。
+
+**角色卡 → 问答风格**（导入预览里「导入为」选「问答风格」：不建 Notebook，变成一个可以在任何 Notebook 的对话里切换的对话预设）
+
+| 酒馆字段 | 对话预设 | 处理 |
+| --- | --- | --- |
+| `name` / `nickname` | `name` | 有 `nickname` 时优先 |
+| `description`、`personality`、`scenario`、`mes_example` | `instructions` 里的「角色设定」小节 | `{{char}}` 换成角色名，`{{user}}` 换成「你」 |
+| `system_prompt` | `instructions` 末尾 | |
+| `post_history_instructions`、`extensions.depth_prompt` | `snippets`，位置「紧贴提问之前」 | 深度提示词保留角色 |
+| `first_mes`、`alternate_greetings`、角色书 | — | 问答风格不需要开场白；要完整内容请导入为 Notebook |
+
+原始角色卡保存在预设的 `extensions.sillytavern.character`。
+
+**对话预设 ↔ 对话预设**（「设置 → 预设与模板 → 导入 / 导出」）
+
+| 酒馆字段 | QuireNote | 处理 |
+| --- | --- | --- |
+| `prompts` + 全局 `prompt_order`（按顺序、只取启用的） | `instructions` | 依次拼接 |
+| `injection_position` = 1（按深度插入） | `snippets`，位置「紧贴提问之前」 | 保留角色 |
+| 占位片段（`chatHistory`、`worldInfoBefore` / `After`、`charDescription` 等） | — | 由 QuireNote 自己的提示词顺序处理，略过并提示 |
+| 角色专属的 `prompt_order` | — | 只用全局顺序，提示条数 |
+| `temperature`、`top_p`、`openai_max_tokens` | `temperature`、`topP`、`maxTokens` | 限制在允许范围 |
+| 其余字段 | `extensions.sillytavern` | 原样保留；导出回酒馆时只更新主提示词和参数 |
 
 ## 安全边界
 

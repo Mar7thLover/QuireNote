@@ -3,7 +3,7 @@
 前后端共享的接口约定。类型名均指 `@quirenote/core` 中的 zod schema。
 
 - 基础路径 `/api`，JSON 请求/响应；上传用 `multipart/form-data`。
-- 错误统一为 `{ "error": { "code": string, "message": string } }`，配合 4xx/5xx 状态码。
+- 错误统一为 `{ "error": { "code": string, "message": string, ...details } }`，配合 4xx/5xx 状态码；个别错误带额外字段（例如 `plugin_disabled` 带 `plugin`）。
 - 时间均为 ISO 字符串。id 由服务端生成（`newId(prefix)`）。
 - 流式接口用 SSE（`text/event-stream`），每个事件为 `event: <name>\ndata: <json>\n\n`。
 
@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | GET | `/notebooks` | `Notebook[]`，带 `stats` |
 | POST | `/notebooks` | body `NotebookInput` → `Notebook` |
-| GET / PATCH / DELETE | `/notebooks/:nb` | PATCH body 为 `NotebookInput` 的部分字段 + `pinned`、`aiInstructions`（AI 说明）、`render`（只对这本生效的渲染包 `RenderPack`）；只改给出的字段 |
+| GET / PATCH / DELETE | `/notebooks/:nb` | PATCH body 为 `NotebookInput` 的部分字段 + `pinned`、`aiInstructions`（AI 说明）、`render`（只对这本生效的渲染包 `RenderPack`）、`defaultPresetId`（默认回答风格，`null` 用内置「研究助理」）、`manuscript`（稿件 `Manuscript`，见「小说写作」）；只改给出的字段 |
 | GET | `/notebooks/:nb/export` | 整本导出 zip（Markdown + 原始文件 + `notebook.json`） |
 | POST | `/import` | multipart `file`（导出的 zip）→ `Notebook` |
 
@@ -43,8 +43,8 @@
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET / POST | `/notebooks/:nb/conversations` | POST `{title?}` |
-| PATCH / DELETE | `/conversations/:id` | PATCH `{title?, activeLeafId?, model?}` |
+| GET / POST | `/notebooks/:nb/conversations` | POST `{title?, model?, presetId?}` |
+| PATCH / DELETE | `/conversations/:id` | PATCH `{title?, activeLeafId?, model?, presetId?}` |
 | GET | `/conversations/:id/messages` | 全部消息（树，按 createdAt） |
 | POST | `/conversations/:id/messages` | SSE，见下 |
 
@@ -86,7 +86,7 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | PATCH / DELETE | `/lorebook/entries/:id` | PATCH 只改给出的字段 |
 | POST | `/notebooks/:nb/lorebook/test` | `{text}` → `{entries, trimmed, tokens}`，每项 `{id, name, trigger, tokens, position}` |
 | POST | `/notebooks/:nb/lorebook/from-elements?lang=` | 从元素生成条目（同名跳过）→ `{created}` |
-| GET | `/notebooks/:nb/lorebook/export?format=quire\|sillytavern` | 下载 QuireNote 格式或酒馆世界书 JSON |
+| GET | `/notebooks/:nb/lorebook/export?format=quire\|sillytavern` | 下载 QuireNote 格式或酒馆世界书 JSON（`sillytavern` 需要启用「酒馆兼容」插件） |
 
 ## Quire 卡
 
@@ -97,14 +97,16 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 | GET | `/notes/:id/card` | 单条笔记卡 |
 | GET | `/notebooks/:nb/card` | 整本 Notebook 卡 |
 | POST | `/cards/preview` | multipart `file` + `lang` → `CardPreview`（不写入） |
-| POST | `/cards/import` | multipart `file` + `lang` + 可选 `notebookId`（合并进已有 Notebook）→ `{notebookId, created, notes, sources, lore, rules, assets, artifacts, elements, reviewCards, warnings}`（`201`） |
+| POST | `/cards/import` | multipart `file` + `lang` + 可选 `notebookId`（合并进已有 Notebook）→ `{notebookId, created, notes, sources, lore, rules, assets, artifacts, elements, reviewCards, warnings}`（`201`）；酒馆角色卡另可传 `as=preset`，导入为对话预设 → `{preset, warnings}`（`201`），其他格式 `400 not_character` |
 
 导出参数（query）：`format=json|quire`（`json` 内联资源为 `data:` URL；`quire` 为压缩包，另带资料原始文件）、`render`、`lorebook`、
 `instructions`、`sources`、`artifacts`、`elements`（都默认 `1`）、`creator`。PNG 卡由前端用 JSON 画封面后写入 `tEXt` 块。
 导入时资料的全文、分页、高亮原样还原，分块在本地重建并排入 `reindex` 任务补向量；生成物、元素、复习卡一并还原。
 
-导入接受 Quire 卡（PNG / JSON / `.quire`）、酒馆角色卡（PNG / JSON / CHARX）、世界书 JSON、正则脚本 JSON；
-认不出或损坏时返回 `400`，`error.code` 为 `invalid_card`、`unknown_format` 或 `no_card_data`（PNG 里没有卡片数据）。
+导入接受 Quire 卡（PNG / JSON / `.quire`）；启用「酒馆兼容」插件后还接受酒馆角色卡（PNG / JSON / CHARX）、世界书 JSON、正则脚本 JSON。
+认不出或损坏时返回 `400`，`error.code` 为 `invalid_card`、`unknown_format` 或 `no_card_data`（PNG 里没有卡片数据）；
+认得出但对应插件没启用时为 `400 plugin_disabled`，`error.plugin` 为插件 id（前端据此提示「启用后继续」）。
+`CardPreview.format` 为 `quire-png` / `quire-json` / `quire-zip`，或插件给出的格式（`st-card-png`、`st-card-json`、`st-charx`、`st-worldinfo`、`st-regex`）。
 `CardPreview`：`{format, kind, name, summary, creator, creatorNotes, version, tags, cover, notes: {title, chars}[], sources,
 sourceFiles, sourceTitles, artifacts, elements, reviewCards, lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, templates, assets, aiInstructions, warnings}`。
 
@@ -129,6 +131,65 @@ sources, creator}, path, createdAt}`；`title` 为当前标题，内容已删除
 公开接口只认令牌：令牌格式不对、不存在、已撤销、内容已删除一律 `404 not_found`（同一条消息）；响应带
 `cache-control: no-store`、`x-robots-tag: noindex, nofollow`、`referrer-policy: no-referrer`。CORS 与其他接口
 相同（只读页由同一服务器托管，同源访问）。
+
+## 插件
+
+笔记本本体之外的可选功能。目前只有内置插件 `sillytavern`（酒馆兼容）：读写酒馆角色卡、世界书、正则脚本和对话预设。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/plugins` | `{id, version, builtin, enabled}[]` |
+| PUT | `/plugins/:id` | `{enabled}` → 同上的完整列表；未知 id `404` |
+
+- 状态存在设置 `plugins`（`{[id]: boolean}`）。没有记录时按数据推断：库里已有酒馆导入的痕迹（知识书 `extensions.sillytavern`、`st_*` 规则）时视为启用，否则关闭。
+- 关掉插件只拦截入口（导入、导出酒馆格式时 `400 plugin_disabled`），已经导入的数据照常使用。
+- 卡片导入走 `@quirenote/card` 的 `CardImporter` 接口（`fromJson` / `fromZip` / `fromPngText`，纯数据转换，不碰数据库和网络），为以后在 Worker 里运行第三方插件预留。
+
+## 对话预设
+
+一套可以随时切换的回答风格：`ChatPreset` `{id, builtin, name, description, instructions, format, temperature, topP, maxTokens, snippets, extensions}`。
+内置预设 `builtin.research`（研究助理，默认）、`builtin.plain`（通俗讲解）、`builtin.quiz`（提问式复习）、`builtin.writer`（写作搭档）只读，名字随 `lang`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/presets?lang=` | 内置在前、自定义在后 |
+| POST | `/presets` | `ChatPresetInput` → `ChatPreset`（`201`） |
+| PATCH / DELETE | `/presets/:id` | 内置预设 `400`；删除时把用它作默认的 Notebook 改回内置默认 |
+| POST | `/presets/import` | multipart `file` + `lang` → `{preset, warnings}`（`201`）；接受 `quire-preset` 文件，启用「酒馆兼容」后也接受酒馆对话预设 |
+| GET | `/presets/:id/export?format=quire\|sillytavern` | 下载 `.preset.json`（`{format: "quire-preset", version: 1, preset}`）或酒馆预设 JSON |
+
+- 选用顺序：对话自己的 `presetId` → Notebook 的 `defaultPresetId` → `builtin.research`。
+- `instructions` / `format` 进系统提示词「回答风格」一节，并写明与 Notebook 的 AI 说明冲突时以 AI 说明为准。
+- `snippets[].position`：`system_start`（系统提示开头）、`after_sources`（资料片段之后）、`before_question`（紧贴在提问之前，`role` 可为 `system` / `user` / `assistant`）。
+- `temperature` / `topP` / `maxTokens` 为 `null` 时用模型默认；Anthropic 同时设了温度和 Top P 时只发温度。
+
+## 模板
+
+笔记模板存在设置 `noteTemplates`（前端管理，内置五个：读书笔记、课程笔记、会议记录、人物小传、世界观条目），
+正文里的 `{{日期}}` `{{date}}` `{{时间}}` `{{星期}}` `{{标题}}` 在新建时填上。Notebook 模板由服务端管理：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/notebook-templates?lang=` | `{id, name, description, icon, color, builtin}[]`；内置 `builtin.research`（研究课题）、`builtin.reading-club`（读书会）、`builtin.novel`（小说项目） |
+| POST | `/notebooks/from-template` | `{templateId, title?, description?, icon?, color?, lang?}` → `Notebook`（`201`），带上模板的笔记、知识书、AI 说明、默认风格和稿件 |
+| POST | `/notebooks/:nb/save-template` | `{name?, description?}` → 模板（`201`）；带笔记、知识书、AI 说明、默认风格和稿件，不带资料和对话 |
+| PATCH / DELETE | `/notebook-templates/:id` | 改名、删除；内置模板 `400` |
+
+自定义 Notebook 模板存在设置 `notebookTemplates`，单个模板不超过 5 MB。
+
+## 小说写作
+
+稿件 `Notebook.manuscript`：`{volumes: {id, title, chapters: {noteId, synopsis, beats, target}[]}[], target}`。
+每章是一篇笔记，正文用同一个编辑器写；稿件只记顺序、梗概、场景节拍和目标字数，通过 `PATCH /notebooks/:nb` 整体保存。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/notebooks/:nb/writing/draft` | `{noteId}` → SSE `delta` `{text}` / `done` `{text}` / `error`；按本章大纲起草，已有正文时接着写（不落库，由前端「加到这一章末尾」）。笔记不在稿件里 `400 not_chapter`，没有梗概和节拍 `400 empty_outline` |
+| POST | `/notebooks/:nb/writing/check` | `{noteId}` → `{issues: {quote, problem, suggestion}[]}`；对照知识书和前文检查本章，`quote` 一定逐字出自正文 |
+| POST | `/notes/:id/summary` | → `{summary}`；章节摘要存在 `props.summary`，按正文指纹缓存，正文没变不重新生成 |
+| GET | `/notebooks/:nb/manuscript/export?format=md\|docx\|epub&lang=` | 按卷章顺序导出整部稿件：Markdown、Word、EPUB 3 |
+
+起草、续写时 AI 拿到的背景：前面各章的摘要（「前文提要」）、本章梗概与节拍、正文触发的知识书条目、这本 Notebook 的 AI 说明和默认风格。
 
 ## Studio 生成物
 
@@ -171,7 +232,7 @@ sources, creator}, path, createdAt}`；`title` 为当前标题，内容已删除
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/ai/transform` | `{notebookId, action, text, instruction?, targetLang?}`，action ∈ explain/rewrite/expand/translate/summarize/find_source/quiz/custom；SSE `delta`/`citations`/`done` |
+| POST | `/ai/transform` | `{notebookId, noteId?, action, text, instruction?, targetLang?}`，action ∈ explain/rewrite/expand/translate/summarize/find_source/quiz/custom/continue/outline；SSE `delta`/`citations`/`done` |
 | POST | `/ai/command` | `{notebookId, instruction, noteIds?, selection?}` → `AgentProposal`（不落库） |
 | POST | `/ai/apply` | `{notebookId, proposal}` → `{applied: {op, id}[], undoToken}` |
 | POST | `/ai/undo` | `{undoToken}` → `{ok}` |
@@ -286,7 +347,8 @@ sources, creator}, path, createdAt}`；`title` 为当前标题，内容已删除
 
 ### 就地 AI
 
-- `/ai/transform` 补充参数 `sourceIds?: string[]`（限定参考资料）。`explain / expand / find_source / quiz / custom` 会检索资料并可引用 `[n]`；`rewrite / translate / summarize` 只处理文本本身。
+- `/ai/transform` 补充参数 `sourceIds?: string[]`（限定参考资料）。`explain / expand / find_source / quiz / custom` 会检索资料并可引用 `[n]`；`rewrite / translate / summarize / continue / outline` 只处理文本本身。
+  - `continue`（接着往下写）、`outline`（整理成大纲）供编辑器斜杠菜单使用。传了 `noteId` 且这篇笔记在稿件里时，`continue / rewrite / expand / custom` 另带上前文提要、本章大纲和触发的知识书条目。
   - `done` 事件：`{ text, model }`，`text` 为剔除无效编号后的最终文本；`citations` 事件与对话相同。
 - `/ai/command`：返回的 `AgentProposal.ops` 只引用请求中 `noteIds` 里的笔记；`add_mindmap_node` 的 `artifactId / parentId` 来自本笔记本已有的思维导图。
 - `/ai/apply`：先整体校验（引用的笔记 / 节点不存在 → `400 bad_proposal`，不做部分应用）。各操作返回的 `id`：`create_note` / `update_note` / `delete_note` → 笔记 id；`create_table` → 新建的 `table` 生成物 id；`add_mindmap_node` → 新节点 id；`create_element` → 元素 id。`update_note` 会把 `doc` 置为 `null`（由前端从 markdown 重建）。

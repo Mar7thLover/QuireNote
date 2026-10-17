@@ -18,7 +18,10 @@
 | 数据库视图 | 笔记 / 资料 / 生成物 / 元素都可用表格、看板、画廊、日历查看，支持自定义属性、筛选、排序、分组 |
 | 自定义渲染 | 正则规则（Web Worker 执行 + 超时 + ReDoS 检测）+ 沙箱 iframe 卡片模板（禁脚本、严格 CSP），句中的简单模板原地渲染；内置 7 套模板；`.quirenote-theme` 导入导出；全局主题（配色、字体、圆角、密度、背景）；卡片带来的规则只对自己的 Notebook 生效，可设为全局 |
 | 知识书 | 关键词触发的背景条目（常驻、次关键词逻辑、概率、分组、保持 / 冷却 / 延迟、递归、预算），按位置插入对话与 Studio 提示词，不进引用；每本 Notebook 的 AI 说明；测试栏；从元素生成；回答下方可展开用到的条目 |
-| Quire 卡 | 单条笔记或整本 Notebook 打包成 PNG（数据藏在封面里）/ JSON / `.quire`：整本卡带上笔记、资料（原文件、全文、高亮）、Studio 生成物、元素与复习卡、知识书和渲染规则，导入后直接能读、能提问；导入先预览；直接读取酒馆（SillyTavern）角色卡 V1–V3（PNG / JSON / CHARX）、世界书和正则脚本，知识书可导出为世界书。规格见 [docs/CARD_SPEC.md](docs/CARD_SPEC.md) |
+| Quire 卡 | 单条笔记或整本 Notebook 打包成 PNG（数据藏在封面里）/ JSON / `.quire`：整本卡带上笔记、资料（原文件、全文、高亮）、Studio 生成物、元素与复习卡、知识书和渲染规则，导入后直接能读、能提问；导入先预览。规格见 [docs/CARD_SPEC.md](docs/CARD_SPEC.md) |
+| 写作 | 小说项目：稿件按卷章组织（每章就是一篇笔记），拖拽排序、字数与目标；每章写梗概和场景节拍，按大纲起草或接着写（AI 带上前文提要、本章大纲和触发的人物设定）；对照设定检查一致性；章节摘要；人物、地点、势力、物品就是知识书条目；整部稿件导出 Markdown / Word / EPUB |
+| 预设与模板 | 对话预设（回答风格）：内置研究助理、通俗讲解、提问式复习、写作搭档，可自定义要求、回答格式、温度等参数和附加片段，在对话里随时切换或设为一本的默认，与 AI 说明冲突时以 AI 说明为准；笔记模板（读书、课程、会议、人物小传、世界观条目）；Notebook 模板（研究课题、读书会、小说项目），任意 Notebook 或笔记都能存为模板 |
+| 插件 | 笔记本之外的可选功能，在「设置 → 插件」按需开启，关掉只隐藏入口、不动数据。内置「酒馆兼容」：读取酒馆（SillyTavern）角色卡 V1–V3（PNG / JSON / CHARX，可导入为 Notebook 或问答风格）、世界书、正则脚本和对话预设，知识书可导出为世界书；导入接口为以后的第三方插件预留 |
 | 联网搜索 | Tavily / Brave / SearXNG，快速搜索结果一键加入资料；深度研究多轮检索后自动导入并出报告 |
 | 模型 | Claude、OpenAI、Gemini、Ollama、OpenAI 兼容、ElevenLabs、fal、Replicate、ComfyUI 等；按能力（对话 / Embedding / 搜索 / TTS / STT / 图像 / 视频）分别指定；每个提供方可登记自己的模型列表、自定义请求头；对话里可随时切换模型 |
 | 工作区 | dockview 可拆分、拖拽、浮动的面板与标签页；布局预设（研究 / 写作 / 学习 / 专注）和自定义预设；专注模式；移动端底部导航 + 推入式详情页 |
@@ -33,7 +36,8 @@ apps/mobile      Capacitor 壳（iOS / Android）
 packages/core    共享 zod schema 与类型、示例数据
 packages/ui      设计系统：tokens、组件、动效
 packages/render  正则规则引擎、模板渲染、HTML/CSS 清洗、.quirenote-theme
-packages/card    Quire 卡读写（PNG tEXt / JSON / ZIP）、酒馆格式转换、知识书触发引擎
+packages/card    Quire 卡读写（PNG tEXt / JSON / ZIP）、导入插件接口、知识书触发引擎
+packages/plugin-sillytavern  内置插件「酒馆兼容」：角色卡、世界书、正则脚本、对话预设的转换
 packages/ai      基于 Vercel AI SDK 的多 Provider 抽象（含测试用的假 OpenAI 兼容模型）
 e2e/             Playwright 端到端测试
 docs/API.md      前后端接口契约
