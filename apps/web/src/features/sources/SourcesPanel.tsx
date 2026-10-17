@@ -1,40 +1,18 @@
 import { SOURCE_KIND_META, type Source } from "@quirenote/core";
-import {
-  Button,
-  Checkbox,
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-  cn,
-  EmptyState,
-  Skeleton,
-  Spinner,
-  Tooltip,
-} from "@quirenote/ui";
-import {
-  AlertCircle,
-  BookOpen,
-  Download,
-  FileUp,
-  Globe,
-  MessageSquareQuote,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Button, Checkbox, cn, EmptyState, Skeleton, Spinner, Tooltip } from "@quirenote/ui";
+import { AlertCircle, BookOpen, CheckSquare, FileUp, Globe, Plus } from "lucide-react";
 import { useState } from "react";
 import { PanelShell, PanelTitle } from "@/components/Panel";
 import { VirtualList } from "@/components/VirtualList";
 import { useTranslation } from "@/i18n";
-import { api } from "@/lib/api";
+import { contextMenu } from "@/lib/contextMenu";
 import { formatCount } from "@/lib/format";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { Icon } from "@/lib/icons";
 import { DND_SOURCE, useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
-import { uploadFiles, useRemoveSource, useSources, useUpdateSource } from "./hooks";
+import { uploadFiles, useSources, useUpdateSource } from "./hooks";
+import { sourceSections } from "./menu";
 
 export function SourcesPanel({ notebookId }: { notebookId: string }) {
   const { t } = useTranslation();
@@ -80,6 +58,34 @@ export function SourcesPanel({ notebookId }: { notebookId: string }) {
     >
       <div
         className="flex h-full flex-col"
+        onContextMenu={contextMenu(
+          () => [
+            [
+              {
+                id: "sources.add",
+                label: t("sources.add"),
+                icon: Plus,
+                shortcut: SHORTCUTS.addSource,
+                onSelect: () => useUi.getState().openAddSource(),
+              },
+              {
+                id: "sources.search",
+                label: t("sources.webSearch"),
+                icon: Globe,
+                onSelect: () => useWorkspace.getState().open({ kind: "search", title: t("nav.search") }),
+              },
+              {
+                id: "sources.all",
+                label: t("sources.selectAll"),
+                icon: CheckSquare,
+                checked: allState === true,
+                disabled: !selectable.length,
+                onSelect: toggleAll,
+              },
+            ],
+          ],
+          { area: true },
+        )}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes("Files")) {
             e.preventDefault();
@@ -157,106 +163,68 @@ export function SourcesPanel({ notebookId }: { notebookId: string }) {
 function SourceRow({ source: s, notebookId }: { source: Source; notebookId: string }) {
   const { t } = useTranslation();
   const update = useUpdateSource(notebookId);
-  const remove = useRemoveSource(notebookId);
   const meta = SOURCE_KIND_META[s.kind];
   const busy = s.status === "pending" || s.status === "processing";
   const openReader = () => useWorkspace.getState().open({ kind: "reader", id: s.id, title: s.title });
 
-  const rename = () => {
-    const title = prompt(t("common.rename"), s.title)?.trim();
-    if (title && title !== s.title) update.mutate({ id: s.id, patch: { title } });
-  };
-
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div
-          draggable={s.status === "ready"}
-          onDragStart={(e) => {
-            e.dataTransfer.setData(DND_SOURCE, s.id);
-            e.dataTransfer.setData("text/plain", s.title);
-            e.dataTransfer.effectAllowed = "copy";
-            useUi.getState().set({ dragging: { kind: "source", id: s.id } });
-          }}
-          onDragEnd={() => useUi.getState().set({ dragging: null })}
+    <div
+      onContextMenu={contextMenu(() => sourceSections(notebookId, s))}
+      draggable={s.status === "ready"}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DND_SOURCE, s.id);
+        e.dataTransfer.setData("text/plain", s.title);
+        e.dataTransfer.effectAllowed = "copy";
+        useUi.getState().set({ dragging: { kind: "source", id: s.id } });
+      }}
+      onDragEnd={() => useUi.getState().set({ dragging: null })}
+      className={cn(
+        "group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-hover",
+        !s.selected && s.status === "ready" && "opacity-60 hover:opacity-100",
+      )}
+    >
+      <Checkbox
+        checked={s.status === "ready" && s.selected}
+        disabled={s.status !== "ready"}
+        onCheckedChange={(v) => update.mutate({ id: s.id, patch: { selected: v === true } })}
+        aria-label={s.title}
+      />
+      <button
+        type="button"
+        onClick={openReader}
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md text-left focus-ring"
+      >
+        <span
           className={cn(
-            "group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface-hover",
-            !s.selected && s.status === "ready" && "opacity-60 hover:opacity-100",
+            "grid size-8 shrink-0 place-items-center rounded-md bg-surface-sunken text-fg-muted",
+            s.status === "error" && "bg-danger-soft text-danger",
           )}
         >
-          <Checkbox
-            checked={s.status === "ready" && s.selected}
-            disabled={s.status !== "ready"}
-            onCheckedChange={(v) => update.mutate({ id: s.id, patch: { selected: v === true } })}
-            aria-label={s.title}
-          />
-          <button
-            type="button"
-            onClick={openReader}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md text-left focus-ring"
-          >
-            <span
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-md bg-surface-sunken text-fg-muted",
-                s.status === "error" && "bg-danger-soft text-danger",
-              )}
-            >
-              {busy ? (
-                <Spinner className="size-3.5 text-accent" />
-              ) : s.status === "error" ? (
-                <AlertCircle className="size-4" />
-              ) : (
-                <Icon name={meta.icon} className="size-4" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium leading-tight">{s.title}</span>
-              <span className="mt-0.5 block truncate text-[11.5px] text-fg-subtle">
-                {busy
-                  ? t(`sources.status_${s.status}`)
-                  : s.status === "error"
-                    ? s.error || t("sources.status_error")
-                    : [
-                        meta.label,
-                        s.pageCount ? t("sources.pages", { count: s.pageCount }) : null,
-                        s.charCount ? t("sources.chars", { n: formatCount(s.charCount) }) : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-              </span>
-            </span>
-          </button>
-        </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onSelect={openReader}>
-          <BookOpen />
-          {t("common.open")}
-        </ContextMenuItem>
-        <ContextMenuItem
-          onSelect={() =>
-            useWorkspace.getState().open({ kind: "chat", title: t("nav.chat"), extra: { onlySource: s.id } })
-          }
-        >
-          <MessageSquareQuote />
-          {t("chat.dropSource")}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={rename}>
-          <Pencil />
-          {t("common.rename")}
-        </ContextMenuItem>
-        {s.hasFile ? (
-          <ContextMenuItem onSelect={() => window.open(api.sources.fileUrl(s.id))}>
-            <Download />
-            {t("reader.original")}
-          </ContextMenuItem>
-        ) : null}
-        <ContextMenuSeparator />
-        <ContextMenuItem danger onSelect={() => confirm(t("sources.deleteConfirm")) && remove.mutate(s.id)}>
-          <Trash2 />
-          {t("common.delete")}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+          {busy ? (
+            <Spinner className="size-3.5 text-accent" />
+          ) : s.status === "error" ? (
+            <AlertCircle className="size-4" />
+          ) : (
+            <Icon name={meta.icon} className="size-4" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-medium leading-tight">{s.title}</span>
+          <span className="mt-0.5 block truncate text-[11.5px] text-fg-subtle">
+            {busy
+              ? t(`sources.status_${s.status}`)
+              : s.status === "error"
+                ? s.error || t("sources.status_error")
+                : [
+                    meta.label,
+                    s.pageCount ? t("sources.pages", { count: s.pageCount }) : null,
+                    s.charCount ? t("sources.chars", { n: formatCount(s.charCount) }) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+          </span>
+        </span>
+      </button>
+    </div>
   );
 }

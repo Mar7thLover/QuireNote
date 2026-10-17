@@ -5,34 +5,20 @@ import {
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
-  toast,
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Check,
-  Copy,
-  CreditCard,
-  FileText,
-  LayoutTemplate,
-  MoreHorizontal,
-  Pin,
-  Share2,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { customNoteTemplates, saveNoteTemplates } from "@/features/templates/useTemplates";
+import { MenuItems } from "@/components/MenuItems";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
-import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
-import { useUi } from "@/stores/ui";
+import { qk, queryClient, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { type EditorChange, QuireNoteEditor } from "../editor/QuireNoteEditor";
+import { noteSections } from "./menu";
 
 export function NoteEditorPanel({ notebookId, noteId }: { notebookId: string; noteId: string }) {
   const note = useQuery({ queryKey: qk.note(noteId), queryFn: () => api.notes.get(noteId) });
@@ -224,20 +210,6 @@ function TagsEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]
 
 function NoteMenu({ notebookId, note }: { notebookId: string; note: Note }) {
   const { t } = useTranslation();
-  const update = useMutation({
-    mutationFn: (patch: Partial<Note>) => api.notes.update(note.id, patch),
-    onSuccess: (n) => {
-      upsertInList(qk.notes(notebookId), n);
-      queryClient.setQueryData(qk.note(n.id), n);
-    },
-  });
-  const remove = useMutation({
-    mutationFn: () => api.notes.remove(note.id),
-    onMutate: () => {
-      removeFromList(qk.notes(notebookId), note.id);
-      useWorkspace.getState().close({ kind: "note", id: note.id });
-    },
-  });
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -246,68 +218,7 @@ function NoteMenu({ notebookId, note }: { notebookId: string; note: Note }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => update.mutate({ pinned: !note.pinned })}>
-          <Pin />
-          {note.pinned ? t("home.unpin") : t("home.pin")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => update.mutate({ kind: note.kind === "card" ? "note" : "card" })}>
-          {note.kind === "card" ? <FileText /> : <CreditCard />}
-          {note.kind === "card" ? t("notes.toNote") : t("notes.toFlashcard")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() =>
-            navigator.clipboard.writeText(
-              queryClient.getQueryData<Note>(qk.note(note.id))?.markdown ?? note.markdown,
-            )
-          }
-        >
-          <Copy />
-          {t("notes.copyMarkdown")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() =>
-            useUi.getState().set({
-              shareCard: {
-                kind: "note",
-                id: note.id,
-                name:
-                  queryClient.getQueryData<Note>(qk.note(note.id))?.title ||
-                  note.title ||
-                  t("common.untitled"),
-              },
-            })
-          }
-        >
-          <Share2 />
-          {t("cards.menuShare")}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={async () => {
-            const cur = queryClient.getQueryData<Note>(qk.note(note.id)) ?? note;
-            const list = await customNoteTemplates();
-            await saveNoteTemplates([
-              ...list,
-              {
-                id: `tpl_${Date.now().toString(36)}`,
-                name: cur.title || t("common.untitled"),
-                description: "",
-                icon: "📝",
-                markdown: cur.markdown,
-                kind: cur.kind,
-                builtin: false,
-              },
-            ]);
-            toast.success(t("templates.savedNote", { name: cur.title || t("common.untitled") }));
-          }}
-        >
-          <LayoutTemplate />
-          {t("templates.saveAsTemplate")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem danger onSelect={() => confirm(t("notes.deleteConfirm")) && remove.mutate()}>
-          <Trash2 />
-          {t("common.delete")}
-        </DropdownMenuItem>
+        <MenuItems sections={noteSections(notebookId, note)} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

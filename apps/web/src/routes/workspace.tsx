@@ -18,8 +18,10 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type DockviewApi,
+  DockviewDefaultTab,
   DockviewReact,
   type DockviewReadyEvent,
+  type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
   type IWatermarkPanelProps,
   themeLightSpaced,
@@ -27,6 +29,7 @@ import {
 import {
   BookOpen,
   Boxes,
+  Columns2,
   Database,
   Globe,
   LayoutTemplate,
@@ -42,6 +45,7 @@ import {
   RotateCcw,
   Save,
   Sparkles,
+  X,
 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppSidebar";
@@ -50,8 +54,9 @@ import { createNote } from "@/features/notes/actions";
 import { PANEL_COMPONENTS } from "@/features/panels";
 import { useRenderStore } from "@/features/render/store";
 import { AddSourceDialog } from "@/features/sources/AddSourceDialog";
-import { useTranslation } from "@/i18n";
+import i18n, { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu, type MenuSection } from "@/lib/contextMenu";
 import { SHORTCUTS, useHotkeys } from "@/lib/hotkeys";
 import { qk, upsertInList } from "@/lib/query";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -238,6 +243,7 @@ function DesktopWorkspace({
           className="dockview-theme-light-spaced"
           theme={quirenoteTheme}
           components={components}
+          defaultTabComponent={WorkspaceTab}
           onReady={onReady}
           watermarkComponent={Watermark}
         />
@@ -255,6 +261,56 @@ function DesktopWorkspace({
       </div>
     </AppShell>
   );
+}
+
+/** 面板标签页：在默认标签上加右键菜单（关闭其他、关闭右侧、最大化、移到右侧分栏）。 */
+function WorkspaceTab(props: IDockviewPanelHeaderProps) {
+  return <DockviewDefaultTab {...props} onContextMenu={contextMenu(() => tabSections(props))} />;
+}
+
+function tabSections({ api: panel, containerApi }: IDockviewPanelHeaderProps): MenuSection[] {
+  const t = i18n.t.bind(i18n);
+  const siblings = panel.group.panels;
+  const index = siblings.findIndex((p) => p.id === panel.id);
+  const maximized = containerApi.hasMaximizedGroup();
+  return [
+    [
+      { id: "tab.close", label: t("common.close"), icon: X, onSelect: () => panel.close() },
+      {
+        id: "tab.closeOthers",
+        label: t("menu.closeOthers"),
+        disabled: siblings.length < 2,
+        onSelect: () => {
+          for (const p of siblings.filter((x) => x.id !== panel.id)) p.api.close();
+        },
+      },
+      {
+        id: "tab.closeRight",
+        label: t("menu.closeRight"),
+        disabled: index < 0 || index >= siblings.length - 1,
+        onSelect: () => {
+          for (const p of siblings.slice(index + 1)) p.api.close();
+        },
+      },
+    ],
+    [
+      maximized
+        ? {
+            id: "tab.max",
+            label: t("menu.restore"),
+            icon: Minimize2,
+            onSelect: () => containerApi.exitMaximizedGroup(),
+          }
+        : { id: "tab.max", label: t("menu.maximize"), icon: Maximize2, onSelect: () => panel.maximize() },
+      {
+        id: "tab.split",
+        label: t("menu.splitRight"),
+        icon: Columns2,
+        disabled: siblings.length < 2,
+        onSelect: () => panel.moveTo({ group: panel.group, position: "right" }),
+      },
+    ],
+  ];
 }
 
 const sidebarRow =
@@ -292,6 +348,18 @@ function ActivityButton({
     <button
       type="button"
       onClick={onClick}
+      onContextMenu={contextMenu(() => [
+        [
+          { id: "panel.open", label: t("common.open"), icon: Icon, onSelect: onClick },
+          {
+            id: "panel.close",
+            label: t("menu.closePanel"),
+            icon: X,
+            disabled: !active,
+            onSelect: () => useWorkspace.getState().close({ kind }),
+          },
+        ],
+      ])}
       aria-label={label}
       aria-current={active ? "true" : undefined}
       className={cn(

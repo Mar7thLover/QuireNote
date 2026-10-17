@@ -1,7 +1,7 @@
 import type { Source } from "@quirenote/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
+import { qk, queryClient, upsertInList } from "@/lib/query";
 
 export function useSources(nb: string) {
   return useQuery({
@@ -29,14 +29,6 @@ export function useUpdateSource(nb: string) {
       return { prev };
     },
     onError: (_e, _v, ctx) => ctx?.prev && queryClient.setQueryData(qk.sources(nb), ctx.prev),
-  });
-}
-
-export function useRemoveSource(nb: string) {
-  return useMutation({
-    mutationFn: (id: string) => api.sources.remove(id),
-    onMutate: (id) => removeFromList(qk.sources(nb), id),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: qk.sources(nb) }),
   });
 }
 

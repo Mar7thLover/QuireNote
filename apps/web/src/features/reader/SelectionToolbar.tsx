@@ -3,12 +3,11 @@ import { Button, cn, Separator, Tooltip, TypingDots, toast } from "@quirenote/ui
 import { BookmarkPlus, Check, Eraser, Lightbulb, MessageSquarePlus, MessagesSquare, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Markdown } from "@/components/Markdown";
-import { createNote } from "@/features/notes/actions";
 import { useTranslation } from "@/i18n";
-import { transform, useChatDraft } from "@/lib/ai";
+import { transform } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
-import { useWorkspace } from "@/stores/workspace";
+import { askInChat, saveQuoteAsCard } from "@/lib/workspaceActions";
 
 export const HIGHLIGHT_COLORS = ["yellow", "green", "blue", "pink", "purple"] as const;
 
@@ -29,6 +28,62 @@ function setHighlights(sourceId: string, fn: (list: Highlight[]) => Highlight[])
   );
 }
 
+const overlapping = (highlights: Highlight[], r: { start: number; end: number }) =>
+  highlights.filter((h) => h.start < r.end && h.end > r.start);
+
+/** 范围里用户自己的高亮（AI 标注不算）。 */
+export function userHighlightsIn(highlights: Highlight[], r: { start: number; end: number }) {
+  return overlapping(highlights, r).filter((h) => h.by === "user");
+}
+
+/**
+ * 高亮或改色：服务端会把重叠的高亮合并成一条，所以这里只需要提交一次。
+ * nextNote 不为 undefined 时同时改批注。工具栏和右键菜单共用。
+ */
+export async function highlightRange(
+  sourceId: string,
+  r: { start: number; end: number },
+  highlights: Highlight[],
+  color: string,
+  nextNote?: string,
+) {
+  const userCovered = userHighlightsIn(highlights, r);
+  const start = Math.min(r.start, ...userCovered.map((h) => h.start));
+  const end = Math.max(r.end, ...userCovered.map((h) => h.end));
+  try {
+    if (userCovered.length === 1 && start === userCovered[0]!.start && end === userCovered[0]!.end) {
+      const h = userCovered[0]!;
+      const changes = { color, ...(nextNote !== undefined ? { note: nextNote } : {}) };
+      setHighlights(sourceId, (list) => list.map((x) => (x.id === h.id ? { ...x, ...changes } : x)));
+      await api.sources.updateHighlight(sourceId, h.id, changes);
+    } else {
+      // 合并时服务端会拼接旧批注；改批注的场景先删掉旧的，避免重复。
+      if (nextNote !== undefined)
+        for (const h of userCovered) await api.sources.removeHighlight(sourceId, h.id);
+      await api.sources.addHighlight(sourceId, { start, end, color, note: nextNote });
+    }
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+  await queryClient.invalidateQueries({ queryKey: qk.content(sourceId) });
+}
+
+/** 取消范围内的所有高亮（包括 AI 标注）。 */
+export async function clearRange(
+  sourceId: string,
+  r: { start: number; end: number },
+  highlights: Highlight[],
+) {
+  const ids = new Set(overlapping(highlights, r).map((h) => h.id));
+  setHighlights(sourceId, (list) => list.filter((h) => !ids.has(h.id)));
+  try {
+    for (const id of ids) await api.sources.removeHighlight(sourceId, id);
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
+  await queryClient.invalidateQueries({ queryKey: qk.content(sourceId) });
+}
+
 /**
  * 阅读器里唯一的高亮工具栏：选中文字、点击已有高亮都弹出它。
  * 范围内已有高亮时：颜色按钮显示当前颜色、点击即改色；并出现「取消高亮」，一次清掉范围内所有高亮。
@@ -39,6 +94,7 @@ export function SelectionToolbar({
   sourceTitle,
   target,
   highlights,
+  initial,
   onDone,
 }: {
   notebookId: string;
@@ -46,15 +102,17 @@ export function SelectionToolbar({
   sourceTitle: string;
   target: ToolbarTarget;
   highlights: Highlight[];
+  /** 从右键菜单打开时直接展开批注或解释。 */
+  initial?: "annotate" | "explain";
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const covered = highlights.filter((h) => h.start < target.end && h.end > target.start);
+  const covered = overlapping(highlights, target);
   const userCovered = covered.filter((h) => h.by === "user");
   const colors = new Set(userCovered.map((h) => h.color));
   const activeColor = userCovered.length && colors.size === 1 ? userCovered[0]!.color : null;
   const [explain, setExplain] = useState<{ text: string; done: boolean } | null>(null);
-  const [annotating, setAnnotating] = useState(false);
+  const [annotating, setAnnotating] = useState(initial === "annotate");
   const [note, setNote] = useState(() =>
     userCovered
       .map((h) => h.note)
@@ -98,46 +156,18 @@ export function SelectionToolbar({
     return () => window.removeEventListener("keydown", onKey);
   }, [onDone]);
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: qk.content(sourceId) });
-
-  /** 高亮或改色：服务端会把重叠的高亮合并成一条，所以这里只需要提交一次。 */
   const highlight = async (color: string, nextNote?: string) => {
-    const start = Math.min(target.start, ...userCovered.map((h) => h.start));
-    const end = Math.max(target.end, ...userCovered.map((h) => h.end));
-    try {
-      if (userCovered.length === 1 && start === userCovered[0]!.start && end === userCovered[0]!.end) {
-        const h = userCovered[0]!;
-        const changes = { color, ...(nextNote !== undefined ? { note: nextNote } : {}) };
-        setHighlights(sourceId, (list) => list.map((x) => (x.id === h.id ? { ...x, ...changes } : x)));
-        await api.sources.updateHighlight(sourceId, h.id, changes);
-      } else {
-        // 合并时服务端会拼接旧批注；改批注的场景先删掉旧的，避免重复。
-        if (nextNote !== undefined)
-          for (const h of userCovered) await api.sources.removeHighlight(sourceId, h.id);
-        await api.sources.addHighlight(sourceId, { start, end, color, note: nextNote });
-      }
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-    await refresh();
+    await highlightRange(sourceId, target, highlights, color, nextNote);
     onDone();
   };
 
   const remove = async () => {
-    const ids = new Set(covered.map((h) => h.id));
-    setHighlights(sourceId, (list) => list.filter((h) => !ids.has(h.id)));
     onDone();
-    try {
-      for (const id of ids) await api.sources.removeHighlight(sourceId, id);
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-    await refresh();
+    await clearRange(sourceId, target, highlights);
   };
 
   const ask = () => {
-    useChatDraft.getState().send({ quote: { text: target.text, sourceId, sourceTitle } });
-    useWorkspace.getState().open({ kind: "chat", title: t("nav.chat") });
+    askInChat({ text: target.text, sourceId, sourceTitle });
     onDone();
   };
 
@@ -158,20 +188,15 @@ export function SelectionToolbar({
   };
 
   const toCard = async (extra?: string) => {
-    const quote = target.text.replace(/\n+/g, " ");
-    await createNote(
-      notebookId,
-      {
-        title: quote.slice(0, 24),
-        markdown: `> ${quote}\n\n— ${sourceTitle}${extra ? `\n\n${extra}` : ""}`,
-        kind: "card",
-        origin: { type: "source", refId: null, sourceId },
-      },
-      false,
-    );
-    toast.success(t("chat.savedCard"));
+    await saveQuoteAsCard(notebookId, { text: target.text, sourceId, sourceTitle }, extra);
     onDone();
   };
+
+  // 从右键菜单选了「解释」：打开时直接开始。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 只在打开时执行一次
+  useEffect(() => {
+    if (initial === "explain") void runExplain();
+  }, []);
 
   // 工具栏（可能换成两行）放在选中文字上方。
   const top = Math.max(8, target.y - place.rowHeight - 8);

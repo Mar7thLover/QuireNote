@@ -45,10 +45,12 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import type { TransformAction } from "@/lib/ai";
 import { api } from "@/lib/api";
+import { contribute } from "@/lib/contextMenu";
 import { videoEmbedUrl } from "@/lib/video";
 import { DND_SNIPPET, useUi } from "@/stores/ui";
 import { AiDraft, type AiRequest } from "./AiDraft";
 import { HtmlBlock, LinkPreview, Media, VideoEmbed } from "./embeds";
+import { editorContribution } from "./menu";
 import { Callout, CardEmbed, CitationNode, ElementTag } from "./nodes";
 import { RuleDecorations } from "./ruleDecorations";
 import { SlashCommand } from "./slash";
@@ -218,7 +220,18 @@ export function QuireNoteEditor({
 
   if (!editor) return null;
   return (
-    <div className={cn("relative", className)}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键
+    <div
+      className={cn("relative", className)}
+      onContextMenu={(e) => {
+        const c = editorContribution(editor, e, {
+          notebookId,
+          runAi: (action, extra) => aiRef.current(action, editor, extra),
+          upload: () => fileRef.current?.click(),
+        });
+        if (c) contribute(e, c);
+      }}
+    >
       <BubbleMenu
         editor={editor}
         options={{ placement: "top", offset: 8 }}

@@ -1,31 +1,21 @@
 import { ARTIFACT_KIND_META, type Artifact, type ArtifactKind } from "@quirenote/core";
-import {
-  Button,
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-  cn,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Spinner,
-  Textarea,
-} from "@quirenote/ui";
+import { Button, cn, Popover, PopoverContent, PopoverTrigger, Spinner, Textarea } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertCircle, BookOpen, ChevronRight, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, BookOpen, ChevronRight, PenLine, Sparkles } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { PanelShell } from "@/components/Panel";
 import { useNotebookHasNotes } from "@/features/lorebook/useBackground";
 import { useSelectedSourceIds } from "@/features/sources/hooks";
 import { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu } from "@/lib/contextMenu";
 import { relativeTime } from "@/lib/format";
 import { Icon } from "@/lib/icons";
 import { useAssignments, useProviders } from "@/lib/models";
-import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
+import { qk, upsertInList } from "@/lib/query";
 import { type Tint, tintBg, tintInk } from "@/lib/tints";
 import { useWorkspace } from "@/stores/workspace";
+import { artifactSections } from "./menu";
 
 type Group = "text" | "learn" | "visual" | "media";
 const GROUPS: Group[] = ["text", "learn", "visual", "media"];
@@ -252,6 +242,23 @@ function Generate({
       <PopoverTrigger asChild>
         <button
           type="button"
+          onContextMenu={contextMenu(() => [
+            [
+              {
+                id: "studio.generateNow",
+                label: t("menu.generateNow"),
+                icon: Sparkles,
+                disabled: !sourceIds.length || gen.isPending,
+                onSelect: () => gen.mutate(),
+              },
+              {
+                id: "studio.generateWith",
+                label: t("menu.generateWith"),
+                icon: PenLine,
+                onSelect: () => setOpen(true),
+              },
+            ],
+          ])}
           className={cn(
             "group text-left focus-ring",
             card
@@ -312,55 +319,38 @@ function ArtifactRow({ artifact: a, notebookId }: { artifact: Artifact; notebook
   const meta = ARTIFACT_KIND_META[a.kind];
   const g = meta.group as Group;
   const busy = a.status === "generating" || a.status === "pending";
-  const remove = useMutation({
-    mutationFn: () => api.artifacts.remove(a.id),
-    onMutate: () => {
-      removeFromList(qk.artifacts(notebookId), a.id);
-      useWorkspace.getState().close({ kind: "artifact", id: a.id });
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: qk.artifacts(notebookId) }),
-  });
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <button
-          type="button"
-          onClick={() => useWorkspace.getState().open({ kind: "artifact", id: a.id, title: a.title })}
-          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-hover focus-ring"
-        >
-          <span
-            className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-lg",
-              a.status === "error" && "bg-danger-soft text-danger",
-            )}
-            style={a.status === "error" ? undefined : { background: groupBg(g), color: tintInk }}
-          >
-            {busy ? (
-              <Spinner className="size-3.5" />
-            ) : a.status === "error" ? (
-              <AlertCircle className="size-4" />
-            ) : (
-              <Icon name={meta.icon} className="size-[18px]" strokeWidth={1.5} />
-            )}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-medium">{a.title}</span>
-            <span className="block truncate text-[12px] text-fg-subtle">
-              {busy
-                ? t("studio.generating")
-                : a.status === "error"
-                  ? a.error
-                  : `${label(a.kind)} · ${relativeTime(a.updatedAt)}`}
-            </span>
-          </span>
-        </button>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem danger onSelect={() => confirm(t("studio.deleteConfirm")) && remove.mutate()}>
-          <Trash2 />
-          {t("common.delete")}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+    <button
+      type="button"
+      onClick={() => useWorkspace.getState().open({ kind: "artifact", id: a.id, title: a.title })}
+      onContextMenu={contextMenu(() => artifactSections(notebookId, a))}
+      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-surface-hover focus-ring"
+    >
+      <span
+        className={cn(
+          "grid size-9 shrink-0 place-items-center rounded-lg",
+          a.status === "error" && "bg-danger-soft text-danger",
+        )}
+        style={a.status === "error" ? undefined : { background: groupBg(g), color: tintInk }}
+      >
+        {busy ? (
+          <Spinner className="size-3.5" />
+        ) : a.status === "error" ? (
+          <AlertCircle className="size-4" />
+        ) : (
+          <Icon name={meta.icon} className="size-[18px]" strokeWidth={1.5} />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13.5px] font-medium">{a.title}</span>
+        <span className="block truncate text-[12px] text-fg-subtle">
+          {busy
+            ? t("studio.generating")
+            : a.status === "error"
+              ? a.error
+              : `${label(a.kind)} · ${relativeTime(a.updatedAt)}`}
+        </span>
+      </span>
+    </button>
   );
 }

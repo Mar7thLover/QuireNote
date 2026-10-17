@@ -10,6 +10,7 @@ const EXTRA: [string, string][] = [
   ["/", "斜杠命令（编辑器内）"],
   ["Mod+J", "对选中文字调用 AI（编辑器内）"],
   ["Esc", "关闭弹层"],
+  ["Shift+右键", "浏览器原生菜单"],
 ];
 
 export function ShortcutsDialog() {

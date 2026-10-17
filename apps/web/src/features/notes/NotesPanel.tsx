@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
-import { FilePlus2, LayoutGrid, List, NotebookPen, Pin, Search } from "lucide-react";
+import { BookmarkPlus, FilePlus2, LayoutGrid, List, NotebookPen, Pin, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Markdown } from "@/components/Markdown";
 import { PanelShell, PanelTitle } from "@/components/Panel";
@@ -20,12 +20,14 @@ import { VirtualList } from "@/components/VirtualList";
 import { NewFromTemplate } from "@/features/templates/NewFromTemplate";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu } from "@/lib/contextMenu";
 import { plainPreview, relativeTime } from "@/lib/format";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { qk } from "@/lib/query";
 import { DND_SNIPPET } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { createNote } from "./actions";
+import { noteSections } from "./menu";
 
 type Filter = "all" | "note" | "card";
 
@@ -83,6 +85,32 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
     >
       <div
         className="flex h-full flex-col"
+        onContextMenu={contextMenu(
+          () => [
+            [
+              {
+                id: "notes.new",
+                label: t("notes.new"),
+                icon: FilePlus2,
+                shortcut: SHORTCUTS.newNote,
+                onSelect: () => void createNote(notebookId),
+              },
+              {
+                id: "notes.newCard",
+                label: t("notes.newCard"),
+                icon: BookmarkPlus,
+                onSelect: () => void createNote(notebookId, { kind: "card" }),
+              },
+              {
+                id: "notes.view",
+                label: view === "list" ? "卡片视图" : "列表视图",
+                icon: view === "list" ? LayoutGrid : List,
+                onSelect: () => setView(view === "list" ? "grid" : "list"),
+              },
+            ],
+          ],
+          { area: true },
+        )}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(DND_SNIPPET) || e.dataTransfer.types.includes("text/plain")) {
             e.preventDefault();
@@ -160,6 +188,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
               <button
                 type="button"
                 onClick={() => open(n)}
+                onContextMenu={contextMenu(() => noteSections(notebookId, n, { withOpen: true }))}
                 className="group w-full rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-hover focus-ring"
               >
                 <div className="flex items-center gap-1.5">
@@ -188,6 +217,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
                   key={n.id}
                   type="button"
                   onClick={() => open(n)}
+                  onContextMenu={contextMenu(() => noteSections(notebookId, n, { withOpen: true }))}
                   className={cn(
                     "mb-2.5 block w-full break-inside-avoid rounded-xl border border-border bg-surface p-3 text-left transition-colors hover:shadow-md focus-ring",
                   )}

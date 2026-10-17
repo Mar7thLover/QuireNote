@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { type Components, defaultUrlTransform, type UrlTransform } from "react-markdown";
+import { ContextMenuHost } from "@/components/ContextMenuHost";
 import { Markdown } from "@/components/Markdown";
 import { downloadBytes, renderCover, safeFilename } from "@/features/cards/cover";
 import { autoHeight, useCardThemeVars } from "@/features/render/RenderedSegments";
@@ -81,6 +82,7 @@ export function SharePage({ token }: { token: string }) {
           </p>
         </main>
       )}
+      <ContextMenuHost />
       <Toaster
         theme={resolvedMode(mode)}
         position="bottom-right"

@@ -13,7 +13,7 @@ import {
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown, History, MessageSquareDashed, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Copy, History, MessageSquareDashed, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { markAsked } from "@/components/GettingStarted";
 import { PanelShell } from "@/components/Panel";
@@ -21,6 +21,8 @@ import { PresetPicker } from "@/features/presets/PresetPicker";
 import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { contextMenu } from "@/lib/contextMenu";
 import { relativeTime } from "@/lib/format";
 import { useAssignments } from "@/lib/models";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
@@ -152,9 +154,39 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
       }
     >
       <div className="flex h-full flex-col">
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键 */}
         <div
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-y-auto"
+          onContextMenu={contextMenu(
+            () => [
+              [
+                {
+                  id: "chat.new",
+                  label: t("chat.newChat"),
+                  icon: Plus,
+                  onSelect: () => setActiveId("new"),
+                },
+                {
+                  id: "chat.copyAll",
+                  label: t("menu.copyConversation"),
+                  icon: Copy,
+                  disabled: !path.length,
+                  onSelect: () =>
+                    copyText(
+                      path
+                        .map(
+                          (p) =>
+                            `**${p.message.role === "user" ? t("menu.you") : "AI"}**：${p.message.content}`,
+                        )
+                        .join("\n\n"),
+                      true,
+                    ),
+                },
+              ],
+            ],
+            { area: true },
+          )}
           onScroll={(e) => {
             const el = e.currentTarget;
             stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;

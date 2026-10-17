@@ -29,6 +29,9 @@ import {
 } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowDown,
+  ArrowUp,
+  BookOpen,
   BookOpenCheck,
   Download,
   FilePlus2,
@@ -47,6 +50,7 @@ import { PanelShell } from "@/components/Panel";
 import { createNote } from "@/features/notes/actions";
 import { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu } from "@/lib/contextMenu";
 import { formatNumber } from "@/lib/format";
 import { qk, queryClient } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
@@ -238,6 +242,45 @@ function ManuscriptTab({
                 <li
                   key={c.noteId}
                   draggable
+                  onContextMenu={contextMenu(() => [
+                    [
+                      {
+                        id: "ch.open",
+                        label: t("common.open"),
+                        icon: BookOpen,
+                        onSelect: () => openNote(note),
+                      },
+                    ],
+                    [
+                      {
+                        id: "ch.up",
+                        label: t("menu.moveUp"),
+                        icon: ArrowUp,
+                        disabled: ci === 0,
+                        onSelect: () => move({ v: vi, c: ci }, { v: vi, c: ci - 1 }),
+                      },
+                      {
+                        id: "ch.down",
+                        label: t("menu.moveDown"),
+                        icon: ArrowDown,
+                        disabled: ci >= v.chapters.length - 1,
+                        onSelect: () => move({ v: vi, c: ci }, { v: vi, c: ci + 2 }),
+                      },
+                    ],
+                    [
+                      {
+                        id: "ch.remove",
+                        label: t("writing.removeFromManuscript"),
+                        icon: X,
+                        danger: true,
+                        onSelect: () => {
+                          const volumes = structuredClone(ms.volumes);
+                          volumes[vi]!.chapters.splice(ci, 1);
+                          save({ ...ms, volumes }, true);
+                        },
+                      },
+                    ],
+                  ])}
                   onDragStart={() => setDrag({ v: vi, c: ci })}
                   onDragEnd={() => setDrag(null)}
                   onDragOver={(e) => drag && e.preventDefault()}

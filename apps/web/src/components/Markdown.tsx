@@ -1,11 +1,13 @@
 import { type Citation, parseCitationMarkers, type RuleScope } from "@quirenote/core";
 import { cn, HoverCard, HoverCardContent, HoverCardTrigger } from "@quirenote/ui";
-import { FileText, NotebookPen } from "lucide-react";
-import { memo, type ReactNode, useMemo } from "react";
+import { Copy, FileText, NotebookPen } from "lucide-react";
+import { memo, type ReactNode, useMemo, useState } from "react";
 import ReactMarkdown, { type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { INLINE_PREFIX, RenderedSegments } from "@/features/render/RenderedSegments";
-import { useTranslation } from "@/i18n";
+import i18n, { useTranslation } from "@/i18n";
+import { copyText } from "@/lib/clipboard";
+import { contextMenu, type MenuSection, useContextMenuState } from "@/lib/contextMenu";
 import { useWorkspace } from "@/stores/workspace";
 
 /** 把 `[1]`、`[2, 3]` 改写为 `[1](#cite-1)` 链接，交给自定义 a 组件渲染成徽标。 */
@@ -94,6 +96,9 @@ export const Markdown = memo(function Markdown({
 
 export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
   const openCitation = useWorkspace((s) => s.openCitation);
+  // 右键菜单打开时收起预览卡片，两个浮层不叠在一起。
+  const [preview, setPreview] = useState(false);
+  const menuOpen = useContextMenuState((s) => s.open);
   if (!citation) {
     return (
       <span className="cite" data-invalid title="引用不存在">
@@ -102,12 +107,16 @@ export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
     );
   }
   return (
-    <HoverCard openDelay={150} closeDelay={80}>
+    <HoverCard open={preview && !menuOpen} onOpenChange={setPreview} openDelay={150} closeDelay={80}>
       <HoverCardTrigger asChild>
         <button
           type="button"
           className="cite"
           onClick={() => openCitation(citation)}
+          onContextMenu={contextMenu(() => {
+            setPreview(false);
+            return citationSections(citation);
+          })}
           aria-label={`引用 ${n}：${citation.sourceTitle}`}
         >
           {n}
@@ -118,6 +127,31 @@ export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
       </HoverCardContent>
     </HoverCard>
   );
+}
+
+/** 引用徽标 / 引用卡片的右键菜单：查看出处、复制引文（带出处）。 */
+export function citationSections(c: Citation): MenuSection[] {
+  const t = i18n.t.bind(i18n);
+  return [
+    [
+      {
+        id: "cite.open",
+        label: t("menu.openCitation"),
+        icon: c.noteId ? NotebookPen : FileText,
+        onSelect: () => useWorkspace.getState().openCitation(c),
+      },
+      {
+        id: "cite.copy",
+        label: t("menu.copyQuote"),
+        icon: Copy,
+        onSelect: () =>
+          copyText(
+            `> ${c.quote.replace(/\n+/g, " ")}\n\n— ${c.sourceTitle}${c.page ? `, p.${c.page}` : ""}`,
+            true,
+          ),
+      },
+    ],
+  ];
 }
 
 export function CitationPreview({ citation, extra }: { citation: Citation; extra?: ReactNode }) {

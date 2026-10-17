@@ -51,7 +51,13 @@ export const PANEL_BODIES: Record<PanelKind, ComponentType<PanelBodyProps>> = {
   ),
   database: ({ notebookId }) => <DatabasePanel notebookId={notebookId} />,
   review: ({ notebookId }) => <ReviewPanel notebookId={notebookId} />,
-  search: ({ notebookId }) => <SearchPanel notebookId={notebookId} />,
+  search: ({ notebookId, extra }) => (
+    <SearchPanel
+      notebookId={notebookId}
+      query={extra?.query as string | undefined}
+      nonce={extra?.nonce as number | undefined}
+    />
+  ),
   lorebook: ({ notebookId }) => <LorebookPanel notebookId={notebookId} />,
   writing: ({ notebookId }) => <WritingPanel notebookId={notebookId} />,
 };

@@ -15,6 +15,7 @@ import { resolvedMode, useTheme } from "@/stores/theme";
 import { useUi } from "@/stores/ui";
 import { AgentDiffDialog } from "./AgentDiffDialog";
 import { CommandPalette } from "./CommandPalette";
+import { ContextMenuHost } from "./ContextMenuHost";
 import { NewNotebookDialog } from "./NewNotebookDialog";
 import { ShortcutsDialog } from "./ShortcutsDialog";
 
@@ -47,6 +48,7 @@ export function Root({ children }: { children: ReactNode }) {
         <div className="min-h-0 flex-1">{children}</div>
       </div>
       <CommandPalette />
+      <ContextMenuHost />
       <ShortcutsDialog />
       <ManualDialog />
       <AgentDiffDialog />

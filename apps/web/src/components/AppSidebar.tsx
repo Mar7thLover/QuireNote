@@ -1,7 +1,7 @@
 import type { Notebook } from "@quirenote/core";
 import { cn, Kbd, Tooltip } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Brain,
   ChevronDown,
@@ -28,9 +28,11 @@ import {
 import { type ReactNode, useEffect } from "react";
 import { currentLang, setLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu } from "@/lib/contextMenu";
 import { qk } from "@/lib/query";
 import { resolvedMode, useTheme } from "@/stores/theme";
 import { useUi } from "@/stores/ui";
+import { notebookSections } from "./notebookMenu";
 
 export const SETTINGS_SECTIONS: { id: string; icon: LucideIcon }[] = [
   { id: "models", icon: Brain },
@@ -196,6 +198,7 @@ export function AppSidebar({
   className?: string;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const notebooks = useQuery({ queryKey: qk.notebooks, queryFn: api.notebooks.list });
@@ -286,6 +289,14 @@ export function AppSidebar({
               key={nb.id}
               to="/n/$notebookId"
               params={{ notebookId: nb.id }}
+              onContextMenu={contextMenu(
+                () =>
+                  notebookSections(nb, {
+                    open: () => navigate({ to: "/n/$notebookId", params: { notebookId: nb.id } }),
+                    onDeleted: nb.id === notebookId ? () => navigate({ to: "/" }) : undefined,
+                  }),
+                { claims: ["link"] },
+              )}
               className={cn(subRow, nb.id === notebookId && active)}
             >
               <span className="truncate">{nb.title}</span>

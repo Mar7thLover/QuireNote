@@ -54,6 +54,8 @@ interface ChatDraft {
   quote: { text: string; sourceId?: string; sourceTitle?: string } | null;
   text: string;
   onlySourceIds: string[] | null;
+  /** 直接发送（例如右键「解释」）；发不出去时（没有资料、正在回答）留在输入框里。 */
+  submit: boolean;
   nonce: number;
   send: (d: Partial<Omit<ChatDraft, "send" | "nonce" | "clear">>) => void;
   clear: () => void;
@@ -63,7 +65,8 @@ export const useChatDraft = create<ChatDraft>()((set) => ({
   quote: null,
   text: "",
   onlySourceIds: null,
+  submit: false,
   nonce: 0,
-  send: (d) => set((s) => ({ ...s, ...d, nonce: s.nonce + 1 })),
-  clear: () => set({ quote: null, text: "", onlySourceIds: null }),
+  send: (d) => set((s) => ({ ...s, submit: false, ...d, nonce: s.nonce + 1 })),
+  clear: () => set({ quote: null, text: "", onlySourceIds: null, submit: false }),
 }));

@@ -35,10 +35,24 @@ export function Composer({
   const [dropping, setDropping] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  // 接收其它面板发来的草稿（划词提问、拖入资料等）
+  const ready = (sources.data ?? []).filter((s) => s.status === "ready");
+  const selected = ready.filter((s) => s.selected);
+  const scopeOf = (ids: string[] | null) => (ids ? ready.filter((s) => ids.includes(s.id)) : selected);
+  const scope = scopeOf(only);
+  const canSend = !!text.trim() && (scope.length > 0 || background) && !streaming;
+  const compose = (q: typeof quote, body: string) =>
+    q ? `> ${q.text.replace(/\n+/g, " ")}\n\n${body.trim()}` : body.trim();
+
+  // 接收其它面板发来的草稿（划词提问、拖入资料等）；要求直接发送的（右键「解释」）能发就发。
   // biome-ignore lint/correctness/useExhaustiveDependencies: 只响应 nonce 变化
   useEffect(() => {
     if (!draft.nonce) return;
+    const ids = scopeOf(draft.onlySourceIds ?? only).map((s) => s.id);
+    if (draft.submit && draft.text.trim() && (ids.length || background) && !streaming) {
+      onSubmit(compose(draft.quote, draft.text), ids);
+      draft.clear();
+      return;
+    }
     if (draft.quote) setQuote(draft.quote);
     if (draft.text) setText(draft.text);
     if (draft.onlySourceIds) setOnly(draft.onlySourceIds);
@@ -59,14 +73,9 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [text]);
 
-  const ready = (sources.data ?? []).filter((s) => s.status === "ready");
-  const selected = ready.filter((s) => s.selected);
-  const scope = only ? ready.filter((s) => only.includes(s.id)) : selected;
-  const canSend = !!text.trim() && (scope.length > 0 || background) && !streaming;
-
   const submit = () => {
     if (!canSend) return;
-    const content = quote ? `> ${quote.text.replace(/\n+/g, " ")}\n\n${text.trim()}` : text.trim();
+    const content = compose(quote, text);
     onSubmit(
       content,
       scope.map((s) => s.id),

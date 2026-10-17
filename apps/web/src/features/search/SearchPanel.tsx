@@ -2,19 +2,35 @@ import { Button, cn, EmptyState, Input, Tabs, TabsList, TabsTrigger, toast } fro
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, Globe, Plus, Search, Telescope } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PanelShell, PanelTitle } from "@/components/Panel";
 import { useTranslation } from "@/i18n";
 import { ApiError, api, type WebResult } from "@/lib/api";
 import { qk, upsertInList } from "@/lib/query";
 
-export function SearchPanel({ notebookId }: { notebookId: string }) {
+export function SearchPanel({
+  notebookId,
+  query,
+  nonce,
+}: {
+  notebookId: string;
+  /** 从别处（右键「联网搜索」）带来的关键词：打开后立即搜索。 */
+  query?: string;
+  nonce?: number;
+}) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<"quick" | "deep">("quick");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(query ?? "");
   const [added, setAdded] = useState<Set<string>>(new Set());
 
   const search = useMutation({ mutationFn: (query: string) => api.search.web(query) });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 每次带来新的关键词（nonce 变化）搜索一次
+  useEffect(() => {
+    if (!query?.trim()) return;
+    setQ(query);
+    setMode("quick");
+    search.mutate(query.trim());
+  }, [nonce]);
   const research = useMutation({
     mutationFn: (question: string) => api.search.research(notebookId, question, 2),
     onSuccess: () =>

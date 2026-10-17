@@ -13,14 +13,17 @@ import {
 } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ExternalLink, FileQuestion, Highlighter, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { Copy, ExternalLink, FileQuestion, Highlighter, Pencil, RotateCcw, Sparkles } from "lucide-react";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PanelShell } from "@/components/Panel";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { contextMenu, selectionAt } from "@/lib/contextMenu";
 import { qk } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { HighlightsSidebar } from "./HighlightsSidebar";
+import { readerSections } from "./menu";
 import { SelectionToolbar, type ToolbarTarget } from "./SelectionToolbar";
 import { applyEditResult, SourceEditor } from "./SourceEditor";
 import { type Para, paragraphize, segmentParagraph, selectionOffsets } from "./text";
@@ -137,7 +140,61 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
         </>
       }
     >
-      <div className="flex h-full">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键 */}
+      <div
+        className="flex h-full"
+        onContextMenu={contextMenu(
+          () =>
+            editing
+              ? null
+              : [
+                  [
+                    {
+                      id: "rd.auto",
+                      label: t("reader.autoHighlight"),
+                      icon: Sparkles,
+                      disabled: !ready,
+                      onSelect: () => auto.mutate(),
+                    },
+                    {
+                      id: "rd.side",
+                      label: t("reader.highlightsList"),
+                      icon: Highlighter,
+                      checked: showSide,
+                      disabled: !ready,
+                      onSelect: () => setShowSide((v) => !v),
+                    },
+                  ],
+                  [
+                    {
+                      id: "rd.edit",
+                      label: t("reader.edit"),
+                      icon: Pencil,
+                      disabled: !ready,
+                      onSelect: () => setEditing(true),
+                    },
+                    {
+                      id: "rd.copyAll",
+                      label: t("menu.copyAllText"),
+                      icon: Copy,
+                      disabled: !ready,
+                      onSelect: () => content.data && copyText(content.data.text, true),
+                    },
+                    ...(s?.props.edited
+                      ? [
+                          {
+                            id: "rd.revert",
+                            label: t("reader.revert"),
+                            icon: RotateCcw,
+                            onSelect: () => confirm(t("reader.revertConfirm")) && revert.mutate(),
+                          },
+                        ]
+                      : []),
+                  ],
+                ],
+          { area: true },
+        )}
+      >
         {!s || (s.status === "ready" && !content.data) ? (
           <div className="mx-auto w-full max-w-2xl space-y-3 px-8 py-10">
             <Skeleton className="h-7 w-2/3" />
@@ -225,7 +282,7 @@ function ParsedText({
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const jump = useWorkspace((s) => (s.jump?.sourceId === sourceId ? s.jump : null));
-  const [sel, setSel] = useState<ToolbarTarget | null>(null);
+  const [sel, setSel] = useState<(ToolbarTarget & { mode?: "annotate" | "explain" }) | null>(null);
 
   const v = useVirtualizer({
     count: paras.length,
@@ -248,6 +305,8 @@ function ParsedText({
   }, [jump, paras, v]);
 
   const onMouseUp = (e: MouseEvent) => {
+    // 右键交给右键菜单，不弹工具栏。
+    if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("[data-toolbar]")) return;
     const container = scrollRef.current;
     const r = selectionOffsets(container);
@@ -279,6 +338,53 @@ function ParsedText({
     });
   };
 
+  // 右键选中的文字或已有高亮：弹出阅读器自己的菜单（替代工具栏）；空白处交给面板级菜单。
+  const onContextMenu = contextMenu((e) => {
+    const container = scrollRef.current;
+    const el = e.target as HTMLElement;
+    if (!container || el.closest("[data-toolbar]")) return null;
+    const box = container.getBoundingClientRect();
+    const r = selectionOffsets(container);
+    let range: ToolbarTarget | null = null;
+    if (r && selectionAt(el, e.clientX, e.clientY)) {
+      range = {
+        start: r.start,
+        end: r.end,
+        text: r.text,
+        x: r.rect.left + r.rect.width / 2 - box.left,
+        y: r.rect.top - box.top + container.scrollTop,
+      };
+    } else {
+      const mark = el.closest<HTMLElement>("mark[data-hid]");
+      const h = mark?.dataset.hid ? content.highlights.find((x) => x.id === mark.dataset.hid) : undefined;
+      if (h && mark) {
+        const first = container.querySelector(`mark[data-hid="${h.id}"]`) ?? mark;
+        const rect = first.getBoundingClientRect();
+        range = {
+          start: h.start,
+          end: h.end,
+          text: content.text.slice(h.start, h.end),
+          x: e.clientX - box.left,
+          y: rect.top - box.top + container.scrollTop,
+        };
+      }
+    }
+    if (!range) return null;
+    const at = range;
+    setSel(null);
+    return {
+      claims: ["selection"],
+      sections: readerSections({
+        notebookId,
+        sourceId,
+        sourceTitle,
+        range: at,
+        highlights: content.highlights,
+        openToolbar: (mode) => setSel({ ...at, mode }),
+      }),
+    };
+  });
+
   const ranges = useMemo(
     () => [
       ...content.highlights.map((h) => ({
@@ -297,6 +403,7 @@ function ParsedText({
       ref={scrollRef}
       className={cn("relative min-w-0 flex-1 overflow-y-auto", className)}
       onMouseUp={onMouseUp}
+      onContextMenu={onContextMenu}
     >
       <div className="relative mx-auto max-w-[40rem] px-8 py-8" style={{ height: v.getTotalSize() + 64 }}>
         {v.getVirtualItems().map((row) => {
@@ -316,12 +423,13 @@ function ParsedText({
       </div>
       {sel ? (
         <SelectionToolbar
-          key={`${sel.start}-${sel.end}`}
+          key={`${sel.start}-${sel.end}-${sel.mode ?? ""}`}
           notebookId={notebookId}
           sourceId={sourceId}
           sourceTitle={sourceTitle}
           target={sel}
           highlights={content.highlights}
+          initial={sel.mode}
           onDone={() => {
             setSel(null);
             window.getSelection()?.removeAllRanges();

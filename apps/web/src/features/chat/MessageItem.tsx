@@ -1,4 +1,4 @@
-import type { Citation, Message, UsedLore } from "@quirenote/core";
+import { type Citation, type Message, markdownExcerpt, type UsedLore } from "@quirenote/core";
 import { Button, cn, Textarea, Tooltip, TypingDots, toast } from "@quirenote/ui";
 import {
   BookmarkPlus,
@@ -8,15 +8,22 @@ import {
   Copy,
   FilePlus2,
   Pencil,
+  Quote,
   RefreshCw,
+  Square,
+  Volume2,
 } from "lucide-react";
 import { useState } from "react";
-import { CitationPreview, Markdown } from "@/components/Markdown";
+import { CitationPreview, citationSections, Markdown } from "@/components/Markdown";
 import { useNotebookBackground } from "@/features/lorebook/useBackground";
 import { createNote } from "@/features/notes/actions";
 import { useSources } from "@/features/sources/hooks";
-import { useTranslation } from "@/i18n";
+import i18n, { useTranslation } from "@/i18n";
+import { copyText } from "@/lib/clipboard";
+import { contextMenu, type MenuSection } from "@/lib/contextMenu";
 import { describeModel, parseModelRef, useProviders } from "@/lib/models";
+import { canSpeak, isSpeaking, speak, stopSpeaking } from "@/lib/speech";
+import { askInChat } from "@/lib/workspaceActions";
 import { DND_SNIPPET } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import type { PathItem } from "./tree";
@@ -69,7 +76,41 @@ export function MessageItem({
 
   if (m.role === "user") {
     return (
-      <div className="group flex flex-col items-end gap-1">
+      // biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键
+      <div
+        className="group flex flex-col items-end gap-1"
+        onContextMenu={contextMenu(() =>
+          editing
+            ? null
+            : [
+                [
+                  {
+                    id: "msg.copy",
+                    label: t("menu.copyMessage"),
+                    icon: Copy,
+                    onSelect: () => copyText(m.content),
+                  },
+                  {
+                    id: "msg.edit",
+                    label: t("chat.editMessage"),
+                    icon: Pencil,
+                    disabled: busy,
+                    onSelect: () => {
+                      setDraft(m.content);
+                      setEditing(true);
+                    },
+                  },
+                  {
+                    id: "msg.resend",
+                    label: t("menu.resend"),
+                    icon: RefreshCw,
+                    disabled: busy,
+                    onSelect: () => onEdit(m, m.content),
+                  },
+                ],
+              ],
+        )}
+      >
         {editing ? (
           <div className="w-full max-w-[85%] rounded-2xl border border-border-strong bg-surface p-2">
             <Textarea
@@ -130,7 +171,11 @@ export function MessageItem({
   }
 
   return (
-    <div className="group">
+    // biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键
+    <div
+      className="group"
+      onContextMenu={contextMenu(() => assistantSections(notebookId, m, busy, onRegenerate))}
+    >
       <AssistantBody text={m.content} citations={m.citations} lore={m.lore} error={m.status === "error"} />
       <div className="mt-2 flex items-center gap-0.5">
         {branch}
@@ -170,6 +215,63 @@ export function MessageItem({
       </div>
     </div>
   );
+}
+
+/** 一条回答的右键菜单：复制、引用回复、朗读、重新生成、存为卡片 / 笔记。 */
+function assistantSections(
+  nb: string,
+  m: Message,
+  busy: boolean,
+  onRegenerate: (m: Message) => void,
+): MenuSection[] {
+  const t = i18n.t.bind(i18n);
+  const speaking = isSpeaking();
+  return [
+    [
+      { id: "msg.copy", label: t("menu.copyMessage"), icon: Copy, onSelect: () => copyText(m.content) },
+      {
+        id: "msg.quote",
+        label: t("menu.quoteReply"),
+        icon: Quote,
+        onSelect: () => askInChat({ text: markdownExcerpt(m.content, 400) }),
+      },
+      ...(canSpeak()
+        ? [
+            speaking
+              ? { id: "msg.speak", label: t("menu.stopReading"), icon: Square, onSelect: stopSpeaking }
+              : {
+                  id: "msg.speak",
+                  label: t("studio.readAloud"),
+                  icon: Volume2,
+                  onSelect: () => speak(m.content),
+                },
+          ]
+        : []),
+    ],
+    [
+      {
+        id: "msg.regenerate",
+        label: t("chat.regenerate"),
+        icon: RefreshCw,
+        disabled: busy,
+        onSelect: () => onRegenerate(m),
+      },
+    ],
+    [
+      {
+        id: "msg.card",
+        label: t("chat.saveAsCard"),
+        icon: BookmarkPlus,
+        onSelect: () => void saveAs(nb, m, "card"),
+      },
+      {
+        id: "msg.note",
+        label: t("chat.saveAsNote"),
+        icon: FilePlus2,
+        onSelect: () => void saveAs(nb, m, "note"),
+      },
+    ],
+  ];
 }
 
 /** 回答所用模型：「提供方 · 模型」，提供方已删除时只显示模型名。 */
@@ -331,6 +433,7 @@ function CitationList({ citations }: { citations: Citation[] }) {
               key={c.n}
               type="button"
               onClick={() => openCitation(c)}
+              onContextMenu={contextMenu(() => citationSections(c))}
               className="rounded-lg border border-border bg-surface p-2.5 text-left transition-colors hover:border-border-strong focus-ring"
             >
               <CitationPreview citation={c} extra={<span className="cite ml-auto">{c.n}</span>} />

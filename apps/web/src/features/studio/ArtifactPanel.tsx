@@ -1,13 +1,15 @@
 import { ARTIFACT_KIND_META, type Artifact, type ArtifactData } from "@quirenote/core";
 import { Badge, Button, EmptyState, Skeleton, Spinner, TypingDots, toast } from "@quirenote/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertCircle, Download, SendHorizontal, Sparkles } from "lucide-react";
+import { AlertCircle, Download, Quote, SendHorizontal, Sparkles, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contribute, selectionAt } from "@/lib/contextMenu";
 import { qk, queryClient, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { artifactToMarkdown } from "./export";
+import { artifactSections } from "./menu";
 import { MarkdownArtifact } from "./views/MarkdownArtifact";
 
 const MindmapView = lazy(() => import("./views/MindmapView").then((m) => ({ default: m.MindmapView })));
@@ -36,6 +38,8 @@ export function ArtifactPanel({ notebookId, artifactId }: { notebookId: string; 
       s.state.data?.status === "generating" || s.state.data?.status === "pending" ? 3000 : false,
   });
   const a = q.data;
+  /** 右键「让 AI 修改选中内容」时记下的选区，修改只针对这一段。 */
+  const [refineTarget, setRefineTarget] = useState<string | null>(null);
   const panelApi = useWorkspace((s) => s.api);
   useEffect(() => {
     if (a) panelApi?.getPanel(`artifact:${a.id}`)?.api.setTitle(a.title);
@@ -100,7 +104,27 @@ export function ArtifactPanel({ notebookId, artifactId }: { notebookId: string; 
           </Button>
         ) : null}
       </div>
-      <div className="relative min-h-0 flex-1 overflow-y-auto">
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键 */}
+      <div
+        className="relative min-h-0 flex-1 overflow-y-auto"
+        onContextMenu={(e) => {
+          const text = selectionAt(e.target as Element, e.clientX, e.clientY);
+          if (text && a.status === "ready")
+            contribute(e, {
+              sections: [
+                [
+                  {
+                    id: "art.refineSel",
+                    label: t("menu.refineSelection"),
+                    icon: Sparkles,
+                    onSelect: () => setRefineTarget(text),
+                  },
+                ],
+              ],
+            });
+          contribute(e, { area: true, sections: artifactSections(notebookId, a, { inPanel: true }) });
+        }}
+      >
         {a.status === "generating" || a.status === "pending" ? (
           <GeneratingState label={meta.label} />
         ) : a.status === "error" || !a.data ? (
@@ -116,7 +140,14 @@ export function ArtifactPanel({ notebookId, artifactId }: { notebookId: string; 
           </Suspense>
         )}
       </div>
-      {a.status === "ready" ? <RefineBar artifact={a} notebookId={notebookId} /> : null}
+      {a.status === "ready" ? (
+        <RefineBar
+          artifact={a}
+          notebookId={notebookId}
+          target={refineTarget}
+          onTargetChange={setRefineTarget}
+        />
+      ) : null}
     </div>
   );
 }
@@ -162,18 +193,34 @@ function GeneratingState({ label }: { label: string }) {
 }
 
 /** 用自然语言让 AI 修改生成物的一部分（例如"把第二节改成表格""给根节点加三个分支"）。 */
-function RefineBar({ artifact, notebookId }: { artifact: Artifact; notebookId: string }) {
+function RefineBar({
+  artifact,
+  notebookId,
+  target,
+  onTargetChange,
+}: {
+  artifact: Artifact;
+  notebookId: string;
+  /** 右键选定的那段文字；为空时取提交那一刻页面上的选区。 */
+  target: string | null;
+  onTargetChange: (t: string | null) => void;
+}) {
   const { t } = useTranslation();
   const [v, setV] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (target) inputRef.current?.focus();
+  }, [target]);
   const refine = useMutation({
     mutationFn: () => {
-      const selection = window.getSelection()?.toString().trim() || undefined;
+      const selection = target ?? (window.getSelection()?.toString().trim() || undefined);
       return api.artifacts.refine(artifact.id, v.trim(), selection);
     },
     onSuccess: (a) => {
       queryClient.setQueryData(qk.artifact(a.id), a);
       upsertInList(qk.artifacts(notebookId), a);
       setV("");
+      onTargetChange(null);
       toast.success("已按要求修改");
     },
   });
@@ -185,9 +232,24 @@ function RefineBar({ artifact, notebookId }: { artifact: Artifact; notebookId: s
         if (v.trim()) refine.mutate();
       }}
     >
+      {target ? (
+        <div className="mb-1.5 flex items-center gap-1.5 px-1 text-xs text-fg-subtle">
+          <Quote className="size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{target}</span>
+          <button
+            type="button"
+            onClick={() => onTargetChange(null)}
+            className="rounded p-0.5 hover:bg-surface-hover hover:text-fg"
+            aria-label={t("common.close")}
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
       <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 focus-within:border-accent/60 focus-within:ring-3 focus-within:ring-ring/20">
         <Sparkles className="size-4 shrink-0 text-accent" />
         <input
+          ref={inputRef}
           value={v}
           onChange={(e) => setV(e.target.value)}
           placeholder={t("studio.refinePlaceholder")}

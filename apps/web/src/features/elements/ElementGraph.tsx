@@ -2,7 +2,7 @@ import "@xyflow/react/dist/style.css";
 import { ELEMENT_TYPE_META, type Element } from "@quirenote/core";
 import { tagColor } from "@quirenote/ui";
 import { Background, BackgroundVariant, Controls, type Edge, type Node, ReactFlow } from "@xyflow/react";
-import { useMemo } from "react";
+import { type MouseEvent as ReactMouseEvent, useMemo } from "react";
 import { dagreLayout, estimateWidth } from "@/lib/graphLayout";
 
 /** 元素关系图：边来自元素间的 relations；孤立元素按类型分组排在一起。 */
@@ -10,10 +10,13 @@ export function ElementGraph({
   elements,
   onOpen,
   activeId,
+  onNodeContextMenu,
 }: {
   elements: Element[];
   onOpen: (id: string) => void;
   activeId: string | null;
+  /** 右键节点：登记这个元素的菜单。 */
+  onNodeContextMenu?: (e: ReactMouseEvent, id: string) => void;
 }) {
   const { nodes, edges } = useMemo(() => {
     const ids = new Set(elements.map((e) => e.id));
@@ -71,6 +74,7 @@ export function ElementGraph({
         nodes={nodes}
         edges={edges}
         onNodeClick={(_, n) => onOpen(n.id)}
+        onNodeContextMenu={(e, n) => onNodeContextMenu?.(e, n.id)}
         fitView
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}

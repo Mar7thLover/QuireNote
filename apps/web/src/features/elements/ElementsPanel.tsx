@@ -22,8 +22,10 @@ import { VirtualList } from "@/components/VirtualList";
 import { useSelectedSourceIds } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
+import { contextMenu, contribute } from "@/lib/contextMenu";
 import { qk, queryClient } from "@/lib/query";
 import { ElementDetail } from "./ElementDetail";
+import { elementSections } from "./menu";
 
 const ElementGraph = lazy(() => import("./ElementGraph").then((m) => ({ default: m.ElementGraph })));
 
@@ -90,6 +92,17 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
     setSelected(next);
   };
   const open = all.find((e) => e.id === openId);
+  const menuFor = (id: string) => {
+    const el = all.find((x) => x.id === id);
+    return el
+      ? elementSections(notebookId, el, {
+          open: () => setOpenId(el.id),
+          selected: selected.has(el.id),
+          toggle: () => toggle(el.id),
+          onDeleted: () => openId === el.id && setOpenId(null),
+        })
+      : null;
+  };
 
   return (
     <PanelShell
@@ -222,6 +235,7 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
                 render={(e) => (
                   <ElementRow
                     el={e}
+                    onContextMenu={contextMenu(() => menuFor(e.id))}
                     checked={selected.has(e.id)}
                     onCheck={() => toggle(e.id)}
                     onOpen={() => setOpenId(e.id)}
@@ -271,7 +285,15 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
               </div>
             ) : (
               <Suspense fallback={<div className="skeleton m-4 h-60" />}>
-                <ElementGraph elements={list} onOpen={setOpenId} activeId={openId} />
+                <ElementGraph
+                  elements={list}
+                  onOpen={setOpenId}
+                  activeId={openId}
+                  onNodeContextMenu={(e, id) => {
+                    const sections = menuFor(id);
+                    if (sections) contribute(e, { sections });
+                  }}
+                />
               </Suspense>
             )}
           </div>
@@ -296,16 +318,20 @@ function ElementRow({
   onCheck,
   onOpen,
   active,
+  onContextMenu,
 }: {
   el: Element;
   checked: boolean;
   onCheck: () => void;
   onOpen: () => void;
   active: boolean;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const meta = ELEMENT_TYPE_META[el.type];
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 右键菜单是快捷入口，同样的操作都有按钮或快捷键
     <div
+      onContextMenu={onContextMenu}
       className={cn(
         "group flex items-start gap-2 rounded-lg px-2 py-2 hover:bg-surface-hover",
         active && "bg-surface-hover",

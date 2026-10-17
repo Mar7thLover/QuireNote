@@ -138,6 +138,12 @@ export function registerMobileOpen(fn: ((spec: PanelSpec) => void) | null) {
   mobileOpen = fn;
 }
 
+/** 当前打开着的工作区所属 Notebook；不在工作区（首页、设置）时为 null。 */
+export function activeNotebookId(): string | null {
+  const { api, notebookId } = useWorkspace.getState();
+  return api || mobileOpen ? notebookId : null;
+}
+
 // ───────────── 布局预设 ─────────────
 export type PresetId = "research" | "write" | "study" | "focus";
 

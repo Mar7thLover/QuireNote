@@ -264,12 +264,24 @@ Anthropic 没有 Embedding 接口。这时由对话模型把提问扩展成多�
   {
     id: "commands",
     title: "命令面板与快捷键",
-    summary: "Ctrl K 搜索一切；在 Notebook 里输入一句话，AI 会提出改动并等你确认。",
+    summary:
+      "Ctrl K 搜索一切；在 Notebook 里输入一句话，AI 会提出改动并等你确认；右键随处给出当场用得上的操作。",
     body: `### 命令面板
 按 \`Ctrl K\` 打开：跳转到笔记、Notebook、设置，打开面板，切换深浅色和语言。
 
 ### 用一句话改动
 在 Notebook 里，在命令面板输入一句自然语言（例如「把关于图灵测试的笔记合并成一篇」），AI 会给出改动预览，确认后才生效，生效后可以撤销。
+
+### 右键菜单
+在哪里右键，就给出那里用得上的操作：
+- **资料、笔记、生成物、元素、章节、Notebook**：打开、重命名、置顶、导出、分享、删除等；资料还能「只针对这份资料提问」「只勾选这一份」。
+- **阅读器**：选中文字或点在高亮上，可以询问 AI、解释、高亮或改色、批注、摘录为卡片、复制为引用。
+- **编辑器**：剪切、复制、粘贴（也可粘贴为纯文本）、AI 改写与续写、格式、转换为标题或列表、插入表格等；在表格里多出插入 / 删除行列；点在图片、链接预览、引用上是它们自己的操作。
+- **对话**：回答可以复制、引用回复、朗读、重新生成、存为卡片或笔记；引用编号可以查看出处、复制引文。
+- **任意位置**：选中的文字可以复制、提问、解释、摘录、联网搜索；链接可以复制地址、添加为资料；图片可以复制或下载；输入框有剪切、复制、粘贴、全选。
+- **标签页**：关闭其他、关闭右侧、最大化、移到右侧分栏。
+
+键盘上的菜单键或 \`Shift F10\` 也能打开右键菜单。需要浏览器自己的菜单（例如拼写检查）时，按住 \`Shift\` 再右键。
 
 ### 常用快捷键
 按 \`Ctrl /\` 查看全部快捷键。`,
@@ -573,6 +585,17 @@ Press \`Ctrl K\` to jump to notes, notebooks and settings, open panels, and swit
 
 ### One-sentence changes
 Inside a notebook, type a request in plain words ("merge my notes about the Turing test into one"). AI shows a preview of the changes; nothing happens until you accept, and you can undo afterwards.
+
+### Right-click menus
+Right-click shows what is useful right where you clicked:
+- **Sources, notes, Studio items, elements, chapters, notebooks**: open, rename, pin, export, share, delete and more; a source can also be asked about on its own or made the only selected one.
+- **Reader**: on selected text or a highlight — ask AI, explain, highlight or change color, annotate, save as card, copy as a quote.
+- **Editor**: cut, copy, paste (or paste as plain text), AI rewrite and continue, formatting, turn into a heading or list, insert a table and more; inside a table, insert or delete rows and columns; on an image, link preview or citation, actions for that item.
+- **Chat**: copy an answer, quote it in a reply, read it aloud, regenerate, save as card or note; a citation number can show its source or copy the quote.
+- **Anywhere**: selected text can be copied, asked about, explained, saved as a card or searched on the web; links can be copied or added as a source; images can be copied or downloaded; text fields get cut, copy, paste and select all.
+- **Tabs**: close others, close to the right, maximize, move to a split on the right.
+
+The keyboard menu key or \`Shift F10\` opens the menu too. Hold \`Shift\` while right-clicking for the browser's own menu (for spell check, say).
 
 ### Shortcuts
 Press \`Ctrl /\` for the full list.`,
