@@ -1,10 +1,12 @@
 /** 笔记资源、链接预览、知识书、Quire 卡的导入导出。 */
-import { CardError, cardToZip, lorebookToWorldInfo, parseCardFile } from "@quirenote/card";
+import { CardError, cardToZip, parseCardFile } from "@quirenote/card";
 import { LorebookSettingsPatch, LoreEntryInput } from "@quirenote/core";
+import { lorebookToWorldInfo, PLUGIN_ID as ST } from "@quirenote/plugin-sillytavern";
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";
 import { ApiError, badRequest } from "../errors";
+import { cardImporters, requirePlugin } from "../plugins";
 import { readAsset, saveAsset } from "../services/assets";
 import {
   assertJsonSize,
@@ -28,16 +30,20 @@ import { download, fileResponse, must, readJson, readUpload, safeFilename } from
 
 const flag = (v: string | undefined, d: boolean) => (v === undefined ? d : v === "1" || v === "true");
 
-/** 解析上传的卡片文件；格式错误统一转成 400。 */
-async function parseUpload(c: Parameters<typeof readUpload>[0]) {
+/** 解析上传的卡片文件；格式错误统一转成 400。插件格式要求插件已启用。 */
+async function parseUpload(ctx: AppContext, c: Parameters<typeof readUpload>[0]) {
   const { file, form } = await readUpload(c);
   const bytes = new Uint8Array(await file.arrayBuffer());
+  const lang = String(form.lang ?? "zh");
+  let parsed: ReturnType<typeof parseCardFile>;
   try {
-    return { parsed: parseCardFile(bytes, file.name, { lang: String(form.lang ?? "zh") }), form };
+    parsed = parseCardFile(bytes, file.name, { lang, importers: cardImporters });
   } catch (e) {
     if (e instanceof CardError) throw new ApiError(400, e.code, e.message);
     throw e;
   }
+  if (parsed.importer) await requirePlugin(ctx, parsed.importer, lang);
+  return { parsed, form };
 }
 
 export function contentRoutes(api: Hono, ctx: AppContext): void {
@@ -126,6 +132,7 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
     const nb = await notebook(c.req.param("nb"));
     const book = await exportLorebook(ctx, nb.id);
     const st = c.req.query("format") === "sillytavern";
+    if (st) await requirePlugin(ctx, ST, c.req.query("lang"));
     const json = JSON.stringify(st ? lorebookToWorldInfo(book) : book, null, 2);
     return download(
       new TextEncoder().encode(json),
@@ -164,12 +171,12 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.post("/cards/preview", async (c) => {
-    const { parsed, form } = await parseUpload(c);
+    const { parsed, form } = await parseUpload(ctx, c);
     return c.json(previewCard(parsed, String(form.lang ?? "zh")));
   });
 
   api.post("/cards/import", async (c) => {
-    const { parsed, form } = await parseUpload(c);
+    const { parsed, form } = await parseUpload(ctx, c);
     const target = typeof form.notebookId === "string" && form.notebookId ? form.notebookId : null;
     return c.json(
       await importCard(ctx, parsed, { notebookId: target, lang: String(form.lang ?? "zh") }),

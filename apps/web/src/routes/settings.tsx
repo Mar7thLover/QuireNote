@@ -24,6 +24,9 @@ const DataSettings = lazy(() =>
 const SharingSettings = lazy(() =>
   import("@/features/settings/Sharing").then((m) => ({ default: m.SharingSettings })),
 );
+const PluginSettings = lazy(() =>
+  import("@/features/settings/Plugins").then((m) => ({ default: m.PluginSettings })),
+);
 const ShortcutSettings = lazy(() =>
   import("@/features/settings/Shortcuts").then((m) => ({ default: m.ShortcutSettings })),
 );
@@ -38,6 +41,7 @@ export function SettingsPage({ section }: { section: string }) {
       rules: RuleSettings,
       data: DataSettings,
       sharing: SharingSettings,
+      plugins: PluginSettings,
       shortcuts: ShortcutSettings,
       about: About,
     }[section] ?? ModelSettings;

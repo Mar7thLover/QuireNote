@@ -6,8 +6,9 @@ import { Button, Dialog, DialogContent, Select, Skeleton, toast } from "@quireno
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useState } from "react";
+import { setPluginEnabled } from "@/features/plugins/catalog";
 import { currentLang, useTranslation } from "@/i18n";
-import { api, type CardPreview } from "@/lib/api";
+import { ApiError, api, type CardPreview } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
 import { TINTS, tintFor } from "@/lib/tints";
 
@@ -85,6 +86,11 @@ export function ImportCardDialog({
                 <Skeleton className="h-4 w-full" />
               </div>
             </div>
+          ) : preview.error instanceof ApiError && preview.error.code === "plugin_disabled" ? (
+            <PluginNeeded
+              plugin={String(preview.error.details.plugin ?? "")}
+              onEnabled={() => preview.refetch()}
+            />
           ) : preview.isError ? (
             <p className="rounded-lg bg-danger-soft px-3 py-2.5 text-[13.5px] text-danger">
               {preview.error instanceof Error ? preview.error.message : t("cards.unreadable")}
@@ -124,6 +130,37 @@ export function ImportCardDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** 文件属于一个没启用的插件：说明一下，给一个启用按钮，启用后重新预览。 */
+function PluginNeeded({ plugin, onEnabled }: { plugin: string; onEnabled: () => void }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex flex-col items-start gap-3 rounded-lg bg-surface-sunken px-4 py-3.5">
+      <p className="text-[13.5px] leading-relaxed text-fg-muted">
+        {t("cards.pluginNeeded", { name: t(`plugins.${plugin}.name`) })}
+      </p>
+      <Button
+        size="sm"
+        variant="primary"
+        loading={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await setPluginEnabled(plugin, true);
+            onEnabled();
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {t("cards.enablePlugin", { name: t(`plugins.${plugin}.name`) })}
+      </Button>
+    </div>
   );
 }
 

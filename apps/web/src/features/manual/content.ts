@@ -7,6 +7,7 @@ import {
   BookOpenText,
   Command,
   Database,
+  Drama,
   FileStack,
   Gauge,
   Globe,
@@ -27,6 +28,8 @@ export interface ManualSection {
   /** 一两句话，首页卡片用。 */
   summary: string;
   body: string;
+  /** 属于某个插件的章节，只在插件启用时出现。 */
+  plugin?: string;
 }
 
 type Lang = "zh" | "en";
@@ -45,6 +48,7 @@ const ICONS: Record<string, LucideIcon> = {
   commands: Command,
   usage: Gauge,
   data: Database,
+  sillytavern: Drama,
   about: BookOpenText,
 };
 
@@ -240,7 +244,7 @@ Claude 模型按 Anthropic 官方标价估算，包含缓存读写的折扣与�
   {
     id: "cards",
     title: "分享与导入卡片",
-    summary: "把笔记或整本 Notebook 分享成一个文件（PNG 卡发图即分享）；也能直接导入酒馆的角色卡和世界书。",
+    summary: "把笔记或整本 Notebook 分享成一个文件（PNG 卡发图即分享），对方导入后就能完整阅读。",
     body: `### 分享为 Quire 卡
 - **单条笔记**：笔记右上角「…」→「分享为 Quire 卡…」。
 - **整本 Notebook**：首页卡片的菜单 →「分享为 Quire 卡…」，可以选择是否附带渲染规则、知识书、AI 说明和资料原文（资料默认不带，注意版权）。对话记录不会导出。
@@ -260,14 +264,27 @@ Claude 模型按 Anthropic 官方标价估算，包含缓存读写的折扣与�
 ### 导入
 把卡片拖进首页，或点「导入」、在命令面板选「导入卡片…」。导入前会先显示预览：作者、包含的内容、常驻的知识书条目、AI 说明，以及会被停用的规则。可以导入成新的 Notebook，或合并进已有的。
 
-### 酒馆（SillyTavern）的文件
-可以直接导入角色卡（PNG、JSON、CHARX）、世界书和正则脚本：
-- 角色卡变成一本 Notebook：角色设定和开场白是笔记，角色书是知识书，系统提示词是 AI 说明，头像是封面。
-- 正则脚本变成这本 Notebook 自己的渲染规则；只改显示的规则直接启用，改写提示词的规则导入为停用。
-- 知识书可以导出回酒馆世界书格式。
-
 ### 卡片带来的规则
 卡片里的渲染规则只在它自己的 Notebook 里生效，不会改变你其他笔记的显示。想在所有 Notebook 里使用，到 **设置 → 正则规则 → Notebook 自带的规则** 点「设为全局」。`,
+  },
+  {
+    id: "sillytavern",
+    plugin: "sillytavern",
+    title: "酒馆兼容（插件）",
+    summary: "启用后可以导入 SillyTavern 的角色卡、世界书、正则脚本和预设，并导出回去。",
+    body: `这是一个插件，在 **设置 → 插件** 里开关。关掉只隐藏入口，已经导入的内容都会保留。
+
+### 角色卡
+导入角色卡（PNG、JSON、CHARX）时，可以在预览里选：
+- **导入为 Notebook**：角色设定和开场白是笔记，角色书是知识书，系统提示词是 AI 说明，头像是封面。
+- **导入为问答风格**：变成一个对话预设，在任何 Notebook 的对话里都能切换成这个角色的口吻。
+
+### 世界书与正则脚本
+- 世界书导入为知识书条目；知识书面板的「导出」里多出「酒馆世界书」。
+- 正则脚本变成这本 Notebook 自己的渲染规则；只改显示的直接启用，改写提示词的导入为停用。
+
+### 预设
+**设置 → 预设与模板** 里可以导入酒馆的对话预设（JSON），也能把预设导出成酒馆格式。`,
   },
 ];
 
@@ -474,7 +491,7 @@ Sources, notes and conversations are stored in the server's data directory; API 
     id: "cards",
     title: "Sharing & importing cards",
     summary:
-      "Share a note or a whole notebook as one file (a PNG card shares like a picture); SillyTavern character cards and world info import directly.",
+      "Share a note or a whole notebook as one file (a PNG card shares like a picture); whoever imports it can read it in full.",
     body: `### Share as a Quire card
 - **One note**: the note's "…" menu → "Share as Quire card…".
 - **A whole notebook**: the card menu on the home page → "Share as Quire card…". Choose whether to include render rules, the lorebook, AI instructions and source text (sources are off by default — mind copyright). Conversations are never exported.
@@ -494,17 +511,36 @@ In the same dialog, choose "Link" → "Create link" to get a read-only page \`/s
 ### Importing
 Drop a card onto the home page, click **Import**, or pick "Import card…" in the command palette. A preview comes first: the creator, what's inside, always-on lorebook entries, AI instructions and any rules that will be turned off. Import into a new notebook or merge into an existing one.
 
-### SillyTavern files
-Character cards (PNG, JSON, CHARX), world info and regex scripts import directly:
-- A character card becomes a notebook: the character and greetings are notes, the character book is the lorebook, the system prompt becomes AI instructions, the avatar the cover.
-- Regex scripts become the notebook's own render rules; display-only scripts are enabled, ones that rewrite the prompt are imported turned off.
-- A lorebook can be exported back to SillyTavern world info.
-
 ### Rules that come with a card
 A card's render rules only apply inside its own notebook and never change how your other notes look. To use one everywhere, go to **Settings → Regex rules → Notebook rules** and choose "Make global".`,
   },
+  {
+    id: "sillytavern",
+    plugin: "sillytavern",
+    title: "SillyTavern compatibility (plugin)",
+    summary:
+      "Once on, import SillyTavern character cards, world info, regex scripts and presets — and export back.",
+    body: `This is a plugin; turn it on or off in **Settings → Plugins**. Turning it off only hides its entry points; everything you imported stays.
+
+### Character cards
+When importing a character card (PNG, JSON, CHARX), choose in the preview:
+- **Import as a notebook**: the character and greetings become notes, the character book the lorebook, the system prompt the AI instructions, the avatar the cover.
+- **Import as an answering style**: it becomes a chat preset you can switch to in any notebook's chat to answer in that character's voice.
+
+### World info and regex scripts
+- World info becomes lorebook entries; the lorebook panel's "Export" gains "SillyTavern world info".
+- Regex scripts become the notebook's own render rules; display-only ones are enabled, ones that rewrite the prompt are imported turned off.
+
+### Presets
+**Settings → Presets & templates** imports SillyTavern chat presets (JSON) and exports presets in SillyTavern format.`,
+  },
 ];
 
-export function manualSections(lang: Lang): ManualSection[] {
-  return (lang === "en" ? EN : ZH).map((s) => ({ ...s, icon: ICONS[s.id] ?? BookOpenText }));
+export function manualSections(
+  lang: Lang,
+  enabled: (plugin: string) => boolean = () => false,
+): ManualSection[] {
+  return (lang === "en" ? EN : ZH)
+    .filter((s) => !s.plugin || enabled(s.plugin))
+    .map((s) => ({ ...s, icon: ICONS[s.id] ?? BookOpenText }));
 }

@@ -9,6 +9,7 @@ import { aiRoutes } from "./routes/ai";
 import { chatRoutes } from "./routes/chat";
 import { contentRoutes } from "./routes/content";
 import { notebookRoutes } from "./routes/notebooks";
+import { pluginRoutes } from "./routes/plugins";
 import { shareRoutes } from "./routes/shares";
 import { studioRoutes } from "./routes/studio";
 import { systemRoutes } from "./routes/system";
@@ -43,7 +44,7 @@ export function createApp(
   app.onError((err, c) => {
     const e = toApiError(err);
     if (e.status >= 500) log(`[quirenote] ${c.req.method} ${c.req.path} → ${e.status} ${e.message}`);
-    return c.json({ error: { code: e.code, message: e.message } }, e.status as 400);
+    return c.json({ error: { code: e.code, message: e.message, ...(e.details ?? {}) } }, e.status as 400);
   });
 
   app.notFound((c) =>
@@ -57,6 +58,7 @@ export function createApp(
   studioRoutes(api, ctx);
   aiRoutes(api, ctx);
   contentRoutes(api, ctx);
+  pluginRoutes(api, ctx);
   shareRoutes(api, ctx);
   app.route("/api", api);
 

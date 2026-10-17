@@ -114,7 +114,19 @@ export const zh = {
     collapse: "收起侧栏",
     expand: "展开侧栏",
   },
+  plugins: {
+    desc: "笔记本本体之外的可选功能。按需打开，不用的就关着，界面里不会出现它们的入口。",
+    keepData: "关掉插件只会隐藏它的入口；已经导入的笔记、知识书、规则和预设都会保留。",
+    sillytavern: {
+      name: "酒馆兼容",
+      desc: "读写 SillyTavern（酒馆）的文件：角色卡可以作为一种问答风格，世界书和正则脚本可以导入导出。",
+      features:
+        "导入角色卡（PNG、JSON、CHARX），导入为 Notebook 或问答风格预设\n导入世界书和正则脚本；知识书可以导出为世界书\n导入、导出酒馆的对话预设",
+    },
+  },
   cards: {
+    pluginNeeded: "这是酒馆（SillyTavern）的文件，需要启用「{{name}}」插件才能导入。",
+    enablePlugin: "启用「{{name}}」并继续",
     menuShare: "分享为 Quire 卡…",
     menuImport: "导入卡片…",
     shareNote: "把笔记分享为 Quire 卡",
@@ -671,6 +683,7 @@ export const zh = {
     thinking: "AI 正在规划改动…",
   },
   settings: {
+    plugins: "插件",
     title: "设置",
     general: "通用",
     appearance: "外观",

@@ -15,6 +15,7 @@ COPY packages/ui/package.json packages/ui/
 COPY packages/render/package.json packages/render/
 COPY packages/ai/package.json packages/ai/
 COPY packages/card/package.json packages/card/
+COPY packages/plugin-sillytavern/package.json packages/plugin-sillytavern/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter "!@quirenote/mobile"
 
 FROM deps AS build

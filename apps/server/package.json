@@ -15,6 +15,7 @@
     "@mozilla/readability": "^0.6.0",
     "@quirenote/ai": "workspace:*",
     "@quirenote/card": "workspace:*",
+    "@quirenote/plugin-sillytavern": "workspace:*",
     "@quirenote/core": "workspace:*",
     "@quirenote/render": "workspace:*",
     "better-sqlite3": "^13.0.3",

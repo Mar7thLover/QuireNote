@@ -2,6 +2,8 @@
  * 酒馆（SillyTavern）格式 → Quire 卡；知识书 → 酒馆世界书。字段对应见 docs/CARD_SPEC.md「与酒馆的兼容」。
  * 原始数据完整保存在 extensions.sillytavern，再导出回酒馆时不丢。
  */
+
+import type { ConvertOptions } from "@quirenote/card";
 import {
   type CardLorebook,
   type CardLoreEntry,
@@ -17,7 +19,7 @@ import {
   type QuireCardData,
   type RenderRule,
 } from "@quirenote/core";
-import { cardMessages } from "./messages";
+import { stMessages } from "./messages";
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
@@ -72,20 +74,14 @@ function section(title: string, body: string): string {
   return body.trim() ? `## ${title}\n\n${body.trim()}\n` : "";
 }
 
-export interface ConvertOptions {
-  /** 界面语言，用于选 creator_notes_multilingual。 */
-  lang?: string;
-  /** 文件名（世界书、正则脚本没有自己的名字时用）。 */
-  filename?: string;
-}
-
-export interface Converted {
+/** 转换结果（来源格式由导入器补上）。 */
+export interface StConverted {
   card: QuireCard;
   warnings: string[];
 }
 
-export function characterToCard(raw: Obj, opts: ConvertOptions = {}): Converted {
-  const M = cardMessages(opts.lang);
+export function characterToCard(raw: Obj, opts: ConvertOptions = {}): StConverted {
+  const M = stMessages(opts.lang);
   const d = cardData(raw);
   const warnings: string[] = [];
   const realName = str(d.name).trim() || M.unnamedCharacter;
@@ -322,7 +318,7 @@ export function worldInfoEntryToLore(e: Obj, fallbackId: string, lang?: string):
     scan_depth: num(e.scanDepth),
     case_sensitive: bool(e.caseSensitive),
     match_whole_words: bool(e.matchWholeWords),
-    comment: outlet ? cardMessages(lang).outletComment : "",
+    comment: outlet ? stMessages(lang).outletComment : "",
     extensions: { sillytavern: e },
   };
   return applyDecorators(entry(base));
@@ -335,7 +331,7 @@ export function characterBookToLorebook(
   warnings: string[] = [],
   lang?: string,
 ): CardLorebook {
-  const M = cardMessages(lang);
+  const M = stMessages(lang);
   const entries = Array.isArray(book.entries) ? book.entries.filter(isObj) : [];
   const out: CardLoreEntry[] = entries.map((e, i) => {
     const x = isObj(e.extensions) ? e.extensions : {};
@@ -395,8 +391,8 @@ export function isWorldInfo(v: unknown): v is Obj {
 }
 
 /** 独立世界书 JSON（entries 以 uid 为键，或数组）→ 只含知识书的卡。 */
-export function worldInfoToCard(raw: Obj, opts: ConvertOptions = {}): Converted {
-  const M = cardMessages(opts.lang);
+export function worldInfoToCard(raw: Obj, opts: ConvertOptions = {}): StConverted {
+  const M = stMessages(opts.lang);
   const warnings: string[] = [];
   const name = str(raw.name) || (opts.filename || M.worldInfo).replace(/\.(json|lorebook)$/i, "");
   const entries: CardLoreEntry[] = Array.isArray(raw.entries)
@@ -504,7 +500,7 @@ export function regexScriptsToRender(
   warnings: string[] = [],
   lang?: string,
 ): { rules: RenderRule[]; templates: CardTemplate[] } {
-  const M = cardMessages(lang);
+  const M = stMessages(lang);
   const rules: RenderRule[] = [];
   const templates: CardTemplate[] = [];
   let unsupported = 0;
@@ -568,8 +564,8 @@ export function regexScriptsToRender(
   return { rules, templates };
 }
 
-export function regexToCard(raw: unknown, opts: ConvertOptions = {}): Converted {
-  const M = cardMessages(opts.lang);
+export function regexToCard(raw: unknown, opts: ConvertOptions = {}): StConverted {
+  const M = stMessages(opts.lang);
   const warnings: string[] = [];
   const list = (Array.isArray(raw) ? raw : [raw]) as unknown[];
   const render = regexScriptsToRender(list, warnings, opts.lang);

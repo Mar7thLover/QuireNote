@@ -6,6 +6,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** 附加信息，原样放进错误响应（例如需要启用的插件 id）。 */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ApiError";

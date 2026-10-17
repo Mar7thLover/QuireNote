@@ -118,7 +118,20 @@ export const en: Messages = {
     expand: "Expand sidebar",
     more: "More",
   },
+  plugins: {
+    desc: "Optional features beyond the notebook itself. Turn on what you need; switched-off plugins add nothing to the interface.",
+    keepData:
+      "Turning a plugin off only hides its entry points; notes, lorebooks, rules and presets you already imported stay.",
+    sillytavern: {
+      name: "SillyTavern compatibility",
+      desc: "Read and write SillyTavern files: character cards work as an answering style, and world info and regex scripts import and export.",
+      features:
+        "Import character cards (PNG, JSON, CHARX) as a notebook or as an answering-style preset\nImport world info and regex scripts; export a lorebook as world info\nImport and export SillyTavern chat presets",
+    },
+  },
   cards: {
+    pluginNeeded: 'This is a SillyTavern file. Turn on the "{{name}}" plugin to import it.',
+    enablePlugin: 'Turn on "{{name}}" and continue',
     menuShare: "Share as Quire card…",
     menuImport: "Import card…",
     shareNote: "Share note as a Quire card",
@@ -691,6 +704,7 @@ export const en: Messages = {
     thinking: "AI is planning changes…",
   },
   settings: {
+    plugins: "Plugins",
     title: "Settings",
     general: "General",
     appearance: "Appearance",

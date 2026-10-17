@@ -36,11 +36,17 @@ afterAll(async () => {
   await s.dispose();
 });
 
-const upload = (path: string, bytes: Uint8Array, name: string, extra: Record<string, string> = {}) => {
+const upload = (
+  path: string,
+  bytes: Uint8Array,
+  name: string,
+  extra: Record<string, string> = {},
+  server: TestServer = s,
+) => {
   const form = new FormData();
   form.append("file", new File([bytes as BlobPart], name));
   for (const [k, v] of Object.entries(extra)) form.append(k, v);
-  return s.request(path, { method: "POST", body: form });
+  return server.request(path, { method: "POST", body: form });
 };
 const newNotebook = (title: string) => s.json<Notebook>("/notebooks", { method: "POST", json: { title } });
 
@@ -185,7 +191,11 @@ describe("知识书", () => {
     expect(entry.content).toBe("哈里·谢顿: 心理史学的创立者。");
   });
 
-  it("导出为酒馆世界书", async () => {
+  it("导出为酒馆世界书（需要启用「酒馆兼容」插件）", async () => {
+    const off = await s.request(`/notebooks/${nb.id}/lorebook/export?format=sillytavern`);
+    expect(off.status).toBe(400);
+    expect(((await off.json()) as { error: { code: string } }).error.code).toBe("plugin_disabled");
+    await s.json("/plugins/sillytavern", { method: "PUT", json: { enabled: true } });
     const res = await s.request(`/notebooks/${nb.id}/lorebook/export?format=sillytavern`);
     const wi = (await res.json()) as { entries: Record<string, { key: string[]; constant: boolean }> };
     expect(Object.values(wi.entries).some((e) => e.constant)).toBe(true);
@@ -465,7 +475,53 @@ describe("Quire 卡", () => {
   });
 });
 
+describe("插件", () => {
+  it("新安装默认关闭「酒馆兼容」；数据里有酒馆导入的内容时自动开启", async () => {
+    const fresh = await makeServer();
+    try {
+      const list = await fresh.json<{ id: string; enabled: boolean }[]>("/plugins");
+      expect(list).toEqual([expect.objectContaining({ id: "sillytavern", enabled: false, builtin: true })]);
+      const card = { spec: "chara_card_v2", data: { name: "A", description: "d", first_mes: "hi" } };
+      const res = await upload("/cards/preview", strToU8(JSON.stringify(card)), "a.json", {}, fresh);
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: expect.objectContaining({ code: "plugin_disabled", plugin: "sillytavern" }),
+      });
+      // 开启后可以导入；关闭后已导入的内容还在
+      await fresh.json("/plugins/sillytavern", { method: "PUT", json: { enabled: true } });
+      const r = (await (
+        await upload("/cards/import", strToU8(JSON.stringify(card)), "a.json", {}, fresh)
+      ).json()) as {
+        notebookId: string;
+      };
+      await fresh.json("/plugins/sillytavern", { method: "PUT", json: { enabled: false } });
+      expect(
+        (await fresh.json<{ entries: unknown[] }>(`/notebooks/${r.notebookId}/lorebook`)).entries.length,
+      ).toBeGreaterThan(0);
+    } finally {
+      await fresh.dispose();
+    }
+    // 已有酒馆内容（世界书条目带 extensions.sillytavern）的数据：第一次读开关时自动开启
+    const legacy = await makeServer();
+    try {
+      const nb = await legacy.json<Notebook>("/notebooks", { method: "POST", json: { title: "旧数据" } });
+      await legacy.json(`/notebooks/${nb.id}/lorebook/entries`, {
+        method: "POST",
+        json: { name: "x", extensions: { sillytavern: { uid: 0 } } },
+      });
+      const list = await legacy.json<{ id: string; enabled: boolean }[]>("/plugins");
+      expect(list[0]!.enabled).toBe(true);
+    } finally {
+      await legacy.dispose();
+    }
+  });
+});
+
 describe("酒馆格式导入", () => {
+  beforeAll(async () => {
+    await s.json("/plugins/sillytavern", { method: "PUT", json: { enabled: true } });
+  });
+
   it("V2 角色卡 JSON → 新 Notebook：设定笔记、常驻条目、系统提示词", async () => {
     const card = {
       spec: "chara_card_v2",

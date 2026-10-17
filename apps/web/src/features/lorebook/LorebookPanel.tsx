@@ -24,6 +24,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, FlaskConical, LibraryBig, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { PanelShell } from "@/components/Panel";
+import { ST_PLUGIN, usePluginEnabled } from "@/features/plugins/catalog";
 import { currentLang, useTranslation } from "@/i18n";
 import { api, type LoreTestResult } from "@/lib/api";
 import { qk, queryClient } from "@/lib/query";
@@ -31,6 +32,7 @@ import { qk, queryClient } from "@/lib/query";
 export function LorebookPanel({ notebookId }: { notebookId: string }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"entries" | "ai" | "settings">("entries");
+  const stEnabled = usePluginEnabled(ST_PLUGIN);
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const q = useQuery({ queryKey: qk.lorebook(notebookId), queryFn: () => api.lorebook.get(notebookId) });
@@ -105,11 +107,13 @@ export function LorebookPanel({ notebookId }: { notebookId: string }) {
                   <DropdownMenuItem onSelect={() => window.open(api.lorebook.exportUrl(notebookId, "quire"))}>
                     {t("lorebook.exportQuire")}
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => window.open(api.lorebook.exportUrl(notebookId, "sillytavern"))}
-                  >
-                    {t("lorebook.exportSt")}
-                  </DropdownMenuItem>
+                  {stEnabled ? (
+                    <DropdownMenuItem
+                      onSelect={() => window.open(api.lorebook.exportUrl(notebookId, "sillytavern"))}
+                    >
+                      {t("lorebook.exportSt")}
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button

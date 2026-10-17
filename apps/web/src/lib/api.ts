@@ -47,6 +47,8 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     message: string,
+    /** 错误响应里的其余字段（例如 plugin_disabled 带的 plugin）。 */
+    public details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -68,11 +70,12 @@ async function request<T>(method: string, path: string, body?: unknown, init?: R
   if (!res.ok) {
     let code = "http";
     let message = res.statusText;
+    let details: Record<string, unknown> = {};
     try {
-      const j = (await res.json()) as { error?: { code: string; message: string } };
-      if (j.error) ({ code, message } = j.error);
+      const j = (await res.json()) as { error?: { code: string; message: string } & Record<string, unknown> };
+      if (j.error) ({ code, message, ...details } = j.error);
     } catch {}
-    throw new ApiError(res.status, code, message);
+    throw new ApiError(res.status, code, message, details);
   }
   if (res.status === 204) return undefined as T;
   const ct = res.headers.get("content-type") ?? "";
@@ -208,6 +211,13 @@ export interface CardImportResult {
   rules: number;
   assets: number;
   warnings: string[];
+}
+
+export interface PluginState {
+  id: string;
+  version: string;
+  builtin: boolean;
+  enabled: boolean;
 }
 
 export interface CardExportOptions {
@@ -400,6 +410,11 @@ export const api = {
       `${apiBase()}/public/shares/${encodeURIComponent(token)}/assets/${encodeURIComponent(id)}`,
   },
   usage: () => get<UsageSummary>("/usage/summary"),
+  plugins: {
+    list: () => get<PluginState[]>("/plugins"),
+    set: (id: string, enabled: boolean) =>
+      put<PluginState[]>(`/plugins/${encodeURIComponent(id)}`, { enabled }),
+  },
 
   artifacts: {
     list: (nb: string) => get<Artifact[]>(`/notebooks/${nb}/artifacts`),

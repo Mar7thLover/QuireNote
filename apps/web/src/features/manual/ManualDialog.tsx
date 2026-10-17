@@ -2,16 +2,21 @@ import { cn, Dialog, DialogContent } from "@quirenote/ui";
 import { X } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { Markdown } from "@/components/Markdown";
+import { usePlugins } from "@/features/plugins/catalog";
 import { currentLang, useTranslation } from "@/i18n";
 import { useUi } from "@/stores/ui";
 import { manualSections } from "./content";
 
 /** 内置使用手册：左侧目录，右侧正文（衬线字体，适合阅读）。useUi.manual 为当前章节。 */
 export function ManualDialog() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const section = useUi((s) => s.manual);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 切换语言时重新取手册内容
-  const sections = useMemo(() => manualSections(currentLang()), [i18n.language]);
+  const plugins = usePlugins();
+  const lang = currentLang();
+  const sections = useMemo(
+    () => manualSections(lang, (id) => !!plugins.data?.find((p) => p.id === id)?.enabled),
+    [lang, plugins.data],
+  );
   const current = sections.find((s) => s.id === section) ?? sections[0]!;
   const body = useRef<HTMLDivElement>(null);
   const close = () => useUi.getState().set({ manual: null });

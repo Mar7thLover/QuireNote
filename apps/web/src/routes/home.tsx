@@ -39,8 +39,9 @@ import { AppShell } from "@/components/AppSidebar";
 import { hasAsked } from "@/components/GettingStarted";
 import { BudgetRing, UsageBars } from "@/components/home/UsageBars";
 import { NotebookCard } from "@/components/NotebookCard";
-import { CARD_ACCEPT } from "@/features/cards/CardDialogs";
+import { cardAccept } from "@/features/cards/CardDialogs";
 import { manualSections } from "@/features/manual/content";
+import { ST_PLUGIN, usePluginEnabled, usePlugins } from "@/features/plugins/catalog";
 import { currentLang, useTranslation } from "@/i18n";
 import { api, type RecentNote, type UsageSummary } from "@/lib/api";
 import { formatNumber, formatTokens, formatUsd, greetingKey, relativeTime } from "@/lib/format";
@@ -61,6 +62,7 @@ export function HomePage() {
   const notebooks = useQuery({ queryKey: qk.notebooks, queryFn: api.notebooks.list });
   const overview = useQuery({ queryKey: qk.overview, queryFn: api.overview });
   const usage = useQuery({ queryKey: qk.usage, queryFn: api.usage });
+  const stEnabled = usePluginEnabled(ST_PLUGIN);
 
   const importNb = useMutation({
     mutationFn: api.notebooks.import,
@@ -139,7 +141,7 @@ export function HomePage() {
             <input
               ref={fileRef}
               type="file"
-              accept={`.zip,${CARD_ACCEPT}`}
+              accept={`.zip,${cardAccept(stEnabled)}`}
               hidden
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -677,10 +679,14 @@ function RecentNoteCard({ note: n, tint }: { note: RecentNote; tint: Tint }) {
 // ───────────── 使用手册 ─────────────
 
 function ManualTips({ notebooks }: { notebooks: Notebook[] }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const assignments = useAssignments();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 切换语言时重新取手册内容
-  const sections = useMemo(() => manualSections(currentLang()), [i18n.language]);
+  const plugins = usePlugins();
+  const lang = currentLang();
+  const sections = useMemo(
+    () => manualSections(lang, (id) => !!plugins.data?.find((p) => p.id === id)?.enabled),
+    [lang, plugins.data],
+  );
   const hasModel = !!assignments.data?.some((a) => a.capability === "chat");
   const withSources = notebooks.find((n) => (n.stats?.sources ?? 0) > 0);
   // 还没上手：先讲怎么开始；上手之后：讲进阶功能。
