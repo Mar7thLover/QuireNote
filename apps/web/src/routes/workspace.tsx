@@ -401,7 +401,7 @@ function Watermark(_: IWatermarkPanelProps) {
   return (
     <div className="grid h-full place-items-center bg-surface">
       <div className="text-center">
-        <p className="text-sm text-fg-muted">从左侧活动栏打开面板，或选择一个布局预设</p>
+        <p className="text-sm text-fg-muted">{t("workspace.emptyHint")}</p>
         <div className="mt-3 flex justify-center gap-2">
           {(["research", "write", "study"] as const).map((p) => (
             <Button key={p} size="sm" onClick={() => api && nb && applyPreset(api, nb, p, t)}>

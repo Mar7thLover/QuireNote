@@ -20,6 +20,7 @@ function fileUrl(u: string): string {
 
 /** 音频概览 / 视频概览 / 配图。 */
 export function MediaView(props: ArtifactViewProps<"audio" | "video" | "image">) {
+  const { t } = useTranslation();
   const { data, onChange } = props;
   if (data.kind === "image") {
     return (
@@ -33,8 +34,8 @@ export function MediaView(props: ArtifactViewProps<"audio" | "video" | "image">)
         ) : (
           <EmptyState
             icon={<ImageOff />}
-            title="图像尚未生成"
-            description="请在设置中为「图像」能力分配模型。"
+            title={t("studio.imageMissing")}
+            description={t("studio.imageMissingDesc")}
           />
         )}
         <PromptCaption prompt={data.prompt} />
@@ -51,7 +52,7 @@ export function MediaView(props: ArtifactViewProps<"audio" | "video" | "image">)
           </div>
         ) : (
           <p className="border-b border-border bg-warning-soft px-4 py-2 text-xs text-fg-muted">
-            视频尚未合成（需要服务端安装 ffmpeg 并配置 TTS）。下面是可编辑的幻灯片与旁白。
+            {t("studio.videoMissing")}
           </p>
         )}
         <div className="min-h-0 flex-1">

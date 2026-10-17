@@ -177,7 +177,7 @@ export function ChatPanel({ notebookId, onlySource }: { notebookId: string; only
                       path
                         .map(
                           (p) =>
-                            `**${p.message.role === "user" ? t("menu.you") : "AI"}**：${p.message.content}`,
+                            `**${p.message.role === "user" ? t("menu.you") : "AI"}**${t("common.colon")}${p.message.content}`,
                         )
                         .join("\n\n"),
                       true,

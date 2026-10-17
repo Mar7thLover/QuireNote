@@ -37,6 +37,7 @@ import type {
   Source,
   SourceContent,
 } from "@quirenote/core";
+import i18n from "@/i18n";
 
 /** 服务端地址。Capacitor 等外部壳可以通过 localStorage 覆盖。 */
 export function apiBase(): string {
@@ -70,7 +71,7 @@ async function request<T>(method: string, path: string, body?: unknown, init?: R
       ...init,
     });
   } catch {
-    throw new ApiError(0, "network", "无法连接服务器");
+    throw new ApiError(0, "network", i18n.t("common.networkError"));
   }
   if (!res.ok) {
     let code = "http";

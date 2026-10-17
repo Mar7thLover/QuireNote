@@ -15,12 +15,12 @@ export function DataSettings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const reindex = useMutation({
     mutationFn: () => api.admin.reindex(),
-    onSuccess: () => toast.success(t("data.reindex"), { description: "后台任务已开始" }),
+    onSuccess: () => toast.success(t("data.reindex"), { description: t("data.jobStarted") }),
   });
   const restore = useMutation({
     mutationFn: api.admin.restore,
     onSuccess: () => {
-      toast.success("恢复完成");
+      toast.success(t("data.restored"));
       queryClient.invalidateQueries();
     },
   });
@@ -36,8 +36,8 @@ export function DataSettings() {
           <div className="grid gap-3 sm:grid-cols-4">
             <Stat label={t("data.database")} value={formatBytes(s.dbBytes)} />
             <Stat label={t("data.files")} value={formatBytes(s.filesBytes)} />
-            <Stat label="Notebook / 资料" value={`${s.notebooks} / ${s.sources}`} />
-            <Stat label="笔记 / 生成物 / 元素" value={`${s.notes} / ${s.artifacts} / ${s.elements}`} />
+            <Stat label={t("data.statNotebooks")} value={`${s.notebooks} / ${s.sources}`} />
+            <Stat label={t("data.statNotes")} value={`${s.notes} / ${s.artifacts} / ${s.elements}`} />
           </div>
         )}
       </SettingsSection>
@@ -68,13 +68,13 @@ export function DataSettings() {
               />
             </div>
             <p className="mt-2 text-xs text-fg-subtle">
-              {embeddedPct}% · 待处理任务 {s.pendingJobs}
+              {embeddedPct}% · {t("data.pendingJobs", { count: s.pendingJobs })}
             </p>
           </div>
         ) : null}
       </SettingsSection>
 
-      <SettingsSection title="备份与恢复">
+      <SettingsSection title={t("home.backup")}>
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <a href={api.admin.backupUrl()} download>
@@ -133,7 +133,7 @@ function ServerSetting() {
     <SettingsSection title={t("settings.server")} description={t("settings.serverHint")}>
       <div className="flex max-w-lg gap-2">
         <Field label="" className="flex-1">
-          <Input value={v} onChange={(e) => setV(e.target.value)} placeholder="（留空则使用当前站点）" />
+          <Input value={v} onChange={(e) => setV(e.target.value)} placeholder={t("data.serverPlaceholder")} />
         </Field>
         <Button
           onClick={() => {

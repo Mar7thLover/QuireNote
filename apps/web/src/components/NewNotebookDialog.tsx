@@ -139,7 +139,7 @@ export function NewNotebookDialog() {
             rows={2}
             className="min-h-16"
           />
-          <Field label="图标">
+          <Field label={t("home.icon")}>
             <div className="flex flex-wrap gap-1">
               {EMOJIS.map((e) => (
                 <button
@@ -158,7 +158,7 @@ export function NewNotebookDialog() {
               ))}
             </div>
           </Field>
-          <Field label="颜色">
+          <Field label={t("home.color")}>
             <div className="flex gap-2">
               {TAG_COLOR_NAMES.filter((c) => c !== "gray").map((c) => (
                 <button

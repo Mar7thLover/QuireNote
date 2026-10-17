@@ -95,13 +95,14 @@ export const Markdown = memo(function Markdown({
 });
 
 export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
+  const { t } = useTranslation();
   const openCitation = useWorkspace((s) => s.openCitation);
   // 右键菜单打开时收起预览卡片，两个浮层不叠在一起。
   const [preview, setPreview] = useState(false);
   const menuOpen = useContextMenuState((s) => s.open);
   if (!citation) {
     return (
-      <span className="cite" data-invalid title="引用不存在">
+      <span className="cite" data-invalid title={t("chat.citationMissing")}>
         {n}
       </span>
     );
@@ -117,7 +118,7 @@ export function CiteBadge({ n, citation }: { n: number; citation?: Citation }) {
             setPreview(false);
             return citationSections(citation);
           })}
-          aria-label={`引用 ${n}：${citation.sourceTitle}`}
+          aria-label={t("chat.citationLabel", { n, title: citation.sourceTitle })}
         >
           {n}
         </button>

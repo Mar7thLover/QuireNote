@@ -14,7 +14,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { ClipboardPaste, FileUp, Globe, Link2, Mic, Square, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "@/i18n";
+import { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { qk, upsertInList } from "@/lib/query";
 import { useUi } from "@/stores/ui";
@@ -61,7 +61,7 @@ export function AddSourceDialog({ notebookId }: { notebookId: string }) {
             </TabsTrigger>
             <TabsTrigger value="record" className="flex-1">
               <Mic />
-              录音
+              {t("sources.record")}
             </TabsTrigger>
             <TabsTrigger value="search" className="flex-1">
               <Globe />
@@ -145,7 +145,7 @@ function UrlTab({ notebookId, onDone }: { notebookId: string; onDone: () => void
         .split(/\s+/)
         .map((u) => u.trim())
         .filter((u) => /^https?:\/\//.test(u));
-      if (!urls.length) throw new Error("请输入以 http(s):// 开头的链接");
+      if (!urls.length) throw new Error(t("sources.urlInvalid"));
       for (const u of urls) upsertInList(qk.sources(notebookId), await api.sources.addUrl(notebookId, u));
     },
     onSuccess: () => {
@@ -171,7 +171,7 @@ function UrlTab({ notebookId, onDone }: { notebookId: string; onDone: () => void
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) add.mutate();
         }}
       />
-      <p className="text-xs text-fg-subtle">支持一次粘贴多个链接（每行一个）。YouTube 链接会自动抓取字幕。</p>
+      <p className="text-xs text-fg-subtle">{t("sources.urlHint")}</p>
       <div className="flex justify-end">
         <Button type="submit" variant="primary" loading={add.isPending} disabled={!url.trim()}>
           {t("common.add")}
@@ -222,6 +222,7 @@ function PasteTab({ notebookId, onDone }: { notebookId: string; onDone: () => vo
 
 /** 录音：浏览器 / 原生 WebView 的 MediaRecorder，上传后由服务端转写为文本资料。 */
 function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => void }) {
+  const { t } = useTranslation();
   const [state, setState] = useState<"idle" | "recording" | "uploading">("idle");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -230,13 +231,13 @@ function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => v
 
   useEffect(() => {
     if (state !== "recording") return;
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
   }, [state]);
   useEffect(
     () => () =>
-      recRef.current?.stream.getTracks().forEach((t) => {
-        t.stop();
+      recRef.current?.stream.getTracks().forEach((track) => {
+        track.stop();
       }),
     [],
   );
@@ -249,11 +250,14 @@ function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => v
       chunks.current = [];
       rec.ondataavailable = (e) => e.data.size && chunks.current.push(e.data);
       rec.onstop = async () => {
-        for (const t of stream.getTracks()) t.stop();
+        for (const track of stream.getTracks()) track.stop();
         setState("uploading");
         const type = rec.mimeType || "audio/webm";
         const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
-        const file = new File(chunks.current, `录音 ${new Date().toLocaleString("zh-CN")}.${ext}`, { type });
+        const name = t("sources.recordingName", {
+          date: new Date().toLocaleString(currentLang() === "en" ? "en" : "zh-CN"),
+        });
+        const file = new File(chunks.current, `${name}.${ext}`, { type });
         try {
           await uploadFiles(notebookId, [file]);
           onDone();
@@ -268,7 +272,7 @@ function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => v
       setSeconds(0);
       setState("recording");
     } catch (e) {
-      setError(`无法使用麦克风：${(e as Error).message}`);
+      setError(t("sources.micFailed", { error: (e as Error).message }));
     }
   };
 
@@ -284,16 +288,16 @@ function RecordTab({ notebookId, onDone }: { notebookId: string; onDone: () => v
           "grid size-16 place-items-center rounded-full shadow-md transition-transform active:scale-95 focus-ring",
           state === "recording" ? "bg-danger text-white" : "bg-accent text-accent-fg",
         )}
-        aria-label={state === "recording" ? "停止录音" : "开始录音"}
+        aria-label={t(state === "recording" ? "sources.stopRecording" : "sources.startRecording")}
       >
         {state === "recording" ? <Square className="size-6 fill-current" /> : <Mic className="size-7" />}
       </button>
-      <p className="font-mono text-sm tabular-nums text-fg-muted">
+      <p className={cn("text-sm text-fg-muted", state === "recording" && "font-mono tabular-nums")}>
         {state === "uploading"
-          ? "上传中…"
+          ? t("sources.uploading")
           : state === "recording"
             ? `● ${mm}:${ss}`
-            : "点击开始录音，结束后自动转写为资料"}
+            : t("sources.recordHint")}
       </p>
       {error ? <p className="text-xs text-danger">{error}</p> : null}
     </div>

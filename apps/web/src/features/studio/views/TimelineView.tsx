@@ -1,15 +1,17 @@
 import { newId } from "@quirenote/core";
 import { Button } from "@quirenote/ui";
 import { Plus, Trash2 } from "lucide-react";
+import { useTranslation } from "@/i18n";
 import type { ArtifactViewProps } from "../ArtifactPanel";
 
 export function TimelineView({ data, onChange }: ArtifactViewProps<"timeline">) {
+  const { t } = useTranslation();
   const events = data.events;
   const set = (id: string, patch: Partial<(typeof events)[number]>) =>
     onChange({ kind: "timeline", events: events.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
   const insertAfter = (idx: number) => {
     const next = events.slice();
-    next.splice(idx + 1, 0, { id: newId("ev"), date: "", title: "新事件", detail: "" });
+    next.splice(idx + 1, 0, { id: newId("ev"), date: "", title: t("studio.newEvent"), detail: "" });
     onChange({ kind: "timeline", events: next });
   };
   return (
@@ -21,7 +23,7 @@ export function TimelineView({ data, onChange }: ArtifactViewProps<"timeline">) 
             <input
               defaultValue={e.date}
               onBlur={(x) => x.target.value !== e.date && set(e.id, { date: x.target.value })}
-              placeholder="日期"
+              placeholder={t("studio.date")}
               className="h-7 bg-transparent text-right font-mono text-[13px] font-semibold text-accent outline-none"
             />
             <span className="relative mt-2 grid size-3.5 place-items-center justify-self-center rounded-full border-2 border-accent bg-surface shadow-[0_0_0_4px_var(--surface)]" />
@@ -35,13 +37,13 @@ export function TimelineView({ data, onChange }: ArtifactViewProps<"timeline">) 
                 defaultValue={e.detail}
                 onBlur={(x) => x.target.value !== e.detail && set(e.id, { detail: x.target.value })}
                 rows={Math.max(1, Math.ceil(e.detail.length / 42))}
-                placeholder="细节…"
+                placeholder={t("studio.detail")}
                 className="mt-0.5 block w-full resize-none bg-transparent font-serif text-[14px] leading-relaxed text-fg-muted outline-none"
               />
               <div className="mt-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <Button size="xs" variant="ghost" onClick={() => insertAfter(i)}>
                   <Plus />
-                  在后面插入
+                  {t("studio.insertAfter")}
                 </Button>
                 <Button
                   size="xs"
@@ -58,7 +60,7 @@ export function TimelineView({ data, onChange }: ArtifactViewProps<"timeline">) 
       {events.length === 0 ? (
         <Button variant="secondary" onClick={() => insertAfter(-1)}>
           <Plus />
-          添加事件
+          {t("studio.addEvent")}
         </Button>
       ) : null}
     </div>

@@ -3,6 +3,7 @@
  * 用 canvas 画，导出 PNG 后再把卡片 JSON 写进 tEXt 块。
  */
 import type { QuireCard } from "@quirenote/core";
+import i18n from "@/i18n";
 import { TINTS, tintFor } from "@/lib/tints";
 
 const W = 800;
@@ -153,7 +154,7 @@ export async function renderCover(
   ctx.fillText(labels.brand, W - PAD, H - 44);
 
   const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
-  if (!blob) throw new Error("无法生成封面");
+  if (!blob) throw new Error(i18n.t("cards.coverFailed"));
   return new Uint8Array(await blob.arrayBuffer());
 }
 

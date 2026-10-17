@@ -34,7 +34,7 @@ export function SearchPanel({
   const research = useMutation({
     mutationFn: (question: string) => api.search.research(notebookId, question, 2),
     onSuccess: () =>
-      toast.success("深度研究已开始", { description: "完成后结果会作为资料加入，并生成一份研究报告" }),
+      toast.success(t("search.researchStarted"), { description: t("search.researchStartedDesc") }),
   });
   const add = useMutation({
     mutationFn: (r: WebResult) => api.sources.addSearch(notebookId, r),
@@ -152,11 +152,7 @@ export function SearchPanel({
               })}
             </div>
           ) : (
-            <EmptyState
-              icon={<Globe />}
-              title={t("search.title")}
-              description="搜索结果可一键加入资料；深度研究会多轮检索、汇总后自动导入。"
-            />
+            <EmptyState icon={<Globe />} title={t("search.title")} description={t("search.emptyDesc")} />
           )}
         </div>
       </div>

@@ -305,7 +305,7 @@ function PreviewBody({ p }: { p: CardPreview }) {
       ) : null}
       {p.rules.disabled.length ? (
         <Section title={t("cards.disabledRules")} hint={t("cards.disabledRulesHint")}>
-          <p>{p.rules.disabled.join("、")}</p>
+          <p>{p.rules.disabled.join(t("common.listSep"))}</p>
         </Section>
       ) : null}
       {p.warnings.length ? (

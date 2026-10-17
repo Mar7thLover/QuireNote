@@ -1,6 +1,7 @@
 /** 模型选择相关的查询与工具：按能力列出可选模型、解析 "providerId:model" 显示名。 */
 import type { Capability, ModelChoice, ProviderConfig, ProviderModel } from "@quirenote/core";
 import { useQuery } from "@tanstack/react-query";
+import i18n from "@/i18n";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 
@@ -9,11 +10,18 @@ export interface ModelGroup {
   models: ProviderModel[];
 }
 
+/** 提供方目录来自服务端；名称和说明按界面语言换成 i18n 里的文字（providers.<kind>），没有的保留原文。 */
 export function useProviderCatalog() {
   return useQuery({
     queryKey: qk.catalog,
     queryFn: api.providers.catalog,
     staleTime: Number.POSITIVE_INFINITY,
+    select: (list) =>
+      list.map((c) => ({
+        ...c,
+        label: i18n.t(`providers.${c.kind}.label`, { defaultValue: c.label }),
+        notes: c.notes ? i18n.t(`providers.${c.kind}.notes`, { defaultValue: c.notes }) : c.notes,
+      })),
   });
 }
 

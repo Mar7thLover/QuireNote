@@ -24,6 +24,7 @@ import {
   Type,
 } from "lucide-react";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { builtinRuleSample } from "@/features/render/labels";
 import i18n from "@/i18n";
 
 export interface SlashItem {
@@ -77,30 +78,28 @@ function basicItems(): SlashItem[] {
   ];
 }
 
-const CARD_LABELS: Record<string, string> = {
-  term: "术语卡",
-  compare: "对比卡",
-  stat: "数据卡",
-  quote: "引用卡",
-  timeline: "时间线卡",
-  knowledge: "知识卡",
-  points: "要点卡",
-};
-
 function cardItems(): SlashItem[] {
   return Object.entries(builtinRuleSamples)
     .filter(([, sample]) => sample.startsWith("【"))
-    .map(([ruleId, sample]) => {
+    .map(([ruleId]) => {
       const key = ruleId.split(".").at(-1) ?? "";
+      const label = (lng?: string) => i18n.t(`editor.card_${key}`, { lng, defaultValue: ruleId });
       return {
         id: `card-${ruleId}`,
-        title: CARD_LABELS[key] ?? ruleId,
+        title: label(),
         group: "card" as const,
         icon: ScrollText,
-        keywords: `card 卡片 模板 ${ruleId} ${CARD_LABELS[key] ?? ""}`,
+        // 中英两种叫法都能搜到
+        keywords: `card 卡片 模板 ${ruleId} ${label("zh")} ${label("en")}`,
         // 卡片语法就是普通文字：插入后换到下一行，光标离开，卡片立刻渲染出来。
         run: (editor: Editor, range: Range) => {
-          editor.chain().focus().deleteRange(range).insertContent(sample).splitBlock().run();
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContent(builtinRuleSample(ruleId))
+            .splitBlock()
+            .run();
         },
       };
     });
@@ -198,7 +197,7 @@ const SlashList = forwardRef<ListHandle, SuggestionProps<SlashItem>>(function Sl
                 {item.group === "ai"
                   ? "AI"
                   : item.group === "card"
-                    ? "卡片模板"
+                    ? i18n.t("editor.group_card")
                     : i18n.t("editor.group_basic")}
               </div>
             ) : null}

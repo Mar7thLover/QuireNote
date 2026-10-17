@@ -34,7 +34,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataGrid } from "@/components/DataGrid";
 import { PanelShell } from "@/components/Panel";
-import { useTranslation } from "@/i18n";
+import i18n, { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { plainPreview } from "@/lib/format";
 import { qk, queryClient, upsertInList } from "@/lib/query";
@@ -92,7 +92,7 @@ function useEntityItems(nb: string, entity: EntityType) {
 
 const defaultView = (entity: EntityType): Omit<DbView, "id" | "notebookId"> => ({
   entity,
-  name: "全部",
+  name: i18n.t("common.all"),
   layout: "table",
   filters: [],
   sorts: [{ field: "updatedAt", dir: "desc" }],
@@ -149,10 +149,15 @@ export function DatabasePanel({ notebookId }: { notebookId: string }) {
   });
 
   const items = useEntityItems(notebookId, entity);
-  const fields = fieldsFor(entity, props.data ?? []);
+  const fields = fieldsFor(entity, props.data ?? [], (id) => t(`db.field_${id}`));
+  const en = currentLang() === "en";
   const rows = useMemo(
-    () => applySorts(applyFilters(toRows(entity, items), local.filters), local.sorts),
-    [entity, items, local.filters, local.sorts],
+    () =>
+      applySorts(
+        applyFilters(toRows(entity, items, { en, untitled: t("notes.titlePlaceholder") }), local.filters),
+        local.sorts,
+      ),
+    [entity, items, local.filters, local.sorts, en, t],
   );
 
   const setProp = async (row: DbRow, field: string, value: PropValue) => {
@@ -234,7 +239,7 @@ export function DatabasePanel({ notebookId }: { notebookId: string }) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem danger onSelect={() => removeView.mutate(current.id)}>
                       <Trash2 />
-                      删除当前视图
+                      {t("db.deleteView")}
                     </DropdownMenuItem>
                   </>
                 ) : null}
@@ -280,7 +285,9 @@ export function DatabasePanel({ notebookId }: { notebookId: string }) {
                 <Button size="xs" variant={local.groupBy ? "soft" : "ghost"}>
                   <Group />
                   {t("db.group")}
-                  {local.groupBy ? `：${fields.find((f) => f.id === local.groupBy)?.name ?? ""}` : ""}
+                  {local.groupBy
+                    ? `${t("common.colon")}${fields.find((f) => f.id === local.groupBy)?.name ?? ""}`
+                    : ""}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-56 p-1">
@@ -511,6 +518,7 @@ function BoardView({
 }
 
 function CalendarView({ rows, field, onOpen }: { rows: DbRow[]; field: string; onOpen: (r: DbRow) => void }) {
+  const { t } = useTranslation();
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -543,7 +551,10 @@ function CalendarView({ rows, field, onOpen }: { rows: DbRow[]; field: string; o
           <ChevronLeft />
         </Button>
         <span className="w-28 text-center text-sm font-semibold">
-          {month.toLocaleDateString("zh-CN", { year: "numeric", month: "long" })}
+          {month.toLocaleDateString(currentLang() === "en" ? "en" : "zh-CN", {
+            year: "numeric",
+            month: "long",
+          })}
         </span>
         <Button
           size="icon-xs"
@@ -555,11 +566,13 @@ function CalendarView({ rows, field, onOpen }: { rows: DbRow[]; field: string; o
         </Button>
       </div>
       <div className="grid grid-cols-7 text-center text-[11px] text-fg-subtle">
-        {["一", "二", "三", "四", "五", "六", "日"].map((d) => (
-          <div key={d} className="py-1">
-            {d}
-          </div>
-        ))}
+        {t("db.weekdays")
+          .split(",")
+          .map((d) => (
+            <div key={d} className="py-1">
+              {d}
+            </div>
+          ))}
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 overflow-hidden rounded-lg border border-border">
         {days.map((d) => {
@@ -608,15 +621,7 @@ function CalendarView({ rows, field, onOpen }: { rows: DbRow[]; field: string; o
   );
 }
 
-const OPS: { id: DbView["filters"][number]["op"]; label: string }[] = [
-  { id: "contains", label: "包含" },
-  { id: "eq", label: "等于" },
-  { id: "neq", label: "不等于" },
-  { id: "gt", label: "大于" },
-  { id: "lt", label: "小于" },
-  { id: "empty", label: "为空" },
-  { id: "not_empty", label: "不为空" },
-];
+const OPS: DbView["filters"][number]["op"][] = ["contains", "eq", "neq", "gt", "lt", "empty", "not_empty"];
 
 function FilterEditor({
   fields,
@@ -651,7 +656,7 @@ function FilterEditor({
               onValueChange={(v) =>
                 onChange(filters.map((x, j) => (j === i ? { ...x, op: v as typeof f.op } : x)))
               }
-              options={OPS.map((o) => ({ value: o.id, label: o.label }))}
+              options={OPS.map((o) => ({ value: o, label: t(`db.op_${o}`) }))}
               className="h-7 w-24 text-xs"
             />
             {f.op === "empty" || f.op === "not_empty" ? (
@@ -681,7 +686,7 @@ function FilterEditor({
           onClick={() => onChange([...filters, { field: "title", op: "contains", value: "" }])}
         >
           <Plus />
-          添加筛选条件
+          {t("db.addFilter")}
         </Button>
       </PopoverContent>
     </Popover>
@@ -722,8 +727,8 @@ function SortEditor({
                 onChange(sorts.map((x, j) => (j === i ? { ...x, dir: v as "asc" | "desc" } : x)))
               }
               options={[
-                { value: "asc", label: "升序" },
-                { value: "desc", label: "降序" },
+                { value: "asc", label: t("db.asc") },
+                { value: "desc", label: t("db.desc") },
               ]}
               className="h-7 w-20 text-xs"
             />
@@ -743,7 +748,7 @@ function SortEditor({
           onClick={() => onChange([...sorts, { field: "title", dir: "asc" }])}
         >
           <Plus />
-          添加排序
+          {t("db.addSort")}
         </Button>
       </PopoverContent>
     </Popover>
@@ -784,7 +789,7 @@ function PropertiesEditor({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>显示的字段</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("db.shownFields")}</DropdownMenuLabel>
         {fields.map((f) => (
           <DropdownMenuCheckboxItem
             key={f.id}
@@ -829,7 +834,7 @@ function PropertiesEditor({
                 </Button>
               </div>
               {props.filter((p) => p.entity === entity).length ? (
-                <p className="text-[11px] text-fg-subtle">在表格视图中点击单元格即可编辑自定义属性。</p>
+                <p className="text-[11px] text-fg-subtle">{t("db.editPropHint")}</p>
               ) : null}
             </form>
           </>

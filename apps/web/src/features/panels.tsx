@@ -73,7 +73,8 @@ export function PanelFallback() {
 }
 
 export function NotImplemented() {
-  return <EmptyState className="h-full" icon={<Construction />} title="即将推出" />;
+  const { t } = useTranslation();
+  return <EmptyState className="h-full" icon={<Construction />} title={t("workspace.comingSoon")} />;
 }
 
 function makeDockPanel(kind: PanelKind) {

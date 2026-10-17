@@ -2,57 +2,57 @@ import type { ThemeSettings } from "@quirenote/core";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export const ACCENTS: Record<string, { h: number; c: number; label: string }> = {
-  clay: { h: 40, c: 0.13, label: "陶土" },
-  indigo: { h: 272, c: 0.19, label: "靛蓝" },
-  violet: { h: 300, c: 0.2, label: "紫罗兰" },
-  blue: { h: 250, c: 0.17, label: "海蓝" },
-  teal: { h: 190, c: 0.12, label: "青绿" },
-  green: { h: 152, c: 0.15, label: "森绿" },
-  amber: { h: 65, c: 0.15, label: "琥珀" },
-  rose: { h: 12, c: 0.19, label: "玫瑰" },
-  graphite: { h: 272, c: 0.025, label: "石墨" },
+/** 显示名在 i18n 的 settings.accent_<id>。 */
+export const ACCENTS: Record<string, { h: number; c: number }> = {
+  clay: { h: 40, c: 0.13 },
+  indigo: { h: 272, c: 0.19 },
+  violet: { h: 300, c: 0.2 },
+  blue: { h: 250, c: 0.17 },
+  teal: { h: 190, c: 0.12 },
+  green: { h: 152, c: 0.15 },
+  amber: { h: 65, c: 0.15 },
+  rose: { h: 12, c: 0.19 },
+  graphite: { h: 272, c: 0.025 },
 };
 
+/** 显示名在 i18n 的 settings.font_<id>。 */
 export const FONT_PRESETS = {
   sans: [
     {
-      label: "系统默认",
+      id: "system",
       value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", "Noto Sans SC", sans-serif',
     },
-    { label: "衬线", value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", serif' },
+    { id: "serif", value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", serif' },
   ],
   serif: [
     {
-      label: "Source Serif + 思源宋体",
+      id: "sourceSerif",
       value: '"Source Serif 4 Variable", "Noto Serif SC", "Songti SC", Georgia, serif',
     },
-    { label: "无衬线", value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif' },
+    { id: "sans", value: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif' },
   ],
 };
 
+/** 显示名在 i18n 的 settings.bg_<id>。 */
 export const BACKGROUNDS: {
   id: string;
-  label: string;
   type: ThemeSettings["background"]["type"];
   value: string;
 }[] = [
-  { id: "none", label: "纯色", type: "none", value: "" },
+  { id: "none", type: "none", value: "" },
   {
     id: "dawn",
-    label: "晨曦",
     type: "gradient",
     value:
       "radial-gradient(1200px 600px at 10% -10%, oklch(0.85 0.08 60 / .55), transparent 60%), radial-gradient(900px 500px at 100% 0%, oklch(0.8 0.09 300 / .45), transparent 60%)",
   },
   {
     id: "ocean",
-    label: "深海",
     type: "gradient",
     value:
       "radial-gradient(1000px 600px at 0% 100%, oklch(0.7 0.1 220 / .45), transparent 60%), radial-gradient(800px 500px at 100% 0%, oklch(0.75 0.1 180 / .35), transparent 60%)",
   },
-  { id: "aurora", label: "极光（动态）", type: "aurora", value: "" },
+  { id: "aurora", type: "aurora", value: "" },
 ];
 
 export const defaultTheme: ThemeSettings = {

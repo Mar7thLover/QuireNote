@@ -6,6 +6,7 @@ import { FilePlus2, FileX2, GitBranchPlus, PencilLine, Sparkles, Table, Tags } f
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { collapseContext, diffLines } from "@/lib/diff";
+import { metaLabel } from "@/lib/meta";
 import { qk, queryClient } from "@/lib/query";
 import { useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
@@ -155,7 +156,7 @@ function OpBody({ op }: { op: AgentOp }) {
     case "create_element":
       return (
         <div className="space-y-1 bg-success-soft/30 px-3 py-2 text-[13px]">
-          <Tag color={ELEMENT_TYPE_META[op.type].color}>{ELEMENT_TYPE_META[op.type].label}</Tag>
+          <Tag color={ELEMENT_TYPE_META[op.type].color}>{metaLabel(ELEMENT_TYPE_META[op.type])}</Tag>
           <p className="text-fg-muted">{op.definition}</p>
         </div>
       );
@@ -174,13 +175,14 @@ function DeleteNotePreview({ noteId }: { noteId: string }) {
 }
 
 export function DiffView({ before, after }: { before: string; after: string }) {
+  const { t } = useTranslation();
   const lines = collapseContext(diffLines(before, after), 3);
   return (
     <pre className="max-h-72 overflow-auto py-1.5 font-mono text-[12px] leading-[1.65]">
       {lines.map((l, i) =>
         l.type === "gap" ? (
           <div key={i} className="px-3 text-fg-subtle select-none">
-            ⋯ {l.count} 行未改动
+            ⋯ {t("agent.unchangedLines", { count: l.count })}
           </div>
         ) : (
           <div

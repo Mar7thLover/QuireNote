@@ -23,6 +23,7 @@ import { useSelectedSourceIds } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { contextMenu, contribute } from "@/lib/contextMenu";
+import { metaLabel } from "@/lib/meta";
 import { qk, queryClient } from "@/lib/query";
 import { ElementDetail } from "./ElementDetail";
 import { elementSections } from "./menu";
@@ -64,7 +65,7 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
 
   const extract = useMutation({
     mutationFn: () => api.elements.extract(notebookId, { sourceIds }),
-    onSuccess: () => toast(t("elements.extract"), { description: "后台任务已开始，完成后自动刷新" }),
+    onSuccess: () => toast(t("elements.extract"), { description: t("elements.extractStarted") }),
   });
   const merge = useMutation({
     mutationFn: () => {
@@ -170,7 +171,7 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
                       )}
                     >
                       <Tag color={ELEMENT_TYPE_META[ty].color}>
-                        {ELEMENT_TYPE_META[ty].label} {counts.get(ty)}
+                        {metaLabel(ELEMENT_TYPE_META[ty])} {counts.get(ty)}
                       </Tag>
                     </button>
                   );
@@ -251,17 +252,17 @@ export function ElementsPanel({ notebookId, focus }: { notebookId: string; focus
                   columns={[
                     {
                       id: "name",
-                      name: "名称",
+                      name: t("db.field_title"),
                       width: 160,
                       render: (r) => <span className="font-medium">{String(r.name)}</span>,
                     },
                     {
                       id: "type",
-                      name: "类型",
+                      name: t("db.field_type"),
                       width: 100,
                       render: (r) => (
                         <Tag color={ELEMENT_TYPE_META[r.type as ElementType].color}>
-                          {ELEMENT_TYPE_META[r.type as ElementType].label}
+                          {metaLabel(ELEMENT_TYPE_META[r.type as ElementType])}
                         </Tag>
                       ),
                     },
@@ -345,7 +346,7 @@ function ElementRow({
       />
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left focus-ring rounded">
         <div className="flex items-center gap-1.5">
-          <Tag color={meta.color}>{meta.label}</Tag>
+          <Tag color={meta.color}>{metaLabel(meta)}</Tag>
           <span className="truncate text-[13.5px] font-medium">{el.name}</span>
           <span className="ml-auto shrink-0">
             <MasteryBar value={el.mastery} compact />
@@ -360,10 +361,11 @@ function ElementRow({
 }
 
 export function MasteryBar({ value, compact }: { value: number; compact?: boolean }) {
+  const { t } = useTranslation();
   const pct = Math.round(value * 100);
   const hue = 25 + value * 130;
   return (
-    <span className="inline-flex items-center gap-1.5" title={`掌握度 ${pct}%`}>
+    <span className="inline-flex items-center gap-1.5" title={t("elements.masteryPct", { pct })}>
       <span
         className={cn("overflow-hidden rounded-full bg-surface-sunken", compact ? "h-1 w-8" : "h-1.5 w-14")}
       >

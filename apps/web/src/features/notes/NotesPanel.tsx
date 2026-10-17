@@ -56,7 +56,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
         <>
           <PanelTitle count={notes.data?.length}>{t("notes.title")}</PanelTitle>
           <div className="flex-1" />
-          <Tooltip content={view === "list" ? "卡片视图" : "列表视图"}>
+          <Tooltip content={t(view === "list" ? "notes.gridView" : "notes.listView")}>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -103,7 +103,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
               },
               {
                 id: "notes.view",
-                label: view === "list" ? "卡片视图" : "列表视图",
+                label: t(view === "list" ? "notes.gridView" : "notes.listView"),
                 icon: view === "list" ? LayoutGrid : List,
                 onSelect: () => setView(view === "list" ? "grid" : "list"),
               },
@@ -196,7 +196,7 @@ export function NotesPanel({ notebookId }: { notebookId: string }) {
                   <span className="truncate text-[13px] font-medium">{n.title || t("common.untitled")}</span>
                   {n.kind === "card" ? (
                     <Badge tone="accent" className="h-4 px-1.5 text-[10px]">
-                      卡片
+                      {t("notes.cardBadge")}
                     </Badge>
                   ) : null}
                   <span className="ml-auto shrink-0 text-[11px] text-fg-subtle">

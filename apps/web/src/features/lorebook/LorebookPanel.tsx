@@ -217,7 +217,7 @@ function EntryRow({ entry: e, active, onClick }: { entry: LoreEntry; active: boo
         {!e.enabled ? <Badge>{t("lorebook.disabled")}</Badge> : null}
       </span>
       <span className="truncate text-[12px] text-fg-subtle">
-        {e.constant ? positionLabel(t, e) : e.keys.join("、") || t("lorebook.noKeys")}
+        {e.constant ? positionLabel(t, e) : e.keys.join(t("common.listSep")) || t("lorebook.noKeys")}
       </span>
     </button>
   );
@@ -283,7 +283,7 @@ function EntryEditor({
   const num = (v: string): number | null => (v.trim() === "" ? null : Number(v));
   const tri = (v: boolean | null) => (v === null ? "inherit" : v ? "yes" : "no");
   const fromTri = (v: string): boolean | null => (v === "inherit" ? null : v === "yes");
-  const keysText = entry.keys.join("、");
+  const keysText = entry.keys.join(t("common.listSep"));
 
   return (
     <div className="mx-auto flex max-w-[720px] flex-col gap-5 px-5 py-5">
@@ -308,7 +308,7 @@ function EntryEditor({
         <Input
           defaultValue={keysText}
           disabled={entry.constant}
-          placeholder={entry.constant ? t("lorebook.constantNoKeys") : "图灵测试、Turing test、/模仿游戏?/"}
+          placeholder={entry.constant ? t("lorebook.constantNoKeys") : t("lorebook.keysPlaceholder")}
           onBlur={(e) => e.target.value !== keysText && set({ keys: parseKeys(e.target.value) })}
         />
       </Row>
@@ -326,10 +326,10 @@ function EntryEditor({
             ariaLabel={t("lorebook.secondary")}
           />
           <Input
-            defaultValue={entry.secondary_keys.join("、")}
+            defaultValue={entry.secondary_keys.join(t("common.listSep"))}
             disabled={entry.constant}
             onBlur={(e) =>
-              e.target.value !== entry.secondary_keys.join("、") &&
+              e.target.value !== entry.secondary_keys.join(t("common.listSep")) &&
               set({ secondary_keys: parseKeys(e.target.value) })
             }
           />
@@ -609,7 +609,9 @@ function TestBar({ notebookId, onPick }: { notebookId: string; onPick: (id: stri
           )}
           {result.trimmed.length ? (
             <span className="text-fg-subtle">
-              {t("lorebook.testTrimmed", { names: result.trimmed.map((e) => e.name).join("、") })}
+              {t("lorebook.testTrimmed", {
+                names: result.trimmed.map((e) => e.name).join(t("common.listSep")),
+              })}
             </span>
           ) : null}
         </div>

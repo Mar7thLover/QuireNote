@@ -1,4 +1,7 @@
 import type { Artifact, MindmapNode } from "@quirenote/core";
+import i18n from "@/i18n";
+
+const colon = () => i18n.t("common.colon");
 
 function mindmapToMarkdown(nodes: MindmapNode[]): string {
   const kids = new Map<string | null, MindmapNode[]>();
@@ -7,7 +10,9 @@ function mindmapToMarkdown(nodes: MindmapNode[]): string {
   const walk = (parent: string | null, depth: number) => {
     for (const n of kids.get(parent) ?? []) {
       lines.push(
-        depth === 0 ? `# ${n.label}` : `${"  ".repeat(depth - 1)}- ${n.label}${n.note ? `：${n.note}` : ""}`,
+        depth === 0
+          ? `# ${n.label}`
+          : `${"  ".repeat(depth - 1)}- ${n.label}${n.note ? `${colon()}${n.note}` : ""}`,
       );
       walk(n.id, depth + 1);
     }
@@ -40,7 +45,8 @@ export function artifactToMarkdown(a: Artifact): string {
       );
     case "timeline":
       return (
-        head + d.events.map((e) => `- **${e.date}** ${e.title}${e.detail ? `：${e.detail}` : ""}`).join("\n")
+        head +
+        d.events.map((e) => `- **${e.date}** ${e.title}${e.detail ? `${colon()}${e.detail}` : ""}`).join("\n")
       );
     case "table": {
       const cols = d.table.columns;
@@ -59,7 +65,13 @@ export function artifactToMarkdown(a: Artifact): string {
       );
     case "audio":
       return (
-        head + d.script.map((l) => `**${l.speaker === "A" ? "主持人" : "嘉宾"}**：${l.text}`).join("\n\n")
+        head +
+        d.script
+          .map(
+            (l) =>
+              `**${i18n.t(l.speaker === "A" ? "studio.speakerA" : "studio.speakerB")}**${colon()}${l.text}`,
+          )
+          .join("\n\n")
       );
     case "image":
       return `${head}${d.imageUrl ? `![${d.prompt}](${d.imageUrl})` : d.prompt}`;

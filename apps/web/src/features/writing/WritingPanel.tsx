@@ -48,7 +48,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { PanelShell } from "@/components/Panel";
 import { createNote } from "@/features/notes/actions";
-import { currentLang, useTranslation } from "@/i18n";
+import i18n, { currentLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { contextMenu } from "@/lib/contextMenu";
 import { formatNumber } from "@/lib/format";
@@ -143,7 +143,9 @@ export function WritingPanel({ notebookId }: { notebookId: string }) {
 }
 
 const openNote = (n: Note) =>
-  useWorkspace.getState().open({ kind: "note", id: n.id, title: n.title || "无标题" });
+  useWorkspace
+    .getState()
+    .open({ kind: "note", id: n.id, title: n.title || i18n.t("notes.titlePlaceholder") });
 
 // ───────────── 稿件 ─────────────
 
@@ -609,7 +611,10 @@ function ChapterOutline({
       </div>
       {summary ? (
         <p className="border-l-2 border-border pl-2.5 text-[12.5px] leading-relaxed text-fg-muted">
-          <span className="text-fg-subtle">{t("writing.summary")}：</span>
+          <span className="text-fg-subtle">
+            {t("writing.summary")}
+            {t("common.colon")}
+          </span>
           {summary}
         </p>
       ) : null}
@@ -648,7 +653,7 @@ function ChapterOutline({
             <ul className="flex flex-col gap-2.5">
               {issues.map((i) => (
                 <li key={i.quote} className="flex flex-col gap-0.5 text-[13px] leading-relaxed">
-                  <span className="font-serif text-fg">「{i.quote}」</span>
+                  <span className="font-serif text-fg">{t("common.quoted", { text: i.quote })}</span>
                   <span className="text-fg-muted">{i.problem}</span>
                   {i.suggestion ? <span className="text-fg-subtle">{i.suggestion}</span> : null}
                 </li>
@@ -786,12 +791,12 @@ function CastEntry({
   const { t } = useTranslation();
   const [draft, setDraft] = useState({
     name: entry.name,
-    keys: entry.keys.join("、"),
+    keys: entry.keys.join(t("common.listSep")),
     content: entry.content,
   });
   useEffect(
-    () => setDraft({ name: entry.name, keys: entry.keys.join("、"), content: entry.content }),
-    [entry],
+    () => setDraft({ name: entry.name, keys: entry.keys.join(t("common.listSep")), content: entry.content }),
+    [entry, t],
   );
   const commit = async () => {
     const keys = draft.keys

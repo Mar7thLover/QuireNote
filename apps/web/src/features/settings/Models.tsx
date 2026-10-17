@@ -138,7 +138,7 @@ function ProviderRow({ p, entry }: { p: ProviderConfig; entry?: ProviderCatalogE
                 ••••{p.keyHint}
               </span>
             ) : entry?.requiresKey ? (
-              <span className="text-warning">未设置 Key</span>
+              <span className="text-warning">{t("models.noKey")}</span>
             ) : null}
             {p.baseUrl ? <span className="max-w-64 truncate">{p.baseUrl}</span> : null}
             <span>{t("models.modelsCount", { count: p.models.length })}</span>
@@ -691,7 +691,9 @@ function AddProviderDialog({
               <Input
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder={entry?.defaultBaseUrl ?? (entry?.baseUrlRequired ? "https://…/v1" : "默认")}
+                placeholder={
+                  entry?.defaultBaseUrl ?? (entry?.baseUrlRequired ? "https://…/v1" : t("models.default"))
+                }
                 required={!!entry?.baseUrlRequired && !entry.defaultBaseUrl}
               />
             </Field>
@@ -701,7 +703,7 @@ function AddProviderDialog({
                 autoComplete="off"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder={entry?.requiresKey === false ? "可选" : "sk-…"}
+                placeholder={entry?.requiresKey === false ? t("models.optional") : "sk-…"}
               />
             </Field>
           </div>

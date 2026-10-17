@@ -18,14 +18,14 @@ export function ShareInbox() {
   const send = useMutation({
     mutationFn: async ({ nb, p }: { nb: string; p: SharedPayload }) => importShared(nb, p),
     onSuccess: (count, { nb }) => {
-      toast.success(`已加入 ${count} 份资料`);
+      toast.success(t("mobile.added", { count }));
       queryClient.invalidateQueries({ queryKey: qk.sources(nb) });
       set(null);
     },
   });
 
   return (
-    <Sheet open={!!payload} onOpenChange={(o) => !o && set(null)} title="发送到 QuireNote">
+    <Sheet open={!!payload} onOpenChange={(o) => !o && set(null)} title={t("mobile.shareTitle")}>
       {payload ? (
         <div className="space-y-4 px-4 pb-6">
           <div className="space-y-1.5 rounded-xl bg-surface-sunken p-3 text-[13px]">
@@ -47,7 +47,7 @@ export function ShareInbox() {
             ))}
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-fg-subtle">选择 Notebook</p>
+            <p className="text-xs font-medium text-fg-subtle">{t("mobile.pickNotebook")}</p>
             {(notebooks.data ?? []).map((n) => (
               <button
                 key={n.id}
@@ -102,6 +102,7 @@ async function importShared(nb: string, p: SharedPayload): Promise<number> {
 
 /** 原生壳首次启动：填写自托管服务器地址。 */
 export function ServerOnboarding() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(() => isNative() && !hasServerOverride());
   const [url, setUrl] = useState("https://");
   const [error, setError] = useState<string | null>(null);
@@ -117,19 +118,19 @@ export function ServerOnboarding() {
       setOpen(false);
       location.reload();
     } catch (e) {
-      setError(`无法连接：${(e as Error).message}`);
+      setError(t("mobile.connectFailed", { error: (e as Error).message }));
     } finally {
       setChecking(false);
     }
   };
   return (
-    <Sheet open={open} onOpenChange={() => {}} title="连接你的 QuireNote 服务器">
+    <Sheet open={open} onOpenChange={() => {}} title={t("mobile.serverTitle")}>
       <div className="space-y-4 px-4 pb-8">
         <div className="flex items-start gap-3 rounded-xl bg-accent-soft p-3 text-[13px] leading-relaxed text-accent-soft-fg">
           <Server className="mt-0.5 size-5 shrink-0" />
-          QuireNote 的数据保存在你自托管的服务器上（docker compose 一键部署）。请填写服务器地址。
+          {t("mobile.serverDesc")}
         </div>
-        <Field label="服务器地址">
+        <Field label={t("settings.server")}>
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -140,7 +141,7 @@ export function ServerOnboarding() {
         </Field>
         {error ? <p className="text-[13px] text-danger">{error}</p> : null}
         <Button size="lg" variant="primary" className="w-full" onClick={connect} loading={checking}>
-          连接
+          {t("mobile.connect")}
         </Button>
       </div>
     </Sheet>

@@ -4,6 +4,7 @@ import { Badge, Button, Checkbox, cn, Input, Select, Switch, Textarea } from "@q
 import { AlertTriangle, ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Markdown } from "@/components/Markdown";
+import { builtinRuleName, builtinRuleSample, builtinTemplateName } from "@/features/render/labels";
 import { useRenderStore } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
 import { SettingsSection } from "@/routes/settings";
@@ -15,9 +16,12 @@ export function RuleSettings() {
   const { t } = useTranslation();
   const { rules, setRules, disabledBuiltins, toggleBuiltin, templates } = useRenderStore();
   const [test, setTest] = useState(
-    `${Object.values(builtinRuleSamples).join("\n\n")}\n\n${t("render.testSample")}`,
+    `${Object.keys(builtinRuleSamples).map(builtinRuleSample).join("\n\n")}\n\n${t("render.testSample")}`,
   );
-  const tplOptions = [...builtinTemplates, ...templates].map((x) => ({ value: x.id, label: x.name }));
+  const tplOptions = [...builtinTemplates, ...templates].map((x) => ({
+    value: x.id,
+    label: builtinTemplateName(x),
+  }));
   const sorted = [...rules].sort((a, b) => a.order - b.order);
 
   const update = (id: string, patch: Partial<RenderRule>) =>
@@ -51,7 +55,7 @@ export function RuleSettings() {
                   id: newId("rule"),
                   name: t("render.newRuleName"),
                   enabled: true,
-                  pattern: "【概念：([^】]+)】",
+                  pattern: t("render.newRulePattern"),
                   flags: "g",
                   templateId: "builtin.term",
                   replacement: "",
@@ -100,11 +104,11 @@ export function RuleSettings() {
               <Switch
                 checked={!disabledBuiltins.includes(r.id)}
                 onCheckedChange={(v) => toggleBuiltin(r.id, v)}
-                aria-label={r.name}
+                aria-label={builtinRuleName(r)}
               />
-              <span className="w-28 shrink-0 text-[13px] font-medium">{r.name}</span>
+              <span className="w-28 shrink-0 text-[13px] font-medium">{builtinRuleName(r)}</span>
               <code className="min-w-0 flex-1 truncate text-xs text-fg-subtle">
-                {builtinRuleSamples[r.id]}
+                {builtinRuleSample(r.id)}
               </code>
             </div>
           ))}
