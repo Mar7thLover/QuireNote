@@ -15,7 +15,10 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
+      # 默认会装已下架的 "tools" 包，新版 cmdline-tools 找不到它就失败；只装需要的。
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @quirenote/mobile build
       - run: cd apps/mobile/android && ./gradlew assembleDebug
