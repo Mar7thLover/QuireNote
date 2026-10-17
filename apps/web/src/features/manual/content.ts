@@ -250,6 +250,13 @@ Claude 模型按 Anthropic 官方标价估算，包含缓存读写的折扣与�
 - **JSON**：纯文本，适合放进 Git。
 - **.quire**：压缩包，图片和视频原样打包，适合大的 Notebook。
 
+### 分享链接
+在同一个对话框里选「链接」→「生成链接」，会在你自己的服务器上生成一个只读页 \`/share/…\`。对方用浏览器直接阅读，不需要安装 QuireNote，也能从页面右上角下载 PNG / JSON / .quire 卡。
+- 页面显示的是当前内容：笔记改了，对方刷新就能看到；带哪些部分（渲染规则、知识书、AI 说明、资料原文、作者）在生成时定下。
+- 正文里的 HTML 和卡片模板放在沙箱里显示，脚本不会执行；只有分享内容用到的图片和视频能被访问。
+- **设置 → 分享链接** 里列出所有链接，可以复制或撤销；撤销后链接立即失效。
+- 对方要能从公网访问你的服务器。在设置里填上公开访问地址（比如 \`https://notes.example.com\`）。QuireNote 没有登录，整个服务器暴露出去等于公开所有笔记——建议用反向代理只放行 \`/share/\`、\`/api/public/\`、\`/assets/\` 和 \`/favicon.svg\`。
+
 ### 导入
 把卡片拖进首页，或点「导入」、在命令面板选「导入卡片…」。导入前会先显示预览：作者、包含的内容、常驻的知识书条目、AI 说明，以及会被停用的规则。可以导入成新的 Notebook，或合并进已有的。
 
@@ -476,6 +483,13 @@ All three formats hold the same content:
 - **PNG image**: has a cover and hides the data inside the image, so it shares like a picture. Chat apps that recompress images strip the data; send the original file.
 - **JSON**: plain text, good for Git.
 - **.quire**: a zip with images and videos as files, for large notebooks.
+
+### Share links
+In the same dialog, choose "Link" → "Create link" to get a read-only page \`/share/…\` on your own server. Others read it right in their browser — no QuireNote needed — and can download the PNG / JSON / .quire card from the top-right corner.
+- The page shows the current content: edit the note and they see the change on reload. Which parts are included (render rules, lorebook, AI instructions, source text, creator) is fixed when you create the link.
+- HTML and card templates in the text render in a sandbox with scripts disabled; only images and videos used by the shared content can be fetched.
+- **Settings → Share links** lists every link so you can copy or revoke it; revoking takes effect immediately.
+- Your server must be reachable from the internet. Enter its public address in settings (for example \`https://notes.example.com\`). QuireNote has no login, so exposing the whole server publishes every note — put a reverse proxy in front that only lets \`/share/\`, \`/api/public/\`, \`/assets/\` and \`/favicon.svg\` through.
 
 ### Importing
 Drop a card onto the home page, click **Import**, or pick "Import card…" in the command palette. A preview comes first: the creator, what's inside, always-on lorebook entries, AI instructions and any rules that will be turned off. Import into a new notebook or merge into an existing one.

@@ -1,8 +1,8 @@
 import type { CardTemplate, RuleScope } from "@quirenote/core";
 import { buildSrcdoc, renderInlineHtml, SANDBOX_ATTR } from "@quirenote/render";
-import { Fragment, memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { resolvedMode, useTheme } from "@/stores/theme";
-import { allTemplates, useRenderedSegments } from "./store";
+import { RenderOverrideContext, templatesFor, useRenderedSegments } from "./store";
 
 /** 行内匹配在文本里的占位：Markdown 里是一个空链接，交给 a 组件换成渲染结果。 */
 export const INLINE_PREFIX = "#qn-seg-";
@@ -44,8 +44,9 @@ export function RenderedSegments({
   renderText: (text: string, inline?: ReadonlyMap<string, ReactNode>) => ReactNode;
 }) {
   const result = useRenderedSegments(text, scope);
+  const override = useContext(RenderOverrideContext);
   if (!result) return <>{renderText(text)}</>;
-  const templates = allTemplates();
+  const templates = templatesFor(override);
   const segs = result.segments;
   const out: ReactNode[] = [];
   let buf = "";

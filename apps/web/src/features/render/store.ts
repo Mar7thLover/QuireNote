@@ -7,7 +7,7 @@ import {
   type RuleRunner,
 } from "@quirenote/render";
 import RegexWorker from "@quirenote/render/worker?worker";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { api } from "@/lib/api";
@@ -112,6 +112,26 @@ export function hasCustomRules(notebookId: string | null = currentNotebook()): b
   return s.rules.length > 0 || !!(notebookId && s.notebookPacks[notebookId]?.rules.length);
 }
 
+/**
+ * 只读分享页：只用卡片自带的渲染包和内置规则，不混入这台浏览器里的全局规则与 Notebook 渲染包。
+ * key 区分缓存（例如分享令牌）。
+ */
+export interface RenderOverride {
+  key: string;
+  pack?: RenderPack;
+}
+export const RenderOverrideContext = createContext<RenderOverride | null>(null);
+
+function overrideRules(o: RenderOverride): RenderRule[] {
+  return [...(o.pack?.rules ?? []).map((r) => ({ ...r, order: r.order - 2_000_000 })), ...builtinRules];
+}
+
+/** 渲染时可用的模板：有覆盖时只取内置模板和卡片带来的。 */
+export function templatesFor(o: RenderOverride | null): Map<string, CardTemplate> {
+  if (!o) return allTemplates();
+  return new Map([...builtinTemplates, ...(o.pack?.templates ?? [])].map((t) => [t.id, t]));
+}
+
 export function getRuleRunner(): RuleRunner {
   return getRunner();
 }
@@ -128,7 +148,9 @@ const cache = new Map<string, RenderResult>();
 export function useRenderedSegments(text: string, scope: RuleScope): RenderResult | null {
   const version = useRenderStore((s) => s.version);
   const notebookId = useWorkspace((s) => s.notebookId);
-  const key = `${scope}\u0000${version}\u0000${notebookId ?? ""}\u0000${text}`;
+  const override = useContext(RenderOverrideContext);
+  const owner = override ? `override:${override.key}` : (notebookId ?? "");
+  const key = `${scope}\u0000${version}\u0000${owner}\u0000${text}`;
   const [result, setResult] = useState<RenderResult | null>(() => cache.get(key) ?? null);
   useEffect(() => {
     const hit = cache.get(key);
@@ -137,13 +159,14 @@ export function useRenderedSegments(text: string, scope: RuleScope): RenderResul
       return;
     }
     // 没有任何可能匹配的标记时跳过 worker 往返
-    if (!/[【>]/.test(text) && !hasCustomRules(notebookId)) {
+    const custom = override ? !!override.pack?.rules.length : hasCustomRules(notebookId);
+    if (!/[【>]/.test(text) && !custom) {
       setResult({ segments: [{ type: "text", text }], errors: [] });
       return;
     }
     let alive = true;
     getRunner()
-      .run(text, allRules(notebookId), { scope })
+      .run(text, override ? overrideRules(override) : allRules(notebookId), { scope })
       .then((r) => {
         if (cache.size > 300) cache.clear();
         cache.set(key, r);
@@ -153,6 +176,6 @@ export function useRenderedSegments(text: string, scope: RuleScope): RenderResul
     return () => {
       alive = false;
     };
-  }, [key, text, scope, notebookId]);
+  }, [key, text, scope, notebookId, override]);
   return result;
 }

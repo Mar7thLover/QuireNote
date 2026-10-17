@@ -12,6 +12,7 @@ import {
   Keyboard,
   Languages,
   LayoutTemplate,
+  Link2,
   type LucideIcon,
   Moon,
   NotebookText,
@@ -35,6 +36,7 @@ export const SETTINGS_SECTIONS: { id: string; icon: LucideIcon }[] = [
   { id: "templates", icon: LayoutTemplate },
   { id: "rules", icon: Regex },
   { id: "data", icon: Database },
+  { id: "sharing", icon: Link2 },
   { id: "shortcuts", icon: Keyboard },
   { id: "about", icon: Info },
 ];

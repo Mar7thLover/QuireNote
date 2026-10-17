@@ -154,6 +154,8 @@ const MIGRATIONS: ((db: DB) => void)[] = [
   (db) => {
     for (const t of ["assets", "lore_entries", "link_previews"]) createDocTable(db, t);
   },
+  // 分享链接：id 即链接里的随机令牌，ref_id 为笔记或 Notebook 的 id
+  (db) => createDocTable(db, "shares"),
 ];
 
 function now(): string {
@@ -788,6 +790,7 @@ export class SqliteStore implements Store {
   readonly assets;
   readonly lore;
   readonly linkPreviews;
+  readonly shares;
 
   constructor(
     private readonly path: string,
@@ -841,6 +844,10 @@ export class SqliteStore implements Store {
       "link_previews",
       () => ({}),
     );
+    this.shares = new SqliteEntityRepo<import("./types").ShareRecord>(this, "shares", (r) => ({
+      notebookId: r.notebookId,
+      refId: r.targetId,
+    }));
   }
 
   async transaction<T>(fn: () => Promise<T>): Promise<T> {

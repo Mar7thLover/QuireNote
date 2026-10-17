@@ -30,6 +30,16 @@ export function must<T>(value: T | null | undefined, what: string): T {
   return value;
 }
 
+/** 下载文件名：去掉文件系统不允许的字符，最长 80 字。 */
+export function safeFilename(name: string, ext: string): string {
+  const base =
+    name
+      .replace(/[\\/:*?"<>|\r\n]+/g, " ")
+      .trim()
+      .slice(0, 80) || "card";
+  return `${base}${ext}`;
+}
+
 /** 下载响应（zip / 原始文件）。 */
 export function download(data: Uint8Array, filename: string, mime: string, inline = false): Response {
   return new Response(body(data), {

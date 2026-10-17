@@ -62,6 +62,8 @@ export const qk = {
   adminStats: ["admin-stats"] as const,
   overview: ["overview"] as const,
   usage: ["usage-summary"] as const,
+  shares: ["shares"] as const,
+  publicShare: (token: string) => ["public-share", token] as const,
 };
 
 /** 用列表里的某一项更新缓存（乐观更新 / SSE 推送共用）。 */

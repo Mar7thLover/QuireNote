@@ -2,7 +2,7 @@ import { type Citation, parseCitationMarkers, type RuleScope } from "@quirenote/
 import { cn, HoverCard, HoverCardContent, HoverCardTrigger } from "@quirenote/ui";
 import { FileText } from "lucide-react";
 import { memo, type ReactNode, useMemo } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { type Components, type UrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { INLINE_PREFIX, RenderedSegments } from "@/features/render/RenderedSegments";
 import { useWorkspace } from "@/stores/workspace";
@@ -32,6 +32,8 @@ export const Markdown = memo(function Markdown({
   className,
   scope,
   serif,
+  components: extra,
+  urlTransform,
 }: {
   text: string;
   citations?: Citation[];
@@ -39,10 +41,15 @@ export const Markdown = memo(function Markdown({
   /** 指定后会先应用该作用范围的正则规则，把匹配内容渲染成沙箱卡片。 */
   scope?: RuleScope;
   serif?: boolean;
+  /** 额外的元素渲染（例如分享页里的图片、视频和 HTML 块），链接 a 不可覆盖。 */
+  components?: Components;
+  /** 改写链接与图片地址（例如 asset:// → 资源地址）；默认只放行安全协议。 */
+  urlTransform?: UrlTransform;
 }) {
   const md = useMemo(() => (citations ? linkifyCitations(text) : text), [text, citations]);
   const components = useMemo<Components>(
     () => ({
+      ...extra,
       a: ({ href, children }) => {
         if (href?.startsWith(INLINE_PREFIX)) return null;
         if (href?.startsWith("#cite-")) {
@@ -56,11 +63,12 @@ export const Markdown = memo(function Markdown({
         );
       },
     }),
-    [citations],
+    [citations, extra],
   );
   const body = (src: string, inline?: ReadonlyMap<string, ReactNode>) => (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      urlTransform={urlTransform}
       components={
         inline?.size
           ? {

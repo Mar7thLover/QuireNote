@@ -157,6 +157,13 @@ export async function renderCover(
   return new Uint8Array(await blob.arrayBuffer());
 }
 
+/** 下载文件名：去掉文件系统不允许的字符，最长 80 字。 */
+export const safeFilename = (s: string) =>
+  s
+    .replace(/[\\/:*?"<>|\r\n]+/g, " ")
+    .trim()
+    .slice(0, 80) || "card";
+
 export function downloadBytes(bytes: Uint8Array, filename: string, mime: string): void {
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
   const a = document.createElement("a");

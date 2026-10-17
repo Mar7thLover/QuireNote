@@ -5,8 +5,14 @@ import { HomePage } from "@/routes/home";
 
 const WorkspacePage = lazy(() => import("@/routes/workspace").then((m) => ({ default: m.WorkspacePage })));
 const SettingsPage = lazy(() => import("@/routes/settings").then((m) => ({ default: m.SettingsPage })));
+const SharePage = lazy(() => import("@/features/share/SharePage").then((m) => ({ default: m.SharePage })));
 
-const rootRoute = createRootRoute({
+const rootRoute = createRootRoute({ component: Outlet });
+
+/** 应用本体：侧栏、服务器事件、命令面板等都挂在这里。 */
+const appRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "app",
   component: () => (
     <Root>
       <Suspense fallback={<div className="h-full" />}>
@@ -16,10 +22,24 @@ const rootRoute = createRootRoute({
   ),
 });
 
-const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: HomePage });
+/** 分享链接的只读页：不挂应用本体，只请求公开接口。 */
+export const shareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/share/$token",
+  component: function Share() {
+    const { token } = shareRoute.useParams();
+    return (
+      <Suspense fallback={<div className="h-full" />}>
+        <SharePage key={token} token={token} />
+      </Suspense>
+    );
+  },
+});
+
+const homeRoute = createRoute({ getParentRoute: () => appRoute, path: "/", component: HomePage });
 
 export const workspaceRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: "/n/$notebookId",
   /** panel：进入时打开的面板（例如首页「去复习」）；note：进入时打开的笔记（首页「最近打开」）。 */
   validateSearch: (search: Record<string, unknown>): { panel?: string; note?: string } => ({
@@ -34,7 +54,7 @@ export const workspaceRoute = createRoute({
 });
 
 export const settingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: "/settings/$section",
   component: function Settings() {
     const { section } = settingsRoute.useParams();
@@ -43,12 +63,15 @@ export const settingsRoute = createRoute({
 });
 
 const settingsIndexRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appRoute,
   path: "/settings",
   component: () => <SettingsPage section="models" />,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, workspaceRoute, settingsRoute, settingsIndexRoute]);
+const routeTree = rootRoute.addChildren([
+  appRoute.addChildren([homeRoute, workspaceRoute, settingsRoute, settingsIndexRoute]),
+  shareRoute,
+]);
 
 export const router = createRouter({ routeTree, defaultPreload: "intent", scrollRestoration: true });
 

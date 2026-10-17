@@ -57,6 +57,8 @@ export async function deleteNotebook(ctx: AppContext, id: string): Promise<boole
   await store.undo.deleteWhere(f);
   await store.highlights.deleteWhere(f);
   await store.lore.deleteWhere(f);
+  // 指向这本 Notebook 和其中笔记的分享链接
+  await store.shares.deleteWhere(f);
   await deleteNotebookAssets(ctx, id);
   return store.notebooks.delete(id);
 }

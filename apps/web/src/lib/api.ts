@@ -26,6 +26,7 @@ import type {
   ProviderHeadersPatch,
   ProviderInput,
   ProviderModel,
+  QuireCard,
   RenderPack,
   ReviewCard,
   Source,
@@ -218,6 +219,38 @@ export interface CardExportOptions {
   creator?: string;
 }
 
+/** 分享链接（设置里的列表、生成链接后的结果）。 */
+export interface ShareLink {
+  token: string;
+  kind: "note" | "notebook";
+  targetId: string;
+  notebookId: string;
+  /** 当前标题；内容已删除时为 null。 */
+  title: string | null;
+  notebookTitle: string | null;
+  options: { render: boolean; lorebook: boolean; instructions: boolean; sources: boolean; creator: string };
+  /** 只读页路径 `/share/<token>`，拼上公开访问地址就是链接。 */
+  path: string;
+  createdAt: string;
+}
+
+export interface ShareInput {
+  kind: "note" | "notebook";
+  id: string;
+  render?: boolean;
+  lorebook?: boolean;
+  instructions?: boolean;
+  sources?: boolean;
+  creator?: string;
+}
+
+/** 只读页拿到的卡片：资源指向公开地址，不内联。 */
+export interface PublicShare {
+  token: string;
+  kind: "note" | "notebook";
+  card: QuireCard;
+}
+
 const cardQuery = (o: CardExportOptions) =>
   new URLSearchParams(
     Object.entries(o)
@@ -352,6 +385,19 @@ export const api = {
       if (notebookId) fd.append("notebookId", notebookId);
       return post<CardImportResult>("/cards/import", fd);
     },
+  },
+  shares: {
+    list: () => get<ShareLink[]>("/shares"),
+    create: (input: ShareInput) => post<ShareLink>("/shares", input),
+    revoke: (token: string) => del(`/shares/${encodeURIComponent(token)}`),
+  },
+  /** 只读分享页用的公开接口：只认令牌，不读别的数据。 */
+  public: {
+    share: (token: string) => get<PublicShare>(`/public/shares/${encodeURIComponent(token)}`),
+    cardUrl: (token: string, format: "json" | "quire") =>
+      `${apiBase()}/public/shares/${encodeURIComponent(token)}/card?format=${format}`,
+    assetUrl: (token: string, id: string) =>
+      `${apiBase()}/public/shares/${encodeURIComponent(token)}/assets/${encodeURIComponent(id)}`,
   },
   usage: () => get<UsageSummary>("/usage/summary"),
 

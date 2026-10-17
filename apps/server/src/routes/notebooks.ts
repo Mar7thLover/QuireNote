@@ -326,6 +326,7 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
 
   api.delete("/notes/:id", async (c) => {
     must((await store.notes.delete(c.req.param("id"))) || null, "笔记");
+    await store.shares.deleteWhere({ refId: c.req.param("id") });
     return c.json({ ok: true });
   });
 }

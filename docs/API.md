@@ -105,6 +105,28 @@ SSE 事件：`user`（已保存的用户消息 `Message`）→ `start` `{id}` �
 `CardPreview`：`{format, kind, name, summary, creator, creatorNotes, version, tags, cover, notes: {title, chars}[], sources,
 lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, templates, assets, aiInstructions, warnings}`。
 
+## 分享链接
+
+只读页 `/share/<token>` 的说明见 [CARD_SPEC.md](./CARD_SPEC.md)「封装与分享」。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/shares` | `{kind: "note"\|"notebook", id, render?, lorebook?, instructions?, sources?, creator?}` → `ShareLink`（`201`）；同一内容、同样选项的有效链接已存在时返回它（`200`） |
+| GET | `/shares` | 有效的 `ShareLink[]`，新的在前 |
+| DELETE | `/shares/:token` | 撤销 → `{ok: true}`；重复撤销同样返回 `ok`，令牌不存在 `404` |
+| GET | `/public/shares/:token` | 公开：`{token, kind, card}`，`card` 为卡片 JSON，资源 `uri` 指向下面的资源地址（不内联） |
+| GET | `/public/shares/:token/card?format=json\|quire` | 公开：下载卡片（`json` 内联资源；`quire` 为压缩包）。PNG 由只读页用 `json` 画封面生成 |
+| GET | `/public/shares/:token/assets/:id` | 公开：分享内容引用到的资源（支持 `Range`） |
+
+`ShareLink`：`{token, kind, targetId, notebookId, title, notebookTitle, options: {render, lorebook, instructions,
+sources, creator}, path, createdAt}`；`title` 为当前标题，内容已删除时为 `null`；`path` 为 `/share/<token>`，
+前端拼上公开访问地址（设置 `shareBaseUrl`，留空用当前页面地址）。笔记链接的 `lorebook` / `instructions` /
+`sources` 恒为 `false`。
+
+公开接口只认令牌：令牌格式不对、不存在、已撤销、内容已删除一律 `404 not_found`（同一条消息）；响应带
+`cache-control: no-store`、`x-robots-tag: noindex, nofollow`、`referrer-policy: no-referrer`。CORS 与其他接口
+相同（只读页由同一服务器托管，同源访问）。
+
 ## Studio 生成物
 
 | 方法 | 路径 | 说明 |
@@ -314,6 +336,14 @@ lore: {total, constant: {name, content}[]}, rules: {total, disabled: string[]}, 
 
 - `GET /notebooks/:nb/export` → `<标题>.quirenote.zip`：`notebook.json`（`format: "quirenote-notebook", version: 1`，含资料全文、分块、笔记、生成物、元素、复习卡与记录、视图、属性、对话与消息）、`markdown/notes|sources|artifacts/*.md`、`files/sources/<id>/*`（原始文件）、`files/media/*`（生成的媒体）、`README.md`。
 - `POST /import`：所有 id 重新生成（引用随之更新），返回新的 `Notebook`（带 `stats`）；向量不随包导出，导入后自动排入该笔记本的 `reindex` 任务。
+
+### 分享链接
+
+- 链接记在 `shares` 表（`id` 即令牌，`ref_id` 为笔记或 Notebook id）。撤销只写 `revokedAt`，不删记录；删除笔记
+  （`DELETE /notes/:id`）或 Notebook 时，指向它们的链接一并删除。整库备份（`/admin/backup`）带上链接，
+  Notebook 导出包（`.quirenote.zip`）不带。
+- 服务端托管前端（`QUIRENOTE_WEB_DIST`）时，`GET /share/:token` 返回写好 `<title>`、`og:title`、
+  `og:description` 与 `robots` / `referrer` meta 的 `index.html`；链接无效时同样返回页面，状态码 `404`。
 
 ### 文件
 

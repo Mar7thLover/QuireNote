@@ -37,6 +37,8 @@ export interface ExportOptions {
   sources?: boolean;
   instructions?: boolean;
   creator?: string;
+  /** 给出时资源不内联，`uri` 写成这个函数返回的地址（分享链接的只读页按需加载）。 */
+  assetUrl?: (id: string) => string;
 }
 
 export interface ExportedCard {
@@ -80,18 +82,25 @@ async function renderSources(ctx: AppContext, notebookId: string): Promise<Rende
   };
 }
 
-/** 收集正文引用的资源，按格式写成 data: URL 或压缩包内路径。 */
+/** 收集正文引用的资源，按格式写成 data: URL、压缩包内路径，或 assetUrl 给的地址。 */
 async function collectAssets(
   ctx: AppContext,
   notes: CardNote[],
-  format: ExportOptions["format"],
+  opts: Pick<ExportOptions, "format" | "assetUrl">,
 ): Promise<{ assets: CardAsset[]; files: Map<string, Uint8Array> }> {
   const assets: CardAsset[] = [];
   const files = new Map<string, Uint8Array>();
   for (const id of new Set(notes.flatMap((n) => assetIdsIn(n.markdown)))) {
+    const type = mediaKindOf(id) ?? (id.endsWith(".woff2") ? "font" : "x_file");
+    if (opts.assetUrl) {
+      const meta = await ctx.store.assets.get(id);
+      if (!meta) continue;
+      const { name, mime, size, sha256 } = meta;
+      assets.push({ id, type, name, mime, size, sha256, uri: opts.assetUrl(id) });
+      continue;
+    }
     const hit = await readAsset(ctx, id);
     if (!hit) continue;
-    const type = mediaKindOf(id) ?? (id.endsWith(".woff2") ? "font" : "x_file");
     const base = {
       id,
       type,
@@ -100,7 +109,7 @@ async function collectAssets(
       size: hit.asset.size,
       sha256: hit.asset.sha256,
     };
-    if (format === "zip") {
+    if (opts.format === "zip") {
       const path = `assets/${type}/${id}`;
       files.set(path, hit.data);
       assets.push({ ...base, uri: `embedded://${path}` });
@@ -127,7 +136,7 @@ export async function exportNoteCard(
   const note = await ctx.store.notes.get(noteId);
   if (!note) throw notFound("笔记");
   const notes = [toCardNote(note)];
-  const { assets, files } = await collectAssets(ctx, notes, opts.format);
+  const { assets, files } = await collectAssets(ctx, notes, opts);
   const render =
     opts.render === false
       ? undefined
@@ -165,7 +174,7 @@ export async function exportNotebookCard(
   const notes = (await ctx.store.notes.list({ notebookId }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map(toCardNote);
-  const { assets, files } = await collectAssets(ctx, notes, opts.format);
+  const { assets, files } = await collectAssets(ctx, notes, opts);
   const sources: QuireCardData["sources"] = [];
   if (opts.sources) {
     for (const s of await ctx.store.sources.list({ notebookId })) {

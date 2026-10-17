@@ -161,6 +161,70 @@ test.describe("Quire 卡", () => {
   });
 });
 
+test.describe("分享链接", () => {
+  test("生成链接 → 没有任何本地数据的浏览器打开只读页并下载卡片 → 撤销后失效", async ({ page, browser }) => {
+    await page.goto("/");
+    await page
+      .getByRole("main")
+      .getByRole("link")
+      .filter({ has: page.getByRole("heading", { name: "人工智能简史", exact: true }) })
+      .click({ button: "right" });
+    await page.getByRole("menuitem", { name: "分享为 Quire 卡…" }).click();
+    const dialog = page.getByRole("dialog", { name: "把 Notebook 分享为 Quire 卡" });
+    await dialog.getByRole("button", { name: /^链接/ }).click();
+    await dialog.getByLabel("作者").fill("E2E");
+    await dialog.getByRole("button", { name: "生成链接" }).click();
+    const url = await dialog.getByRole("textbox", { name: "分享链接" }).inputValue();
+    expect(url).toMatch(/\/share\/[A-Za-z0-9_-]{24}$/);
+    const token = url.split("/").pop()!;
+    // 本机地址：提示去设置里填公开地址
+    await expect(dialog).toContainText("只有你自己能打开");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // 访客：全新的浏览器上下文（没有登录、没有本地缓存），只能用到公开接口
+    const visitor = await browser.newContext({ locale: "zh-CN" });
+    const vp = await visitor.newPage();
+    const apiPaths: string[] = [];
+    vp.on("request", (r) => {
+      const path = new URL(r.url()).pathname;
+      if (path.startsWith("/api/")) apiPaths.push(path);
+    });
+    await vp.goto(url);
+    await expect(vp.getByRole("heading", { level: 1, name: "人工智能简史" })).toBeVisible();
+    await expect(vp.getByText("Notebook · 作者 E2E")).toBeVisible();
+    await expect(vp.getByRole("heading", { level: 2, name: "三次浪潮的共同模式" })).toBeVisible();
+    await expect(vp).toHaveTitle("人工智能简史 · QuireNote");
+    // 访客页面上没有应用本体（侧栏、导航）
+    await expect(vp.getByRole("navigation", { name: "主导航" })).toHaveCount(0);
+
+    await vp.getByRole("button", { name: "下载卡片" }).click();
+    const [download] = await Promise.all([
+      vp.waitForEvent("download"),
+      vp.getByRole("menuitem", { name: "JSON" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe("人工智能简史.quire.json");
+    const card = JSON.parse(readFileSync((await download.path())!, "utf8"));
+    expect(card.data).toMatchObject({ kind: "notebook", name: "人工智能简史", creator: "E2E" });
+    expect(apiPaths.length).toBeGreaterThan(0);
+    expect(apiPaths.filter((p) => !p.startsWith("/api/public/"))).toEqual([]);
+
+    // 主人在设置里撤销
+    page.on("dialog", (d) => d.accept());
+    await page.goto("/settings/sharing");
+    const row = page.getByRole("listitem").filter({ hasText: token });
+    await expect(row).toContainText("人工智能简史");
+    await row.getByRole("button", { name: "撤销" }).click();
+    await expect(row).toBeHidden();
+
+    await vp.reload();
+    await expect(vp.getByRole("heading", { name: "这个链接已失效" })).toBeVisible();
+    await expect(vp.getByText("三次浪潮的共同模式")).toHaveCount(0);
+    expect((await vp.request.get(`${new URL(url).origin}/api/public/shares/${token}`)).status()).toBe(404);
+    await visitor.close();
+  });
+});
+
 test.describe("阅读器：高亮与编辑资料", () => {
   test("选中或点击高亮都能改色、取消高亮；编辑资料后高亮跟着文字走，可恢复原文", async ({
     page,

@@ -24,18 +24,9 @@ import {
   updateLorebookSettings,
   updateLoreEntry,
 } from "../services/lorebook";
-import { download, fileResponse, must, readJson, readUpload } from "./util";
+import { download, fileResponse, must, readJson, readUpload, safeFilename } from "./util";
 
 const flag = (v: string | undefined, d: boolean) => (v === undefined ? d : v === "1" || v === "true");
-
-function safeFilename(name: string, ext: string): string {
-  const base =
-    name
-      .replace(/[\\/:*?"<>|\r\n]+/g, " ")
-      .trim()
-      .slice(0, 80) || "card";
-  return `${base}${ext}`;
-}
 
 /** 解析上传的卡片文件；格式错误统一转成 400。 */
 async function parseUpload(c: Parameters<typeof readUpload>[0]) {

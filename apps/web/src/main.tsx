@@ -15,7 +15,15 @@ createRoot(document.getElementById("root")!).render(
     <PersistQueryClientProvider
       client={queryClient}
       // 接口数据结构变化时递增 buster，丢弃旧的离线缓存（v2：提供方新增 models / headerNames）。
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 7, buster: "v2" }}
+      persistOptions={{
+        persister,
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+        buster: "v2",
+        // 别人分享给你的内容不留在本机：撤销后再打开就看不到
+        dehydrateOptions: {
+          shouldDehydrateQuery: (q) => q.state.status === "success" && q.queryKey[0] !== "public-share",
+        },
+      }}
       onSuccess={() => queryClient.resumePausedMutations()}
     >
       <RouterProvider router={router} />

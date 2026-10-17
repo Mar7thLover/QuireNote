@@ -114,6 +114,29 @@ export interface UndoRecord {
   updatedAt: string;
 }
 
+/** 分享链接：只读页 `/share/<token>` 指向的笔记或整本 Notebook。内容随原文更新，导出选项在创建时定下。 */
+export interface ShareRecord {
+  /** 随机令牌（144 位），即链接里的 token。 */
+  id: string;
+  kind: "note" | "notebook";
+  /** 笔记 id 或 Notebook id。 */
+  targetId: string;
+  notebookId: string;
+  options: ShareOptions;
+  createdAt: string;
+  updatedAt: string;
+  /** 撤销时间；撤销后公开接口一律 404。 */
+  revokedAt: string | null;
+}
+
+export interface ShareOptions {
+  render: boolean;
+  lorebook: boolean;
+  instructions: boolean;
+  sources: boolean;
+  creator: string;
+}
+
 export interface KeywordHit {
   chunkId: string;
   score: number;
@@ -225,6 +248,7 @@ export interface Store {
   assets: EntityRepo<Asset>;
   lore: EntityRepo<LoreEntry>;
   linkPreviews: EntityRepo<LinkPreview>;
+  shares: EntityRepo<ShareRecord>;
   /** 在一个事务中执行（实现可以退化为顺序执行）。 */
   transaction<T>(fn: () => Promise<T>): Promise<T>;
   /** 数据库占用字节数。 */
