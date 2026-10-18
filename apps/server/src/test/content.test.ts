@@ -476,7 +476,7 @@ describe("Quire 卡", () => {
 });
 
 describe("插件", () => {
-  it("新安装默认关闭「酒馆兼容」；数据里有酒馆导入的内容时自动开启", async () => {
+  it("「酒馆兼容」默认关闭，数据里已有酒馆内容也不自动开启", async () => {
     const fresh = await makeServer();
     try {
       const list = await fresh.json<{ id: string; enabled: boolean }[]>("/plugins");
@@ -501,7 +501,7 @@ describe("插件", () => {
     } finally {
       await fresh.dispose();
     }
-    // 已有酒馆内容（世界书条目带 extensions.sillytavern）的数据：第一次读开关时自动开启
+    // 已有酒馆内容（世界书条目带 extensions.sillytavern）的数据：仍然保持关闭
     const legacy = await makeServer();
     try {
       const nb = await legacy.json<Notebook>("/notebooks", { method: "POST", json: { title: "旧数据" } });
@@ -510,7 +510,7 @@ describe("插件", () => {
         json: { name: "x", extensions: { sillytavern: { uid: 0 } } },
       });
       const list = await legacy.json<{ id: string; enabled: boolean }[]>("/plugins");
-      expect(list[0]!.enabled).toBe(true);
+      expect(list[0]!.enabled).toBe(false);
     } finally {
       await legacy.dispose();
     }

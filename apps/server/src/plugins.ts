@@ -14,38 +14,19 @@ export interface ServerPlugin {
   version: string;
   /** 卡片导入器（别的格式 → Quire 卡）。 */
   importers?: CardImporter[];
-  /** 没有设置过开关时，根据已有数据判断要不要默认开启。 */
-  detect?: (ctx: AppContext) => Promise<boolean>;
 }
 
+// 插件一律默认关闭，只有用户在「设置 → 插件」里打开才启用（数据里已有酒馆内容也不自动打开）
 export const BUILTIN_PLUGINS: ServerPlugin[] = [
-  {
-    id: ST,
-    version: "0.1.0",
-    importers: [sillytavernImporter],
-    // 数据里已经有从酒馆导入的内容（世界书条目、正则规则）时默认开启，新安装默认关闭
-    async detect(ctx) {
-      const lore = await ctx.store.lore.list();
-      if (lore.some((e) => !!(e.extensions as Record<string, unknown> | undefined)?.sillytavern)) return true;
-      const notebooks = await ctx.store.notebooks.list();
-      return notebooks.some((n) => n.render?.rules.some((r) => r.id.startsWith("st_")));
-    },
-  },
+  { id: ST, version: "0.1.0", importers: [sillytavernImporter] },
 ];
 
 const SETTINGS_KEY = "plugins";
 
-/** 各插件的开关；还没设置过的按 detect 的结果补上并保存。 */
+/** 各插件的开关；没设置过的算关闭。 */
 export async function pluginStates(ctx: AppContext): Promise<Record<string, boolean>> {
   const saved = (await ctx.store.settings.get<Record<string, boolean>>(SETTINGS_KEY)) ?? {};
-  let changed = false;
-  for (const p of BUILTIN_PLUGINS) {
-    if (typeof saved[p.id] === "boolean") continue;
-    saved[p.id] = p.detect ? await p.detect(ctx) : false;
-    changed = true;
-  }
-  if (changed) await ctx.store.settings.set(SETTINGS_KEY, saved);
-  return saved;
+  return Object.fromEntries(BUILTIN_PLUGINS.map((p) => [p.id, saved[p.id] === true]));
 }
 
 export async function isPluginEnabled(ctx: AppContext, id: string): Promise<boolean> {
