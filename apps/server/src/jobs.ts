@@ -2,6 +2,8 @@
 import { type Job, newId, nowIso } from "@quirenote/core";
 import { errorMessageOf } from "./errors";
 import type { EventBus } from "./events";
+import { currentLang, type Lang, parseLang, withLang } from "./lang";
+import { msg } from "./messages";
 import type { JobRecord, Store } from "./store/types";
 
 export interface JobContext {
@@ -12,6 +14,10 @@ export interface JobContext {
 
 /** 处理函数返回值作为完成时的 message。 */
 export type JobHandler = (payload: Record<string, unknown>, ctx: JobContext) => Promise<string | undefined>;
+
+/** 入队时记下界面语言，任务的进度和结果说明都用它写。 */
+const LANG_KEY = "_lang";
+const langOf = (r: JobRecord): Lang => parseLang(String(r.payload[LANG_KEY] ?? "")) ?? "zh";
 
 export function publicJob(r: JobRecord): Job {
   const { payload: _payload, ...job } = r;
@@ -47,12 +53,12 @@ export class JobQueue {
       type,
       status: "queued",
       progress: 0,
-      message: meta.message ?? "排队中",
+      message: meta.message ?? msg().job.queued,
       refId: meta.refId ?? null,
       notebookId: meta.notebookId ?? null,
       createdAt: ts,
       updatedAt: ts,
-      payload,
+      payload: { ...payload, [LANG_KEY]: currentLang() },
     };
     await this.store().jobs.insert(rec);
     const job = publicJob(rec);
@@ -68,11 +74,12 @@ export class JobQueue {
     let n = 0;
     for (const j of all) {
       if (j.status !== "queued" && j.status !== "running") continue;
+      const m = withLang(langOf(j), msg);
       if (!this.handlers.has(j.type)) {
-        await this.store().jobs.update(j.id, { status: "error", message: `未知任务类型：${j.type}` });
+        await this.store().jobs.update(j.id, { status: "error", message: m.job.unknownType(j.type) });
         continue;
       }
-      await this.store().jobs.update(j.id, { status: "queued", message: "服务重启后重新排队" });
+      await this.store().jobs.update(j.id, { status: "queued", message: m.job.requeued });
       this.queue.push(j.id);
       n++;
     }
@@ -132,12 +139,17 @@ export class JobQueue {
   private async run(id: string): Promise<void> {
     const rec = await this.store().jobs.get(id);
     if (!rec) return;
+    await withLang(langOf(rec), () => this.runRecord(rec));
+  }
+
+  private async runRecord(rec: JobRecord): Promise<void> {
+    const id = rec.id;
     const handler = this.handlers.get(rec.type);
     let final: Job | null;
     if (!handler) {
-      final = await this.update(id, { status: "error", message: `未知任务类型：${rec.type}` });
+      final = await this.update(id, { status: "error", message: msg().job.unknownType(rec.type) });
     } else {
-      const started = await this.update(id, { status: "running", message: "进行中", progress: 0 });
+      const started = await this.update(id, { status: "running", message: msg().job.running, progress: 0 });
       const ctx: JobContext = {
         job: started ?? publicJob(rec),
         progress: async (progress, message) => {
@@ -148,8 +160,8 @@ export class JobQueue {
         },
       };
       try {
-        const msg = await handler(rec.payload, ctx);
-        final = await this.update(id, { status: "done", progress: 1, message: msg || "完成" });
+        const result = await handler(rec.payload, ctx);
+        final = await this.update(id, { status: "done", progress: 1, message: result || msg().job.done });
       } catch (err) {
         final = await this.update(id, { status: "error", message: errorMessageOf(err).slice(0, 1000) });
       }

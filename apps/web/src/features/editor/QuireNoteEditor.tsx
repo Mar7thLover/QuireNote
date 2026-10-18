@@ -248,14 +248,18 @@ export function QuireNoteEditor({
         <MarkButton editor={editor} mark="code" icon={Code} />
         <MarkButton editor={editor} mark="highlight" icon={Highlighter} />
         <Separator vertical className="mx-0.5" />
-        <Tooltip content="用自然语言操作（命令面板）">
+        <Tooltip content={t("editor.naturalCommand")}>
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={() => {
               const { from, to } = editor.state.selection;
               const sel = editor.state.doc.textBetween(from, to, " ");
-              useUi.getState().openPalette(`针对选中的「${sel.slice(0, 30)}${sel.length > 30 ? "…" : ""}」`);
+              useUi
+                .getState()
+                .openPalette(
+                  t("menu.naturalCommandSeed", { text: `${sel.slice(0, 30)}${sel.length > 30 ? "…" : ""}` }),
+                );
             }}
             aria-label="command"
           >
@@ -369,17 +373,20 @@ function AiMenu({ onRun }: { onRun: (a: TransformAction, extra?: Partial<AiReque
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {[
-              ["English", "英文"],
-              ["简体中文", "中文"],
-              ["日本語", "日文"],
-            ].map(([lang, label]) => (
+              ["English", "en"],
+              ["简体中文", "zh"],
+              ["日本語", "ja"],
+            ].map(([lang, code]) => (
               <DropdownMenuItem
                 key={lang}
                 onSelect={() =>
-                  onRun("translate", { targetLang: lang, label: `${t("editor.translate")} → ${label}` })
+                  onRun("translate", {
+                    targetLang: lang,
+                    label: `${t("editor.translate")} → ${t(`editor.lang_${code}`)}`,
+                  })
                 }
               >
-                {label}
+                {t(`editor.lang_${code}`)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuSubContent>

@@ -9,6 +9,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   anthropic: {
     kind: "anthropic",
     label: "Anthropic Claude",
+    labelEn: "Anthropic Claude",
     capabilities: ["chat", "search", "image"],
     defaultBaseUrl: "https://api.anthropic.com/v1",
     baseUrlRequired: false,
@@ -25,6 +26,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   "anthropic-compatible": {
     kind: "anthropic-compatible",
     label: "Anthropic 兼容接口",
+    labelEn: "Anthropic-compatible API",
     capabilities: ["chat", "image"],
     defaultBaseUrl: null,
     baseUrlRequired: true,
@@ -37,6 +39,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   openai: {
     kind: "openai",
     label: "OpenAI",
+    labelEn: "OpenAI",
     capabilities: ["chat", "embedding", "tts", "stt", "image"],
     defaultBaseUrl: "https://api.openai.com/v1",
     baseUrlRequired: false,
@@ -71,6 +74,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   google: {
     kind: "google",
     label: "Google Gemini",
+    labelEn: "Google Gemini",
     capabilities: ["chat", "embedding", "tts", "stt", "image", "video"],
     defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
     baseUrlRequired: false,
@@ -94,6 +98,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   ollama: {
     kind: "ollama",
     label: "Ollama（本地）",
+    labelEn: "Ollama (local)",
     capabilities: ["chat", "embedding"],
     defaultBaseUrl: "http://localhost:11434/v1",
     baseUrlRequired: false,
@@ -108,6 +113,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   "openai-compatible": {
     kind: "openai-compatible",
     label: "OpenAI 兼容接口",
+    labelEn: "OpenAI-compatible API",
     capabilities: ["chat", "embedding", "tts", "stt", "image"],
     defaultBaseUrl: null,
     baseUrlRequired: true,
@@ -126,6 +132,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   tavily: {
     kind: "tavily",
     label: "Tavily 搜索",
+    labelEn: "Tavily Search",
     capabilities: ["search"],
     defaultBaseUrl: "https://api.tavily.com",
     baseUrlRequired: false,
@@ -137,6 +144,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   brave: {
     kind: "brave",
     label: "Brave Search",
+    labelEn: "Brave Search",
     capabilities: ["search"],
     defaultBaseUrl: "https://api.search.brave.com/res/v1",
     baseUrlRequired: false,
@@ -148,6 +156,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   searxng: {
     kind: "searxng",
     label: "SearXNG（自托管）",
+    labelEn: "SearXNG (self-hosted)",
     capabilities: ["search"],
     defaultBaseUrl: "http://localhost:8888",
     baseUrlRequired: true,
@@ -160,6 +169,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   elevenlabs: {
     kind: "elevenlabs",
     label: "ElevenLabs",
+    labelEn: "ElevenLabs",
     capabilities: ["tts"],
     defaultBaseUrl: "https://api.elevenlabs.io",
     baseUrlRequired: false,
@@ -181,6 +191,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   "edge-tts": {
     kind: "edge-tts",
     label: "Edge TTS",
+    labelEn: "Edge TTS",
     capabilities: ["tts"],
     defaultBaseUrl: null,
     baseUrlRequired: false,
@@ -193,6 +204,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   fal: {
     kind: "fal",
     label: "fal.ai",
+    labelEn: "fal.ai",
     capabilities: ["image", "video"],
     defaultBaseUrl: "https://fal.run",
     baseUrlRequired: false,
@@ -207,6 +219,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   replicate: {
     kind: "replicate",
     label: "Replicate",
+    labelEn: "Replicate",
     capabilities: ["image", "video"],
     defaultBaseUrl: "https://api.replicate.com/v1",
     baseUrlRequired: false,
@@ -221,6 +234,7 @@ export const PROVIDER_CATALOG: Record<ProviderKind, CatalogEntry> = {
   comfyui: {
     kind: "comfyui",
     label: "ComfyUI（本地）",
+    labelEn: "ComfyUI (local)",
     capabilities: ["image"],
     defaultBaseUrl: "http://127.0.0.1:8188",
     baseUrlRequired: true,

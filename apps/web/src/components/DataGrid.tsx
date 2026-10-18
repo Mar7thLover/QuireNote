@@ -10,6 +10,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, ArrowUp, ChevronsUpDown, Search } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
+import { useTranslation } from "@/i18n";
 
 export type GridRow = Record<string, unknown> & { __id: string };
 
@@ -44,6 +45,7 @@ export function DataGrid({
   footer?: ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState("");
   const [editing, setEditing] = useState<{ row: string; col: string } | null>(null);
   const defs: LegacyColumnDef<GridRow>[] = columns.map((c) => ({
@@ -112,11 +114,13 @@ export function DataGrid({
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="筛选…"
+            placeholder={t("common.filter")}
             className="h-7 pl-7 text-[13px]"
           />
         </div>
-        <span className="text-xs text-fg-subtle tabular-nums">{tableRows.length} 行</span>
+        <span className="shrink-0 whitespace-nowrap text-xs text-fg-subtle tabular-nums">
+          {t("common.rows", { count: tableRows.length })}
+        </span>
         <span className="flex-1" />
         {toolbar}
       </div>

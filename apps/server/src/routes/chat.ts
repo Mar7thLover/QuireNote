@@ -6,7 +6,7 @@ import type { AppContext } from "../context";
 import { errorMessageOf } from "../errors";
 import {
   assertLeafInConversation,
-  DEFAULT_CONVERSATION_TITLE,
+  defaultConversationTitle,
   deleteConversation,
   prepareSend,
   runChat,
@@ -26,14 +26,14 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
   const { store } = ctx;
 
   api.get("/notebooks/:nb/conversations", async (c) => {
-    must(await store.notebooks.get(c.req.param("nb")), "Notebook");
+    must(await store.notebooks.get(c.req.param("nb")), "notebook");
     const list = await store.conversations.list({ notebookId: c.req.param("nb") });
     return c.json(list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
   });
 
   api.post("/notebooks/:nb/conversations", async (c) => {
     const nb = c.req.param("nb");
-    must(await store.notebooks.get(nb), "Notebook");
+    must(await store.notebooks.get(nb), "notebook");
     const input = await readJson(
       c,
       z.object({
@@ -43,13 +43,13 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
       }),
     );
     if (input.model) await validateModelChoice(ctx, "chat", input.model.providerId, input.model.model);
-    if (input.presetId) must(await getPreset(ctx, input.presetId), "预设");
+    if (input.presetId) must(await getPreset(ctx, input.presetId), "preset");
     const ts = nowIso();
     const conv: Conversation = {
       id: newId("conv"),
       ownerId: store.ownerId,
       notebookId: nb,
-      title: input.title?.trim() || DEFAULT_CONVERSATION_TITLE,
+      title: input.title?.trim() || defaultConversationTitle(),
       activeLeafId: null,
       model: input.model ?? null,
       presetId: input.presetId ?? null,
@@ -61,12 +61,12 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.get("/conversations/:id", async (c) =>
-    c.json(must(await store.conversations.get(c.req.param("id")), "对话")),
+    c.json(must(await store.conversations.get(c.req.param("id")), "conversation")),
   );
 
   api.patch("/conversations/:id", async (c) => {
     const id = c.req.param("id");
-    must(await store.conversations.get(id), "对话");
+    must(await store.conversations.get(id), "conversation");
     const patch = await readJson(
       c,
       z.object({
@@ -78,21 +78,21 @@ export function chatRoutes(api: Hono, ctx: AppContext): void {
         presetId: z.string().nullable().optional(),
       }),
     );
-    if (patch.presetId) must(await getPreset(ctx, patch.presetId), "预设");
+    if (patch.presetId) must(await getPreset(ctx, patch.presetId), "preset");
     if (patch.model) await validateModelChoice(ctx, "chat", patch.model.providerId, patch.model.model);
     if (patch.activeLeafId !== undefined)
       assertLeafInConversation(await store.messages.list({ refId: id }), patch.activeLeafId);
-    return c.json(must(await store.conversations.update(id, patch), "对话"));
+    return c.json(must(await store.conversations.update(id, patch), "conversation"));
   });
 
   api.delete("/conversations/:id", async (c) => {
-    must(await store.conversations.get(c.req.param("id")), "对话");
+    must(await store.conversations.get(c.req.param("id")), "conversation");
     await deleteConversation(ctx, c.req.param("id"));
     return c.json({ ok: true });
   });
 
   api.get("/conversations/:id/messages", async (c) => {
-    must(await store.conversations.get(c.req.param("id")), "对话");
+    must(await store.conversations.get(c.req.param("id")), "conversation");
     return c.json(await store.messages.list({ refId: c.req.param("id") }));
   });
 

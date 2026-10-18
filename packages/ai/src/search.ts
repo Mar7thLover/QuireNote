@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { requestJson } from "./http";
+import { aiText } from "./messages";
 import { anthropicTools, baseUrlOf, errorMessage, languageModel, requireKey } from "./sdk";
 import { AiError, type ModelRef, type SearchResult, UnsupportedError } from "./types";
 import { reportUsage } from "./usage";
@@ -77,7 +78,7 @@ export async function webSearch(
     case "anthropic":
       return claudeSearch(ref, query, max, opts.withContent ?? false);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持联网搜索`);
+      throw new UnsupportedError(aiText().noSearch(p.kind));
   }
 }
 
@@ -128,7 +129,7 @@ async function claudeSearch(
   try {
     result = await run();
   } catch (err) {
-    throw new AiError(`Claude 联网搜索失败：${errorMessage(err)}`);
+    throw new AiError(aiText().searchFailed(errorMessage(err)));
   }
 
   // 真实搜到的页面（工具结果），用来校验和兜底。

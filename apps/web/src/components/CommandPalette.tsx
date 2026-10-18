@@ -82,7 +82,7 @@ export function CommandPalette() {
     mutationFn: (instruction: string) => api.ai.command(notebookId!, instruction),
     onSuccess: (proposal) => {
       close();
-      if (!proposal.ops.length) toast(proposal.summary || "AI 没有提出改动");
+      if (!proposal.ops.length) toast(proposal.summary || t("agent.noChanges"));
       else useUi.getState().set({ proposal: { notebookId: notebookId!, proposal } });
     },
   });
@@ -229,7 +229,7 @@ export function CommandPalette() {
                 icon={<Languages />}
                 onSelect={run(() => setLang(currentLang() === "zh" ? "en" : "zh"))}
               >
-                {currentLang() === "zh" ? "Switch to English" : "切换到中文"}
+                {t("command.switchLang")}
               </CommandItem>
               <CommandItem
                 value={`shortcuts keyboard ${t("command.shortcuts")}`}

@@ -3,15 +3,15 @@ import { useTranslation } from "@/i18n";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { useUi } from "@/stores/ui";
 
-const EXTRA: [string, string][] = [
-  ["Mod+Enter", "发送消息 / 确认"],
-  ["Mod+B", "加粗"],
-  ["Mod+I", "斜体"],
-  ["/", "斜杠命令（编辑器内）"],
-  ["Mod+J", "对选中文字调用 AI（编辑器内）"],
-  ["Esc", "关闭弹层"],
-  ["Shift+右键", "浏览器原生菜单"],
-];
+const EXTRA = [
+  ["Mod+Enter", "send"],
+  ["Mod+B", "bold"],
+  ["Mod+I", "italic"],
+  ["/", "slash"],
+  ["Mod+J", "aiSelection"],
+  ["Esc", "closeOverlay"],
+  ["Shift+RightClick", "nativeMenu"],
+] as const;
 
 export function ShortcutsDialog() {
   const { t } = useTranslation();
@@ -26,7 +26,11 @@ export function ShortcutsDialog() {
           ))}
           <div className="my-2 h-px bg-border" />
           {EXTRA.map(([keys, label]) => (
-            <Row key={keys} label={label} keys={keys} />
+            <Row
+              key={keys}
+              label={t(`shortcuts.${label}`)}
+              keys={keys.replace("RightClick", t("menu.rightClick"))}
+            />
           ))}
         </div>
       </DialogContent>

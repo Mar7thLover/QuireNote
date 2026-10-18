@@ -29,6 +29,7 @@ import {
   TableDraft,
   TimelineDraft,
 } from "./drafts";
+import { aiText } from "./messages";
 import { isChinese, truncate } from "./text";
 import type { ModelRef, Passage } from "./types";
 
@@ -305,7 +306,7 @@ function normalizeMindmap(d: MindmapDraft) {
     for (const n of nodes) if (n.parentId === null) n.parentId = rootId;
     nodes.unshift({
       id: rootId,
-      label: roots[0]?.label ?? "主题",
+      label: roots[0]?.label ?? aiText().mindmapRoot,
       note: "",
       parentId: null,
       collapsed: false,
@@ -505,7 +506,7 @@ export function agentOpFromDraft(d: AgentOpDraft): AgentOp | null {
   const candidate: Record<string, unknown> = { op: d.op };
   switch (d.op) {
     case "create_note":
-      Object.assign(candidate, { title: d.title ?? "新笔记", markdown: d.markdown ?? "" });
+      Object.assign(candidate, { title: d.title ?? aiText().newNote, markdown: d.markdown ?? "" });
       break;
     case "update_note":
       Object.assign(candidate, {
@@ -520,7 +521,7 @@ export function agentOpFromDraft(d: AgentOpDraft): AgentOp | null {
     case "create_table":
       if (!d.table) return null;
       Object.assign(candidate, {
-        title: d.title ?? "表格",
+        title: d.title ?? aiText().table,
         table: tableFromDraft({
           columns: d.table.columns.map((name) => ({ name, type: "text" })),
           rows: d.table.rows,

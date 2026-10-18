@@ -14,6 +14,7 @@ import { type NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tip
 import { Code2, ExternalLink, ImageOff } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { autoHeight, useCardThemeVars } from "@/features/render/RenderedSegments";
+import i18n, { useTranslation } from "@/i18n";
 import { api, apiBase } from "@/lib/api";
 import { videoEmbedUrl } from "@/lib/video";
 
@@ -84,6 +85,7 @@ export const Media = Node.create({
 });
 
 function MediaView({ node, selected, updateAttributes, editor }: NodeViewProps) {
+  const { t } = useTranslation();
   const { src, alt } = node.attrs as { src: string; alt: string };
   const url = resolveSrc(src);
   const kind = mediaKindOf(src) ?? "image";
@@ -119,7 +121,7 @@ function MediaView({ node, selected, updateAttributes, editor }: NodeViewProps) 
       {editor.isEditable && selected ? (
         <input
           defaultValue={alt}
-          placeholder="说明（可选）"
+          placeholder={t("editor.captionPlaceholder")}
           onBlur={(e) => e.target.value !== alt && updateAttributes({ alt: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           className="mt-1.5 w-full bg-transparent text-center text-[13px] text-fg-subtle outline-none"
@@ -169,12 +171,14 @@ export const HtmlBlock = Node.create({
   },
 });
 
-export const HTML_SAMPLE = `<div style="padding:16px 20px;border:1px solid var(--card-border);border-radius:var(--card-radius);background:var(--card-bg)">
-  <div style="font-family:var(--font-serif);font-size:18px">标题</div>
-  <p style="color:var(--card-muted);margin:6px 0 0">在这里写 HTML。可以用 var(--card-accent) 等主题变量取色，脚本不会执行。</p>
+export const htmlSample =
+  () => `<div style="padding:16px 20px;border:1px solid var(--card-border);border-radius:var(--card-radius);background:var(--card-bg)">
+  <div style="font-family:var(--font-serif);font-size:18px">${i18n.t("editor.htmlSampleTitle")}</div>
+  <p style="color:var(--card-muted);margin:6px 0 0">${i18n.t("editor.htmlSampleBody")}</p>
 </div>`;
 
 function HtmlBlockView({ node, updateAttributes, selected, editor }: NodeViewProps) {
+  const { t } = useTranslation();
   const code = node.attrs.code as string;
   const [editing, setEditing] = useState<boolean>(!!node.attrs.editing || !code.trim());
   const themeVars = useCardThemeVars();
@@ -190,11 +194,11 @@ function HtmlBlockView({ node, updateAttributes, selected, editor }: NodeViewPro
       <NodeViewWrapper className="my-3" data-drag-handle>
         <div className="mb-1 flex items-center gap-1.5 text-[12px] text-fg-subtle">
           <Code2 className="size-3.5" />
-          HTML（Ctrl + Enter 完成）
+          {t("editor.htmlEditing")}
         </div>
         <textarea
           autoFocus
-          defaultValue={code || HTML_SAMPLE}
+          defaultValue={code || htmlSample()}
           spellCheck={false}
           className="w-full rounded-lg border border-border-strong bg-surface-sunken p-3 font-mono text-[12.5px] leading-relaxed outline-none [field-sizing:content] min-h-24"
           onBlur={(e) => {
@@ -228,7 +232,7 @@ function HtmlBlockView({ node, updateAttributes, selected, editor }: NodeViewPro
           onClick={() => setEditing(true)}
           className="absolute top-2 right-2 rounded-md border border-border bg-surface-raised px-2 py-1 text-[12px] text-fg-subtle opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-fg"
         >
-          编辑 HTML
+          {t("editor.editHtml")}
         </button>
       ) : null}
     </NodeViewWrapper>

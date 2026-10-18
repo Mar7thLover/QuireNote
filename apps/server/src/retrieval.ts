@@ -4,6 +4,7 @@
  */
 import { embeddingKey, embedTexts, expandQuery, type ModelRef, type Passage } from "@quirenote/ai";
 import type { Chunk } from "@quirenote/core";
+import { msg } from "./messages";
 import type { Store } from "./store/types";
 
 export interface RankedList {
@@ -102,7 +103,7 @@ export async function retrieve(
         vectorIds = hits.map((h) => h.chunkId);
       }
     } catch (err) {
-      warning = `向量检索失败，已退回关键词检索：${err instanceof Error ? err.message : String(err)}`;
+      warning = msg().vectorFallback(err instanceof Error ? err.message : String(err));
     }
   }
   const keywordIds = (await store.chunks.keywordSearch(notebookId, query, candidates * 2)).map(
@@ -123,7 +124,7 @@ export async function retrieve(
         ),
       );
     } catch (err) {
-      warning = `扩展检索词失败，已只用原始提问检索：${err instanceof Error ? err.message : String(err)}`;
+      warning = msg().expandFallback(err instanceof Error ? err.message : String(err));
     }
   }
 

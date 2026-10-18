@@ -5,6 +5,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AppContext } from "./context";
 import { toApiError } from "./errors";
+import { currentLang, parseLang, withLang } from "./lang";
+import { msg } from "./messages";
 import { aiRoutes } from "./routes/ai";
 import { chatRoutes } from "./routes/chat";
 import { contentRoutes } from "./routes/content";
@@ -44,6 +46,14 @@ export function createApp(
     }),
   );
 
+  // 界面语言：?lang= 优先（下载链接带不了请求头），其次 Accept-Language（前端按界面语言发送）。
+  app.use("*", (c, next) =>
+    withLang(
+      parseLang(c.req.query("lang")) ?? parseLang(c.req.header("accept-language")) ?? currentLang(),
+      next,
+    ),
+  );
+
   app.onError((err, c) => {
     const e = toApiError(err);
     if (e.status >= 500) log(`[quirenote] ${c.req.method} ${c.req.path} → ${e.status} ${e.message}`);
@@ -51,7 +61,7 @@ export function createApp(
   });
 
   app.notFound((c) =>
-    c.json({ error: { code: "not_found", message: `接口不存在：${c.req.method} ${c.req.path}` } }, 404),
+    c.json({ error: { code: "not_found", message: msg().routeNotFound(c.req.method, c.req.path) } }, 404),
   );
 
   const api = new Hono();

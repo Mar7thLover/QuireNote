@@ -3,6 +3,7 @@ import { type ModelRef, type ProviderRuntime, supportsCapability } from "@quiren
 import type { Capability, ModelAssignment, ModelChoice } from "@quirenote/core";
 import type { KeyCipher } from "./crypto";
 import { ApiError } from "./errors";
+import { msg, type ServerMessages } from "./messages";
 import type { ProviderRecord, Store } from "./store/types";
 
 /** 早期版本内置的离线 provider id；遗留的分配一律视为未配置。 */
@@ -14,15 +15,8 @@ export function localDay(d = new Date()): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export const CAP_LABEL: Record<Capability, string> = {
-  chat: "对话",
-  embedding: "Embedding",
-  search: "联网搜索",
-  tts: "语音合成（TTS）",
-  stt: "语音转写（STT）",
-  image: "图像生成",
-  video: "视频生成",
-};
+/** 能力名（按界面语言）。 */
+export const capLabel = (cap: Capability): string => msg().cap[cap];
 
 export class ModelResolver {
   constructor(
@@ -32,25 +26,21 @@ export class ModelResolver {
     private readonly fetchImpl?: typeof fetch,
   ) {}
 
-  private decrypt(p: ProviderRecord, enc: string, what: string): string {
+  private decrypt(p: ProviderRecord, enc: string, what: "key" | "headers"): string {
     try {
       return this.cipher.decrypt(enc);
     } catch {
-      throw new ApiError(
-        500,
-        "key_decrypt_failed",
-        `provider「${p.name}」的${what}无法解密（QUIRENOTE_SECRET 或 secret.key 可能已变更），请重新填写`,
-      );
+      throw new ApiError(500, "key_decrypt_failed", msg().keyDecryptFailed(p.name, what));
     }
   }
 
   async runtime(providerId: string): Promise<ProviderRuntime> {
     const p = await this.store.providers.get(providerId);
-    if (!p) throw new ApiError(400, "provider_not_found", `provider ${providerId} 不存在`);
-    if (!p.enabled) throw new ApiError(400, "provider_disabled", `provider「${p.name}」已停用`);
-    const apiKey = p.keyEnc ? this.decrypt(p, p.keyEnc, " Key ") : null;
+    if (!p) throw new ApiError(400, "provider_not_found", msg().providerNotFound(providerId));
+    if (!p.enabled) throw new ApiError(400, "provider_disabled", msg().providerDisabled(p.name));
+    const apiKey = p.keyEnc ? this.decrypt(p, p.keyEnc, "key") : null;
     const headers = p.headersEnc
-      ? (JSON.parse(this.decrypt(p, p.headersEnc, "自定义请求头")) as Record<string, string>)
+      ? (JSON.parse(this.decrypt(p, p.headersEnc, "headers")) as Record<string, string>)
       : null;
     return {
       id: p.id,
@@ -77,13 +67,14 @@ export class ModelResolver {
     return { provider: await this.runtime(a.providerId), model: a.model };
   }
 
-  async require(cap: Capability, purpose?: string): Promise<ModelRef> {
+  async require(cap: Capability, purpose?: keyof ServerMessages["purpose"]): Promise<ModelRef> {
     const ref = await this.resolve(cap);
     if (!ref) {
+      const m = msg();
       throw new ApiError(
         400,
         "model_not_configured",
-        `${purpose ? `${purpose}需要` : "需要"}${CAP_LABEL[cap]}模型：请在「设置 → 模型」中添加提供方，并为「${CAP_LABEL[cap]}」分配模型`,
+        m.modelRequired(m.cap[cap], purpose && m.purpose[purpose]),
       );
     }
     return ref;

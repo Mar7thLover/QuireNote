@@ -5,6 +5,7 @@ import type { AppContext } from "../context";
 import { ApiError, badRequest } from "../errors";
 import { fetchUrl } from "../ingest/parsers";
 import { processSource, sourceFileDir } from "../ingest/pipeline";
+import { msg } from "../messages";
 import { createArtifact } from "./studio";
 
 export async function searchModel(ctx: AppContext, providerId?: string): Promise<ModelRef> {
@@ -17,7 +18,7 @@ export async function searchModel(ctx: AppContext, providerId?: string): Promise
       model: model || defaultModel(rt.kind, "search") || "web",
     };
   }
-  return ctx.models.require("search", "联网搜索");
+  return ctx.models.require("search", "webSearch");
 }
 
 export async function searchWeb(
@@ -25,7 +26,7 @@ export async function searchWeb(
   query: string,
   providerId?: string,
 ): Promise<SearchResult[]> {
-  if (!query?.trim()) throw badRequest("query 不能为空");
+  if (!query?.trim()) throw badRequest(msg().emptyField("query"));
   return webSearch(await searchModel(ctx, providerId), query.trim(), { maxResults: 8 });
 }
 
@@ -42,7 +43,7 @@ export async function addSearchSource(
     ownerId: ctx.store.ownerId,
     notebookId,
     kind: "search",
-    title: input.title.slice(0, 200) || input.url || "搜索结果",
+    title: input.title.slice(0, 200) || input.url || msg().searchResultTitle,
     status: "pending",
     error: null,
     selected: true,
@@ -74,7 +75,7 @@ export async function runResearchJob(
   const chat: ModelRef = await ctx.models.chat();
   const seen = new Map<string, SearchResult>();
   for (let r = 1; r <= rounds; r++) {
-    await progress(((r - 1) / rounds) * 0.6, `第 ${r}/${rounds} 轮检索`);
+    await progress(((r - 1) / rounds) * 0.6, msg().job.researchRound(r, rounds));
     const queries = await researchQueries(
       chat,
       payload.question,
@@ -86,13 +87,13 @@ export async function runResearchJob(
       for (const res of results) if (!seen.has(res.url)) seen.set(res.url, res);
     }
   }
-  if (!seen.size) throw new ApiError(400, "no_results", "没有搜索到结果，请换个问题");
+  if (!seen.size) throw new ApiError(400, "no_results", msg().noResults);
   const picked = [...seen.values()].slice(0, rounds * 5);
   const sourceIds: string[] = [];
   let i = 0;
   for (const res of picked) {
     i++;
-    await progress(0.6 + 0.3 * (i / picked.length), `导入 ${i}/${picked.length}`);
+    await progress(0.6 + 0.3 * (i / picked.length), msg().job.researchImport(i, picked.length));
     let text = res.content?.trim() ?? "";
     let title = res.title;
     if (text.length < 400) {
@@ -119,13 +120,13 @@ export async function runResearchJob(
       /* 单个结果失败不影响整体 */
     }
   }
-  if (!sourceIds.length) throw new ApiError(400, "no_results", "搜索结果都无法导入");
-  await progress(0.92, "生成研究报告");
+  if (!sourceIds.length) throw new ApiError(400, "no_results", msg().importFailedAll);
+  await progress(0.92, msg().job.researchReport);
   const report = await createArtifact(ctx, payload.notebookId, {
     kind: "report",
     sourceIds,
     instructions: `围绕研究问题撰写报告：${payload.question}`,
-    title: `研究报告：${payload.question}`.slice(0, 120),
+    title: msg().researchReportTitle(payload.question).slice(0, 120),
   });
-  return `导入 ${sourceIds.length} 份资料，报告 ${report.id} 生成中`;
+  return msg().job.researchDone(sourceIds.length, report.id);
 }

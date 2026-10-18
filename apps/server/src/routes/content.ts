@@ -11,6 +11,7 @@ import type { Hono } from "hono";
 import { z } from "zod";
 import type { AppContext } from "../context";
 import { ApiError, badRequest } from "../errors";
+import { msg } from "../messages";
 import { cardImporters, requirePlugin } from "../plugins";
 import { readAsset, saveAsset } from "../services/assets";
 import {
@@ -54,7 +55,7 @@ async function parseUpload(ctx: AppContext, c: Parameters<typeof readUpload>[0])
 
 export function contentRoutes(api: Hono, ctx: AppContext): void {
   const { store } = ctx;
-  const notebook = async (id: string) => must(await store.notebooks.get(id), "Notebook");
+  const notebook = async (id: string) => must(await store.notebooks.get(id), "notebook");
 
   // ───── 资源 ─────
   api.post("/notebooks/:nb/assets", async (c) => {
@@ -70,14 +71,14 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.get("/assets/:id", async (c) => {
-    const hit = must(await readAsset(ctx, c.req.param("id")), "资源");
+    const hit = must(await readAsset(ctx, c.req.param("id")), "asset");
     return fileResponse(c, hit.data, hit.asset.mime);
   });
 
   // ───── 链接预览 ─────
   api.get("/link-preview", async (c) => {
     const url = c.req.query("url");
-    if (!url) throw badRequest("缺少 url");
+    if (!url) throw badRequest(msg().missingUrl);
     return c.json(await linkPreview(ctx, url));
   });
 
@@ -107,7 +108,7 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
   );
 
   api.delete("/lorebook/entries/:id", async (c) => {
-    must(await store.lore.get(c.req.param("id")), "知识书条目");
+    must(await store.lore.get(c.req.param("id")), "loreEntry");
     await store.lore.delete(c.req.param("id"));
     return c.json({ ok: true });
   });
@@ -142,7 +143,7 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
     const json = JSON.stringify(st ? lorebookToWorldInfo(book) : book, null, 2);
     return download(
       new TextEncoder().encode(json),
-      safeFilename(`${nb.title} 知识书${st ? "（酒馆世界书）" : ""}`, ".json"),
+      safeFilename(msg().loreExportName(nb.title, st), ".json"),
       "application/json",
     );
   });
@@ -188,7 +189,7 @@ export function contentRoutes(api: Hono, ctx: AppContext): void {
     // 角色卡也可以导入为问答风格（对话预设），在任何 Notebook 的对话里切换使用
     if (form.as === "preset") {
       if (parsed.importer !== ST || !isCharacterFormat(parsed.format))
-        throw badRequest("只有角色卡可以导入为问答风格", "not_character");
+        throw badRequest(msg().notCharacter, "not_character");
       const raw = parsed.card.data.extensions.sillytavern as Record<string, unknown>;
       const preset = await createPreset(ctx, characterToPreset(raw, String(form.lang ?? "zh")));
       return c.json({ preset, warnings: parsed.warnings }, 201);

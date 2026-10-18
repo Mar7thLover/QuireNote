@@ -8,6 +8,7 @@ import { strToU8, type Zippable, zipSync } from "fflate";
 import type { AppContext } from "../context";
 import { notFound } from "../errors";
 import { safeName } from "../files";
+import { msg } from "../messages";
 import { notebookContextFor } from "./lorebook";
 
 /** 前文提要最多带几章。 */
@@ -74,7 +75,7 @@ export async function writingContext(
   recentText: string,
 ): Promise<{ notebook: NotebookContext; background: string; chapter: ChapterRef | null }> {
   const nb = await ctx.store.notebooks.get(notebookId);
-  if (!nb) throw notFound("Notebook");
+  if (!nb) throw notFound("notebook");
   const notebook = await notebookContextFor(ctx, notebookId, recentText.slice(-4000));
   const chapters = await manuscriptChapters(ctx, nb);
   const at = noteId ? chapters.findIndex((c) => c.note.id === noteId) : -1;
@@ -99,7 +100,7 @@ export async function writingContext(
 /** 章节摘要（2–3 句），存在笔记属性里，笔记改动后重新生成。 */
 export async function summarizeChapter(ctx: AppContext, noteId: string): Promise<string> {
   const note = await ctx.store.notes.get(noteId);
-  if (!note) throw notFound("笔记");
+  if (!note) throw notFound("note");
   const cached = summaryOf(note);
   if (cached) return cached;
   const text = note.markdown.trim();
@@ -230,7 +231,7 @@ export interface ManuscriptBook {
 
 export async function loadBook(ctx: AppContext, notebookId: string): Promise<ManuscriptBook> {
   const nb = await ctx.store.notebooks.get(notebookId);
-  if (!nb) throw notFound("Notebook");
+  if (!nb) throw notFound("notebook");
   const notes = new Map((await ctx.store.notes.list({ notebookId })).map((n) => [n.id, n]));
   return {
     title: nb.title,
@@ -240,7 +241,7 @@ export async function loadBook(ctx: AppContext, notebookId: string): Promise<Man
       chapters: v.chapters
         .map((c) => notes.get(c.noteId))
         .filter((n): n is Note => !!n)
-        .map((n) => ({ title: n.title || "无标题", markdown: n.markdown })),
+        .map((n) => ({ title: n.title || msg().noTitle, markdown: n.markdown })),
     })),
   };
 }

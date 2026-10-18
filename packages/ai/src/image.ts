@@ -1,5 +1,6 @@
 import { experimental_generateVideo, generateImage, generateText } from "ai";
 import { request, requestBytes, requestJson } from "./http";
+import { aiText } from "./messages";
 import { baseUrlOf, errorMessage, imageModel, languageModel, requireKey, videoModel } from "./sdk";
 import { AiError, type BinaryResult, type ModelRef, type ProviderRuntime, UnsupportedError } from "./types";
 import { reportUsage } from "./usage";
@@ -59,14 +60,14 @@ async function replicateRun(
   const deadline = Date.now() + (opts.timeoutMs ?? 300_000);
   while (pred.status !== "succeeded") {
     if (pred.status === "failed" || pred.status === "canceled") {
-      throw new AiError(`Replicate 生成失败：${pred.error ?? pred.status}`);
+      throw new AiError(aiText().replicateFailed(String(pred.error ?? pred.status)));
     }
-    if (!pred.urls?.get || Date.now() > deadline) throw new AiError("Replicate 生成超时");
+    if (!pred.urls?.get || Date.now() > deadline) throw new AiError(aiText().replicateTimeout);
     await sleep(opts.pollMs ?? 1500);
     pred = await requestJson<ReplicatePrediction>(p, pred.urls.get, { headers: auth });
   }
   const out = Array.isArray(pred.output) ? pred.output[0] : pred.output;
-  if (typeof out !== "string") throw new AiError("Replicate 返回中没有输出文件地址");
+  if (typeof out !== "string") throw new AiError(aiText().replicateNoOutput);
   return out;
 }
 
@@ -120,7 +121,7 @@ async function comfyRun(ref: ModelRef, prompt: string, opts: MediaOptions): Prom
       const q = new URLSearchParams({ filename: img.filename, subfolder: img.subfolder, type: img.type });
       return download(p, `${base}/view?${q}`);
     }
-    if (Date.now() > deadline) throw new AiError("ComfyUI 生成超时");
+    if (Date.now() > deadline) throw new AiError(aiText().comfyTimeout);
     await sleep(opts.pollMs ?? 1000);
   }
 }
@@ -145,13 +146,13 @@ export async function generateImageFile(
         });
         return { data: res.image.uint8Array, mediaType: res.image.mediaType };
       } catch (err) {
-        throw new AiError(`图像生成失败：${errorMessage(err)}`);
+        throw new AiError(aiText().imageFailed(errorMessage(err)));
       }
     }
     case "fal": {
       const out = await falRun(ref, { prompt, image_size: "landscape_16_9", num_images: 1 });
       const url = (out.images as { url?: string }[] | undefined)?.[0]?.url;
-      if (!url) throw new AiError("fal 返回中没有图片地址");
+      if (!url) throw new AiError(aiText().falNoImage);
       return download(p, url);
     }
     case "replicate":
@@ -162,7 +163,7 @@ export async function generateImageFile(
     case "anthropic-compatible":
       return claudeSvg(ref, prompt);
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持图像生成`);
+      throw new UnsupportedError(aiText().noImage(p.kind));
   }
 }
 
@@ -205,10 +206,10 @@ async function claudeSvg(ref: ModelRef, prompt: string): Promise<BinaryResult> {
     reportUsage(ref, "image", result.usage);
     text = result.text;
   } catch (err) {
-    throw new AiError(`插图生成失败：${errorMessage(err)}`);
+    throw new AiError(aiText().illustrationFailed(errorMessage(err)));
   }
   const svg = sanitizeSvg(text);
-  if (!svg) throw new AiError("插图生成失败：模型没有返回 SVG");
+  if (!svg) throw new AiError(aiText().illustrationNoSvg);
   return { data: new TextEncoder().encode(svg), mediaType: "image/svg+xml" };
 }
 
@@ -229,19 +230,19 @@ export async function generateVideoFile(
         });
         return { data: res.video.uint8Array, mediaType: res.video.mediaType };
       } catch (err) {
-        throw new AiError(`视频生成失败：${errorMessage(err)}`);
+        throw new AiError(aiText().videoFailed(errorMessage(err)));
       }
     }
     case "fal": {
       const out = await falRun(ref, { prompt });
       const url = (out.video as { url?: string } | undefined)?.url;
-      if (!url) throw new AiError("fal 返回中没有视频地址");
+      if (!url) throw new AiError(aiText().falNoVideo);
       return download(p, url);
     }
     case "replicate":
       return download(p, await replicateRun(ref, { prompt }, opts));
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持视频生成`);
+      throw new UnsupportedError(aiText().noVideo(p.kind));
   }
 }
 

@@ -7,6 +7,7 @@ import { analyzePattern, builtinTemplates } from "@quirenote/render";
 import { Badge, Button, cn, Switch, toast } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Globe, Trash2 } from "lucide-react";
+import { patternIssuesText } from "@/features/render/labels";
 import { useRenderStore } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
@@ -105,10 +106,7 @@ export function NotebookRules() {
                     {!a.valid ? (
                       <Badge tone="danger">{a.error}</Badge>
                     ) : a.risk !== "none" ? (
-                      <Badge
-                        tone={a.risk === "danger" ? "danger" : "warning"}
-                        title={a.issues.map((x) => x.message).join("\n")}
-                      >
+                      <Badge tone={a.risk === "danger" ? "danger" : "warning"} title={patternIssuesText(a)}>
                         <AlertTriangle />
                         {t("render.redosWarning")}
                       </Badge>

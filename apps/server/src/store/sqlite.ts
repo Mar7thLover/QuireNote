@@ -7,6 +7,7 @@ import { dirname } from "node:path";
 import type { Capability, Chunk, ModelAssignment } from "@quirenote/core";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
+import { msg } from "../messages";
 import type {
   AssignmentRepo,
   ChunkRepo,
@@ -887,7 +888,7 @@ export class SqliteStore implements Store {
     try {
       probe.prepare("SELECT COUNT(*) FROM notebooks").get();
     } catch {
-      throw new Error("快照不是有效的 QuireNote 数据库");
+      throw new Error(msg().snapshotInvalid);
     } finally {
       probe.close();
     }

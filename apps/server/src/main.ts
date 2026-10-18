@@ -1,7 +1,10 @@
 import { serve } from "@hono/node-server";
 import { boot } from "./boot";
 import { loadConfig, VERSION } from "./config";
+import { bootLang, setDefaultLang } from "./lang";
 
+// 没有请求时（启动时创建的 provider 名称等）用的语言：QUIRENOTE_LANG，其次系统区域设置。
+setDefaultLang(bootLang(process.env));
 const config = loadConfig();
 const log = (msg: string) => console.log(msg);
 

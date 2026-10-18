@@ -51,14 +51,14 @@ export function FlashcardsView({ artifact, data, onChange, notebookId }: Artifac
             onClick={() => setMode("study")}
           >
             <GalleryHorizontal />
-            学习
+            {t("studio.study")}
           </Button>
           <Button size="xs" variant={mode === "edit" ? "secondary" : "ghost"} onClick={() => setMode("edit")}>
             <LayoutGrid />
             {t("common.edit")}
           </Button>
         </div>
-        <span className="text-xs text-fg-subtle">{cards.length} 张</span>
+        <span className="text-xs text-fg-subtle">{t("studio.cardCount", { count: cards.length })}</span>
         <span className="flex-1" />
         <Button size="sm" variant="soft" onClick={() => toReview.mutate()} loading={toReview.isPending}>
           <Repeat />
@@ -79,12 +79,14 @@ export function FlashcardsView({ artifact, data, onChange, notebookId }: Artifac
               style={{ transform: flipped ? "rotateY(180deg)" : "none" }}
             >
               <Face className="bg-surface">
-                <span className="mb-3 text-[11px] font-semibold tracking-widest text-fg-subtle">问题</span>
+                <span className="mb-3 text-[11px] font-semibold tracking-widest text-fg-subtle">
+                  {t("studio.question")}
+                </span>
                 <p className="text-balance text-[20px] leading-snug font-semibold">{card.front}</p>
               </Face>
               <Face className="bg-surface-sunken [transform:rotateY(180deg)]">
                 <span className="mb-3 text-[11px] font-semibold tracking-widest text-accent-soft-fg">
-                  答案
+                  {t("studio.answer")}
                 </span>
                 <p className="text-balance font-serif text-[17px] leading-relaxed">{card.back}</p>
               </Face>
@@ -169,7 +171,15 @@ export function FlashcardsView({ artifact, data, onChange, notebookId }: Artifac
             onClick={() =>
               onChange({
                 kind: "flashcards",
-                cards: [...cards, { id: newId("fc"), front: "新问题", back: "答案", elementId: null }],
+                cards: [
+                  ...cards,
+                  {
+                    id: newId("fc"),
+                    front: t("studio.newQuestion"),
+                    back: t("studio.answer"),
+                    elementId: null,
+                  },
+                ],
               })
             }
             className="grid min-h-36 place-items-center rounded-xl border border-dashed border-border-strong text-fg-subtle hover:border-accent hover:text-accent"

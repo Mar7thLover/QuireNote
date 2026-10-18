@@ -479,9 +479,15 @@ function WritingCard({
         <Skeleton className="h-8 w-28" />
       ) : (
         <>
-          <span className={big}>{t("home.words", { words: formatNumber(writing.words) })}</span>
+          <span className={big}>
+            {t("home.words", { words: formatNumber(writing.words), count: writing.words })}
+          </span>
           <span className={cn(sub, "mt-auto")}>
-            {t("home.writingHint", { notes: writing.notes, edited: writing.editedThisWeek })}
+            {t("home.writingHint", {
+              notes: writing.notes,
+              edited: writing.editedThisWeek,
+              count: writing.notes,
+            })}
           </span>
         </>
       )}
@@ -584,7 +590,9 @@ function ReviewCard({ notebooks }: { notebooks: Notebook[] }) {
           </Button>
         ) : null}
       </div>
-      <span className={cn(sub, "mt-auto")}>{total ? t("home.dueHint", { total }) : t("home.dueNone")}</span>
+      <span className={cn(sub, "mt-auto")}>
+        {total ? t("home.dueHint", { total, count: total }) : t("home.dueNone")}
+      </span>
     </Card>
   );
 }
@@ -663,7 +671,7 @@ function RecentNoteCard({ note: n, tint }: { note: RecentNote; tint: Tint }) {
             {n.notebookTitle}
           </span>
           <span className="rounded-md bg-surface-sunken px-2 py-0.5 text-[12.5px] text-fg-muted tabular-nums">
-            {t("home.words", { words: formatNumber(n.words) })}
+            {t("home.words", { words: formatNumber(n.words), count: n.words })}
           </span>
         </div>
         <span className="mt-auto pt-1 text-[12.5px] text-fg-subtle">

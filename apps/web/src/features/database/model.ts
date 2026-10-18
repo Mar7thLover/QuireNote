@@ -30,11 +30,12 @@ export interface FieldDef {
   options?: { value: string; color: string }[];
 }
 
-const BUILTIN: Record<EntityType, FieldDef[]> = {
+type BuiltinField = Omit<FieldDef, "name">;
+
+const BUILTIN: Record<EntityType, BuiltinField[]> = {
   note: [
     {
       id: "kind",
-      name: "类型",
       type: "select",
       builtin: true,
       options: [
@@ -42,56 +43,69 @@ const BUILTIN: Record<EntityType, FieldDef[]> = {
         { value: "card", color: "violet" },
       ],
     },
-    { id: "tags", name: "标签", type: "multi_select", builtin: true },
-    { id: "origin", name: "来源", type: "select", builtin: true },
+    { id: "tags", type: "multi_select", builtin: true },
+    { id: "origin", type: "select", builtin: true },
   ],
   source: [
-    { id: "kind", name: "类型", type: "select", builtin: true },
-    { id: "status", name: "状态", type: "select", builtin: true },
-    { id: "charCount", name: "字数", type: "number", builtin: true },
-    { id: "url", name: "链接", type: "url", builtin: true },
+    { id: "kind", type: "select", builtin: true },
+    { id: "status", type: "select", builtin: true },
+    { id: "charCount", type: "number", builtin: true },
+    { id: "url", type: "url", builtin: true },
   ],
   artifact: [
-    { id: "kind", name: "类型", type: "select", builtin: true },
-    { id: "status", name: "状态", type: "select", builtin: true },
+    { id: "kind", type: "select", builtin: true },
+    { id: "status", type: "select", builtin: true },
   ],
   element: [
-    { id: "type", name: "类型", type: "select", builtin: true },
-    { id: "definition", name: "定义", type: "text", builtin: true },
-    { id: "mastery", name: "掌握度", type: "number", builtin: true },
-    { id: "refs", name: "出处数", type: "number", builtin: true },
+    { id: "type", type: "select", builtin: true },
+    { id: "definition", type: "text", builtin: true },
+    { id: "mastery", type: "number", builtin: true },
+    { id: "refs", type: "number", builtin: true },
   ],
 };
 
-const COMMON: FieldDef[] = [
-  { id: "createdAt", name: "创建时间", type: "date", builtin: true },
-  { id: "updatedAt", name: "更新时间", type: "date", builtin: true },
+const COMMON: BuiltinField[] = [
+  { id: "createdAt", type: "date", builtin: true },
+  { id: "updatedAt", type: "date", builtin: true },
 ];
 
-export function fieldsFor(entity: EntityType, props: PropertyDef[]): FieldDef[] {
-  return [
-    { id: "title", name: "名称", type: "text", builtin: true },
+/** 内置字段的显示名由调用方按界面语言给出（label 收到字段 id）。 */
+export function fieldsFor(
+  entity: EntityType,
+  props: PropertyDef[],
+  label: (id: string) => string = (id) => id,
+): FieldDef[] {
+  const builtin: BuiltinField[] = [
+    { id: "title", type: "text", builtin: true },
     ...BUILTIN[entity],
     ...COMMON,
+  ];
+  return [
+    ...builtin.map((f) => ({ ...f, name: label(f.id) })),
     ...props
       .filter((p) => p.entity === entity)
       .map((p) => ({ id: `prop:${p.id}`, name: p.name, type: p.type, builtin: false, options: p.options })),
   ];
 }
 
-export function toRows(entity: EntityType, items: (Note | Source | Artifact | Element)[]): DbRow[] {
+export function toRows(
+  entity: EntityType,
+  items: (Note | Source | Artifact | Element)[],
+  opts: { en: boolean; untitled: string },
+): DbRow[] {
+  const label = (m: { label: string; labelEn: string }) => (opts.en ? m.labelEn : m.label);
   return items.map((it) => {
     const values: Record<string, PropValue> = { createdAt: it.createdAt, updatedAt: it.updatedAt };
     let title = "";
     if (entity === "note") {
       const n = it as Note;
-      title = n.title || "无标题";
+      title = n.title || opts.untitled;
       Object.assign(values, { kind: n.kind, tags: n.tags, origin: n.origin.type });
     } else if (entity === "source") {
       const s = it as Source;
       title = s.title;
       Object.assign(values, {
-        kind: SOURCE_KIND_META[s.kind].label,
+        kind: label(SOURCE_KIND_META[s.kind]),
         status: s.status,
         charCount: s.charCount,
         url: s.url,
@@ -99,12 +113,12 @@ export function toRows(entity: EntityType, items: (Note | Source | Artifact | El
     } else if (entity === "artifact") {
       const a = it as Artifact;
       title = a.title;
-      Object.assign(values, { kind: ARTIFACT_KIND_META[a.kind].label, status: a.status });
+      Object.assign(values, { kind: label(ARTIFACT_KIND_META[a.kind]), status: a.status });
     } else {
       const e = it as Element;
       title = e.name;
       Object.assign(values, {
-        type: ELEMENT_TYPE_META[e.type].label,
+        type: label(ELEMENT_TYPE_META[e.type]),
         definition: e.definition,
         mastery: Math.round(e.mastery * 100),
         refs: e.refs.length,

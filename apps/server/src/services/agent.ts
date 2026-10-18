@@ -11,13 +11,14 @@ import {
 } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
+import { msg } from "../messages";
 import { gatherPassages } from "./passages";
 
 export async function proposeCommand(
   ctx: AppContext,
   input: { notebookId: string; instruction: string; noteIds?: string[]; selection?: string },
 ): Promise<AgentProposal> {
-  if (!input.instruction?.trim()) throw badRequest("instruction 不能为空");
+  if (!input.instruction?.trim()) throw badRequest(msg().emptyField("instruction"));
   const notes: { id: string; title: string; markdown: string }[] = [];
   for (const id of input.noteIds ?? []) {
     const n = await ctx.store.notes.get(id);
@@ -56,22 +57,22 @@ export async function applyProposal(
   notebookId: string,
   proposal: AgentProposal,
 ): Promise<{ applied: { op: string; id: string }[]; undoToken: string }> {
-  if (!(await ctx.store.notebooks.get(notebookId))) throw notFound("Notebook");
+  if (!(await ctx.store.notebooks.get(notebookId))) throw notFound("notebook");
   const ops = proposal.ops.map((op) => AgentOp.parse(op));
   // 先整体校验引用的对象，避免只应用一半。
   for (const op of ops) {
     if (op.op === "update_note" || op.op === "delete_note") {
       const n = await ctx.store.notes.get(op.noteId);
       if (!n || n.notebookId !== notebookId)
-        throw new ApiError(400, "bad_proposal", `笔记 ${op.noteId} 不存在`);
+        throw new ApiError(400, "bad_proposal", msg().proposalNoteMissing(op.noteId));
     }
     if (op.op === "add_mindmap_node") {
       const a = await ctx.store.artifacts.get(op.artifactId);
       if (!a || a.notebookId !== notebookId || a.data?.kind !== "mindmap") {
-        throw new ApiError(400, "bad_proposal", `思维导图 ${op.artifactId} 不存在`);
+        throw new ApiError(400, "bad_proposal", msg().proposalMindmapMissing(op.artifactId));
       }
       if (!a.data.nodes.some((n) => n.id === op.parentId))
-        throw new ApiError(400, "bad_proposal", `节点 ${op.parentId} 不存在`);
+        throw new ApiError(400, "bad_proposal", msg().proposalNodeMissing(op.parentId));
     }
   }
   const applied: { op: string; id: string }[] = [];
@@ -187,7 +188,7 @@ export async function applyProposal(
 
 export async function undoProposal(ctx: AppContext, token: string): Promise<{ ok: boolean }> {
   const rec = await ctx.store.undo.get(token);
-  if (!rec) throw notFound("撤销记录");
+  if (!rec) throw notFound("undo");
   const entries = [...(rec.entries as UndoEntry[])].reverse();
   for (const e of entries) {
     switch (e.type) {

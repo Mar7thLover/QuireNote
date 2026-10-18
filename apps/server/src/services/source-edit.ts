@@ -5,6 +5,7 @@
 import type { Job, Source } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
+import { msg } from "../messages";
 import { offsetMap, relocateRange, remapPageOffsets } from "../textmap";
 
 /** 编辑前的原文（解析结果）存放位置；不放在 sources/<id>/ 下，那里是原始文件。 */
@@ -73,17 +74,17 @@ async function replaceText(
   const job = await ctx.jobs.enqueue(
     "ingest",
     { sourceId: src.id, reuseContent: true },
-    { notebookId: src.notebookId, refId: src.id, message: `重建索引「${src.title}」` },
+    { notebookId: src.notebookId, refId: src.id, message: msg().job.reindexSource(src.title) },
   );
   return { source, job, highlights };
 }
 
 async function loadEditable(ctx: AppContext, sourceId: string) {
   const src = await ctx.store.sources.get(sourceId);
-  if (!src) throw notFound("资料");
-  if (src.status !== "ready") throw new ApiError(409, "busy", "资料还在处理中，完成后再编辑");
+  if (!src) throw notFound("source");
+  if (src.status !== "ready") throw new ApiError(409, "busy", msg().sourceBusy);
   const content = await ctx.store.contents.get(sourceId);
-  if (!content) throw badRequest("这份资料没有可编辑的文本");
+  if (!content) throw badRequest(msg().noEditableText);
   return { src, content };
 }
 
@@ -94,7 +95,7 @@ export async function editSourceText(
 ): Promise<TextEditResult> {
   const { src, content } = await loadEditable(ctx, sourceId);
   const next = text.replace(/\r\n?/g, "\n");
-  if (!next.trim()) throw badRequest("资料内容不能为空");
+  if (!next.trim()) throw badRequest(msg().sourceTextEmpty);
   if (next === content.text) {
     const all = await ctx.store.highlights.list({ refId: sourceId });
     return { source: src, job: null, highlights: { kept: all.length, removed: 0 } };
@@ -112,7 +113,7 @@ export async function editSourceText(
 export async function revertSourceText(ctx: AppContext, sourceId: string): Promise<TextEditResult> {
   const { src, content } = await loadEditable(ctx, sourceId);
   const original = await readOriginal(ctx, sourceId);
-  if (!original) throw badRequest("这份资料没有编辑过");
+  if (!original) throw badRequest(msg().notEdited);
   const result = await replaceText(ctx, src, content, original, false);
   await ctx.files.delete(originalTextPath(sourceId));
   return result;

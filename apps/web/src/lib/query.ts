@@ -3,6 +3,7 @@ import { toast } from "@quirenote/ui";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { MutationCache, onlineManager, QueryClient } from "@tanstack/react-query";
 import { del, get, set } from "idb-keyval";
+import i18n from "@/i18n";
 import { ApiError, apiBase } from "./api";
 
 export const queryClient = new QueryClient({
@@ -19,7 +20,7 @@ export const queryClient = new QueryClient({
   },
   mutationCache: new MutationCache({
     onError: (err) => {
-      if (err instanceof ApiError && err.status === 0) toast.error("离线中，改动将在恢复连接后同步");
+      if (err instanceof ApiError && err.status === 0) toast.error(i18n.t("common.offlineQueued"));
       else toast.error(err instanceof Error ? err.message : String(err));
     },
   }),

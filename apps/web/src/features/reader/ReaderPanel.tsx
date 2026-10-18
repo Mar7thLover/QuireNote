@@ -20,6 +20,7 @@ import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { contextMenu, selectionAt } from "@/lib/contextMenu";
+import { metaLabel } from "@/lib/meta";
 import { qk } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { HighlightsSidebar } from "./HighlightsSidebar";
@@ -66,7 +67,7 @@ export function ReaderPanel({ notebookId, sourceId }: { notebookId: string; sour
         <>
           <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
             <span className="truncate text-[13px] text-fg-muted">{s?.title ?? "…"}</span>
-            {s ? <Badge>{SOURCE_KIND_META[s.kind].label}</Badge> : null}
+            {s ? <Badge>{metaLabel(SOURCE_KIND_META[s.kind])}</Badge> : null}
             {s?.props.edited ? <Badge>{t("reader.edited")}</Badge> : null}
             {s?.url ? (
               <a
@@ -449,13 +450,15 @@ function Paragraph({
   ranges: { start: number; end: number; cls: string; id?: string }[];
   sourceId: string;
 }) {
+  const { t } = useTranslation();
   const segs = segmentParagraph(para, ranges);
   const H = para.heading ? (`h${Math.min(para.heading, 3) + 1}` as "h2" | "h3" | "h4") : "p";
   return (
     <>
       {para.pageBreak ? (
         <div className="mt-6 mb-5 flex items-center gap-3 text-[11px] font-medium text-fg-subtle select-none">
-          <span className="h-px flex-1 bg-border" />第 {para.page} 页
+          <span className="h-px flex-1 bg-border" />
+          {t("reader.page", { n: para.page })}
           <span className="h-px flex-1 bg-border" />
         </div>
       ) : null}

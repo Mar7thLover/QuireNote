@@ -378,15 +378,18 @@ export function editorContribution(
               icon: Languages,
               items: (
                 [
-                  ["English", "英文"],
-                  ["简体中文", "中文"],
-                  ["日本語", "日文"],
+                  ["English", "en"],
+                  ["简体中文", "zh"],
+                  ["日本語", "ja"],
                 ] as const
-              ).map(([lang, label]) => ({
+              ).map(([lang, code]) => ({
                 id: `ed.ai.translate.${lang}`,
                 label: lang,
                 onSelect: () =>
-                  deps.runAi("translate", { targetLang: lang, label: `${t("editor.translate")} → ${label}` }),
+                  deps.runAi("translate", {
+                    targetLang: lang,
+                    label: `${t("editor.translate")} → ${t(`editor.lang_${code}`)}`,
+                  }),
               })),
             },
             ai("explain", "explain", Lightbulb),

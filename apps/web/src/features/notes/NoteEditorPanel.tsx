@@ -93,7 +93,7 @@ function NoteEditor({ notebookId, note }: { notebookId: string; note: Note }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 px-3 text-xs text-fg-subtle">
-        {note.kind === "card" ? <Badge tone="accent">卡片</Badge> : null}
+        {note.kind === "card" ? <Badge tone="accent">{t("notes.cardBadge")}</Badge> : null}
         {note.origin.type !== "manual" ? (
           <Badge>{t(`notes.from${cap(note.origin.type)}` as "notes.fromChat")}</Badge>
         ) : null}
@@ -159,6 +159,7 @@ function cap(s: string) {
 }
 
 function TagsEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
+  const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
   const [v, setV] = useState("");
   return (
@@ -201,7 +202,7 @@ function TagsEditor({ tags, onChange }: { tags: string[]; onChange: (t: string[]
           onClick={() => setAdding(true)}
           className="h-6 rounded-full px-2 text-xs text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
         >
-          + 标签
+          {t("notes.addTag")}
         </button>
       )}
     </div>

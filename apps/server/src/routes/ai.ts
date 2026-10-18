@@ -20,6 +20,7 @@ import { z } from "zod";
 import { validateCitations } from "../citations";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, errorMessageOf } from "../errors";
+import { msg } from "../messages";
 import { applyProposal, proposeCommand, undoProposal } from "../services/agent";
 import { gatherPassages } from "../services/passages";
 import {
@@ -67,7 +68,7 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
   // ───── 就地 AI ─────
   api.post("/ai/transform", async (c) => {
     const input = await readJson(c, TransformInput);
-    must(await store.notebooks.get(input.notebookId), "Notebook");
+    must(await store.notebooks.get(input.notebookId), "notebook");
     const chat = await ctx.models.chat();
     const { passages, citable } = NEEDS_SOURCES.has(input.action)
       ? await gatherPassages(ctx, input.notebookId, {
@@ -117,7 +118,7 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
         selection: z.string().optional(),
       }),
     );
-    must(await store.notebooks.get(input.notebookId), "Notebook");
+    must(await store.notebooks.get(input.notebookId), "notebook");
     return c.json(await proposeCommand(ctx, input));
   });
 
@@ -142,17 +143,17 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
 
   api.post("/notebooks/:nb/research", async (c) => {
     const nb = c.req.param("nb");
-    must(await store.notebooks.get(nb), "Notebook");
+    must(await store.notebooks.get(nb), "notebook");
     const input = await readJson(
       c,
       z.object({ question: z.string().min(1), rounds: z.number().int().min(1).max(5).optional() }),
     );
     // 提前检查是否配置了搜索，避免任务排队后才失败。
-    await ctx.models.require("search", "深度研究");
+    await ctx.models.require("search", "research");
     const job = await ctx.jobs.enqueue(
       "research",
       { notebookId: nb, question: input.question, rounds: input.rounds ?? 2 },
-      { notebookId: nb, message: `深度研究：${input.question.slice(0, 40)}` },
+      { notebookId: nb, message: msg().job.research(input.question.slice(0, 40)) },
     );
     return c.json(job, 202);
   });
@@ -186,13 +187,13 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.delete("/providers/:id", async (c) => {
-    must((await deleteProvider(ctx, c.req.param("id"))) || null, "Provider");
+    must((await deleteProvider(ctx, c.req.param("id"))) || null, "provider");
     return c.json({ ok: true });
   });
 
   api.post("/providers/:id/test", async (c) => {
     const id = c.req.param("id");
-    must(await store.providers.get(id), "Provider");
+    must(await store.providers.get(id), "provider");
     let rt: Awaited<ReturnType<typeof ctx.models.runtime>>;
     try {
       rt = await ctx.models.runtime(id);
@@ -205,7 +206,7 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
   /** 向服务查询可用模型并推测用途（用于「从服务拉取」），不改动已登记的模型列表。 */
   api.get("/providers/:id/models", async (c) => {
     const id = c.req.param("id");
-    const p = must(await store.providers.get(id), "Provider");
+    const p = must(await store.providers.get(id), "provider");
     try {
       const ids = await listModels(await ctx.models.runtime(id));
       return c.json(ids.map((m) => ({ id: m, label: null, capabilities: guessCapabilities(p.kind, m) })));
@@ -224,7 +225,7 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
     await store.assignments.set(a);
     if (a.capability === "embedding" && (await ctx.models.embeddingKey()) !== before) {
       // 换了 Embedding 模型：所有 Notebook 重建索引（期间检索退回关键词）。
-      await ctx.jobs.enqueue("reindex", { clear: true }, { message: "更换 Embedding 模型，重建索引" });
+      await ctx.jobs.enqueue("reindex", { clear: true }, { message: msg().job.embeddingChanged });
     }
     return c.json(await effectiveAssignments(ctx));
   });
@@ -232,11 +233,11 @@ export function aiRoutes(api: Hono, ctx: AppContext): void {
   /** 清除某能力的分配（回到未配置）。 */
   api.delete("/models/assignments/:capability", async (c) => {
     const cap = Capability.safeParse(c.req.param("capability"));
-    if (!cap.success) throw badRequest("未知能力");
+    if (!cap.success) throw badRequest(msg().unknownCapability);
     const before = await ctx.models.embeddingKey();
     await store.assignments.delete(cap.data);
     if (cap.data === "embedding" && (await ctx.models.embeddingKey()) !== before) {
-      await ctx.jobs.enqueue("reindex", { clear: true }, { message: "更换 Embedding 模型，重建索引" });
+      await ctx.jobs.enqueue("reindex", { clear: true }, { message: msg().job.embeddingChanged });
     }
     return c.json(await effectiveAssignments(ctx));
   });

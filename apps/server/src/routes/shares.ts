@@ -33,7 +33,7 @@ export function shareRoutes(api: Hono, ctx: AppContext): void {
   api.get("/shares", async (c) => c.json(await listShares(ctx)));
 
   api.delete("/shares/:token", async (c) => {
-    if (!(await revokeShare(ctx, c.req.param("token")))) throw notFound("分享链接");
+    if (!(await revokeShare(ctx, c.req.param("token")))) throw notFound("share");
     return c.json({ ok: true });
   });
 

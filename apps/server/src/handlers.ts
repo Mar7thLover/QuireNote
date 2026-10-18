@@ -4,6 +4,7 @@ import { newId, nowIso } from "@quirenote/core";
 import type { AppContext } from "./context";
 import { notFound } from "./errors";
 import { embedMissing, processSource } from "./ingest/pipeline";
+import { msg } from "./messages";
 import { runExtractJob } from "./services/elements";
 import { runResearchJob } from "./services/research";
 import { renderArtifactMedia, runArtifactJob } from "./services/studio";
@@ -16,7 +17,7 @@ export function registerJobHandlers(ctx: AppContext): void {
       reuseContent: p.reuseContent === true,
       progress: (x, m) => progress(x, m),
     });
-    return `「${src.title}」已就绪`;
+    return msg().job.sourceReady(src.title);
   });
 
   jobs.register("reindex", async (p, { progress }) => {
@@ -26,7 +27,7 @@ export function registerJobHandlers(ctx: AppContext): void {
       progress(done / Math.max(1, total), `Embedding ${done}/${total}`),
     );
     const key = await ctx.models.embeddingKey();
-    return key ? `已为 ${n} 个分块重建向量（${key}）` : "未配置 Embedding 模型，检索只用关键词";
+    return key ? msg().job.reindexed(n, key) : msg().job.reindexNoModel;
   });
 
   jobs.register("artifact", async (p, { progress }) =>
@@ -49,8 +50,8 @@ export function registerJobHandlers(ctx: AppContext): void {
     const sourceId = String(p.sourceId);
     const src = await ctx.store.sources.get(sourceId);
     const content = await ctx.store.contents.get(sourceId);
-    if (!src || !content) throw notFound("资料全文");
-    await progress(0.1, "AI 标注中");
+    if (!src || !content) throw notFound("sourceText");
+    await progress(0.1, msg().job.autoHighlighting);
     const hs = await autoHighlights(await ctx.models.chat(), content.text);
     // 替换掉上一次的 AI 标注，保留用户自己的高亮。
     for (const h of await ctx.store.highlights.list({ refId: sourceId }))
@@ -71,7 +72,7 @@ export function registerJobHandlers(ctx: AppContext): void {
       });
     }
     ctx.events.emit("source", src);
-    return `标注了 ${hs.length} 处重点`;
+    return msg().job.highlighted(hs.length);
   });
 
   jobs.register("research", async (p, { progress }) =>

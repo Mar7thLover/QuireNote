@@ -1,3 +1,4 @@
+import { aiText } from "./messages";
 import { AiError, type ProviderRuntime } from "./types";
 
 export function fetchOf(p: ProviderRuntime): typeof fetch {
@@ -43,12 +44,12 @@ export async function request(
   } catch (err) {
     clearTimeout(timer);
     const msg = err instanceof Error ? err.message : String(err);
-    throw new AiError(`无法连接 ${new URL(url).host}：${msg}`, "network");
+    throw new AiError(aiText().unreachable(new URL(url).host, msg), "network");
   }
   clearTimeout(timer);
   if (!res.ok) {
     throw new AiError(
-      `HTTP ${res.status}：${(await errorText(res)) || res.statusText}`,
+      aiText().http(res.status, (await errorText(res)) || res.statusText),
       "http_error",
       res.status >= 500 ? 502 : 400,
     );
@@ -66,7 +67,7 @@ export async function requestJson<T>(
   try {
     return (await res.json()) as T;
   } catch {
-    throw new AiError(`响应不是合法 JSON：${url}`, "bad_response");
+    throw new AiError(aiText().badJson(url), "bad_response");
   }
 }
 

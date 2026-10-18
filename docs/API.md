@@ -4,6 +4,7 @@
 
 - 基础路径 `/api`，JSON 请求/响应；上传用 `multipart/form-data`。
 - 错误统一为 `{ "error": { "code": string, "message": string, ...details } }`，配合 4xx/5xx 状态码；个别错误带额外字段（例如 `plugin_disabled` 带 `plugin`）。
+- 界面语言：`message`、后台任务的进度说明和服务端自动起的名字（新对话、生成物标题等）按请求的界面语言写——`?lang=zh|en` 优先，其次 `Accept-Language`（`zh…` 为中文，其他为英文），都没有时用服务端的默认语言（`QUIRENOTE_LANG`，其次系统区域设置）。后台任务沿用入队请求的语言。前端每个请求都带 `Accept-Language`。
 - 时间均为 ISO 字符串。id 由服务端生成（`newId(prefix)`）。
 - 流式接口用 SSE（`text/event-stream`），每个事件为 `event: <name>\ndata: <json>\n\n`。
 

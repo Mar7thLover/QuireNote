@@ -5,7 +5,9 @@
 import type { CardImporter } from "@quirenote/card";
 import { PLUGIN_ID as ST, sillytavernImporter } from "@quirenote/plugin-sillytavern";
 import type { AppContext } from "./context";
-import { ApiError } from "./errors";
+import { ApiError, notFound } from "./errors";
+import { currentLang, parseLang, withLang } from "./lang";
+import { msg } from "./messages";
 
 export interface ServerPlugin {
   id: string;
@@ -51,7 +53,7 @@ export async function isPluginEnabled(ctx: AppContext, id: string): Promise<bool
 }
 
 export async function setPluginEnabled(ctx: AppContext, id: string, enabled: boolean): Promise<void> {
-  if (!BUILTIN_PLUGINS.some((p) => p.id === id)) throw new ApiError(404, "not_found", "插件不存在");
+  if (!BUILTIN_PLUGINS.some((p) => p.id === id)) throw notFound("plugin");
   const states = await pluginStates(ctx);
   await ctx.store.settings.set(SETTINGS_KEY, { ...states, [id]: enabled });
 }
@@ -62,12 +64,6 @@ export const cardImporters: CardImporter[] = BUILTIN_PLUGINS.flatMap((p) => p.im
 /** 用到了没启用的插件：400 + plugin_disabled，前端据此给出「启用插件」的按钮。 */
 export async function requirePlugin(ctx: AppContext, id: string, lang?: string): Promise<void> {
   if (await isPluginEnabled(ctx, id)) return;
-  const en = lang?.toLowerCase().startsWith("en");
-  const name = id === ST ? (en ? "SillyTavern compatibility" : "酒馆兼容") : id;
-  throw new ApiError(
-    400,
-    "plugin_disabled",
-    en ? `Turn on the "${name}" plugin to use this file.` : `这个文件需要启用「${name}」插件。`,
-    { plugin: id },
-  );
+  const m = withLang(parseLang(lang) ?? currentLang(), msg);
+  throw new ApiError(400, "plugin_disabled", m.pluginNeeded(m.pluginName[id] ?? id), { plugin: id });
 }

@@ -40,11 +40,7 @@ export function HighlightsSidebar({
       <section className="p-2">
         <h4 className="px-1.5 pt-1 pb-2 text-xs font-semibold text-fg-subtle">{t("reader.highlights")}</h4>
         {list.length === 0 ? (
-          <EmptyState
-            icon={<Highlighter />}
-            title="—"
-            description="选中文字后点击颜色即可高亮，或使用 AI 标注重点。"
-          />
+          <EmptyState icon={<Highlighter />} title="—" description={t("reader.highlightsEmpty")} />
         ) : (
           list.map((h) => (
             <div key={h.id} className="mb-1 rounded-md p-2 hover:bg-surface-hover">

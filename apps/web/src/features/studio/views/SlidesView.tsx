@@ -2,9 +2,11 @@ import { newId, type Slide } from "@quirenote/core";
 import { Button, cn } from "@quirenote/ui";
 import { ChevronLeft, ChevronRight, Maximize, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "@/i18n";
 import type { ArtifactViewProps } from "../ArtifactPanel";
 
 export function SlidesView({ data, onChange }: ArtifactViewProps<"slides">) {
+  const { t } = useTranslation();
   const slides = data.slides;
   const [i, setI] = useState(0);
   const [present, setPresent] = useState(false);
@@ -49,14 +51,20 @@ export function SlidesView({ data, onChange }: ArtifactViewProps<"slides">) {
               kind: "slides",
               slides: [
                 ...slides,
-                { id: newId("sl"), title: "新幻灯片", bullets: ["要点"], notes: "", image: null },
+                {
+                  id: newId("sl"),
+                  title: t("studio.newSlide"),
+                  bullets: [t("studio.newBullet")],
+                  notes: "",
+                  image: null,
+                },
               ],
             });
             setI(slides.length);
           }}
         >
           <Plus />
-          添加
+          {t("common.add")}
         </Button>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col items-center overflow-y-auto bg-surface-sunken/50 p-6">
@@ -79,7 +87,7 @@ export function SlidesView({ data, onChange }: ArtifactViewProps<"slides">) {
           ) : null}
           <Button size="xs" variant="secondary" onClick={() => setPresent(true)}>
             <Maximize />
-            演示
+            {t("studio.present")}
           </Button>
         </div>
         {cur ? (
@@ -89,7 +97,7 @@ export function SlidesView({ data, onChange }: ArtifactViewProps<"slides">) {
               key={`${cur.id}-notes`}
               defaultValue={cur.notes}
               onBlur={(e) => set(cur.id, { notes: e.target.value })}
-              placeholder="演讲备注 / 旁白…"
+              placeholder={t("studio.speakerNotes")}
               rows={3}
               className="mt-4 w-full max-w-3xl resize-none rounded-lg border border-border bg-surface p-3 text-[13px] text-fg-muted outline-none focus:border-accent/60"
             />

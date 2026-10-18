@@ -6,6 +6,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { contribute, selectionAt } from "@/lib/contextMenu";
+import { metaLabel } from "@/lib/meta";
 import { qk, queryClient, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { artifactToMarkdown } from "./export";
@@ -71,7 +72,7 @@ export function ArtifactPanel({ notebookId, artifactId }: { notebookId: string; 
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border/70 px-3">
-        <Badge tone="accent">{meta.label}</Badge>
+        <Badge tone="accent">{metaLabel(meta)}</Badge>
         <input
           key={a.id}
           defaultValue={a.title}
@@ -126,7 +127,7 @@ export function ArtifactPanel({ notebookId, artifactId }: { notebookId: string; 
         }}
       >
         {a.status === "generating" || a.status === "pending" ? (
-          <GeneratingState label={meta.label} />
+          <GeneratingState label={metaLabel(meta)} />
         ) : a.status === "error" || !a.data ? (
           <EmptyState
             className="h-full"
@@ -177,11 +178,12 @@ function ArtifactBody(props: ArtifactViewProps) {
 }
 
 function GeneratingState({ label }: { label: string }) {
+  const { t } = useTranslation();
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-8 py-12">
       <div className="flex items-center gap-2 text-[13px] text-fg-muted">
         <Sparkles className="size-4 animate-pulse text-accent" />
-        正在生成{label}
+        {t("studio.generatingKind", { label })}
         <TypingDots className="text-fg-subtle" />
       </div>
       <Skeleton className="h-8 w-2/3" />
@@ -221,7 +223,7 @@ function RefineBar({
       upsertInList(qk.artifacts(notebookId), a);
       setV("");
       onTargetChange(null);
-      toast.success("已按要求修改");
+      toast.success(t("studio.refined"));
     },
   });
   return (

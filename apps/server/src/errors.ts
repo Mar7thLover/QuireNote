@@ -1,4 +1,8 @@
 import { AiError } from "@quirenote/ai";
+import { msg, type ServerMessages } from "./messages";
+
+/** notFound 的资源名：键见 messages.ts 的 res。 */
+export type Resource = keyof ServerMessages["res"];
 
 /** 统一错误：{ error: { code, message } } + HTTP 状态码。 */
 export class ApiError extends Error {
@@ -14,7 +18,7 @@ export class ApiError extends Error {
   }
 }
 
-export const notFound = (what: string) => new ApiError(404, "not_found", `${what}不存在`);
+export const notFound = (what: Resource) => new ApiError(404, "not_found", msg().notFound(msg().res[what]));
 export const badRequest = (message: string, code = "bad_request") => new ApiError(400, code, message);
 
 export function toApiError(err: unknown): ApiError {

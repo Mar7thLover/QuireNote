@@ -9,6 +9,7 @@ import {
 import { Badge, Button, cn, Input, Textarea, toast } from "@quirenote/ui";
 import { Copy, Download, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { localizedBuiltinTemplate } from "@/features/render/labels";
 import { SandboxCard } from "@/features/render/RenderedSegments";
 import { useRenderStore } from "@/features/render/store";
 import { useTranslation } from "@/i18n";
@@ -18,21 +19,26 @@ import { useTheme } from "@/stores/theme";
 export function TemplateSettings() {
   const { t } = useTranslation();
   const { templates, setTemplates, rules, setRules } = useRenderStore();
-  const all = [...builtinTemplates, ...templates];
+  const all = [...builtinTemplates.map(localizedBuiltinTemplate), ...templates];
   const [selectedId, setSelectedId] = useState(all[0]!.id);
   const selected = all.find((x) => x.id === selectedId) ?? all[0]!;
   const fileRef = useRef<HTMLInputElement>(null);
   const theme = useTheme();
 
   const fork = (tpl: CardTemplate) => {
-    const copy = { ...tpl, id: newId("tpl"), name: `${tpl.name}（副本）`, builtin: false };
+    const copy = {
+      ...tpl,
+      id: newId("tpl"),
+      name: t("render.copyName", { name: tpl.name }),
+      builtin: false,
+    };
     setTemplates([...templates, copy]);
     setSelectedId(copy.id);
   };
 
   const doExport = () => {
     const text = exportTheme({
-      name: "我的 QuireNote 主题",
+      name: t("render.myTheme"),
       author: "",
       theme: {
         mode: theme.mode,
@@ -60,16 +66,17 @@ export function TemplateSettings() {
       onConflict: "rename",
     });
     if (!res.ok) {
-      toast.error(`导入失败：${res.error}`);
+      toast.error(t("render.importFailed", { error: res.error }));
       return;
     }
     const th = res.theme as QuireNoteTheme;
     setTemplates([...templates, ...th.templates]);
     setRules([...rules, ...th.rules]);
     if (th.theme) theme.set(th.theme);
-    toast.success(`已导入「${th.name}」：${th.templates.length} 个模板，${th.rules.length} 条规则`, {
-      description: res.warnings.length ? res.warnings.slice(0, 3).join("；") : undefined,
-    });
+    toast.success(
+      t("render.themeImported", { name: th.name, templates: th.templates.length, rules: th.rules.length }),
+      { description: res.warnings.length ? res.warnings.slice(0, 3).join(t("common.listSep")) : undefined },
+    );
   };
 
   return (
@@ -123,13 +130,13 @@ export function TemplateSettings() {
             onClick={() => {
               const tpl: CardTemplate = {
                 id: newId("tpl"),
-                name: "新模板",
+                name: t("templates.newNoteTemplateName"),
                 description: "",
                 html: '<div class="card">\n  <h3>{{title}}</h3>\n  <p>{{body}}</p>\n</div>',
                 css: ".card{padding:16px 18px;border:1px solid var(--card-border);border-radius:var(--card-radius);background:var(--card-bg)}\nh3{margin:0 0 6px;color:var(--card-accent)}",
                 slots: [
-                  { name: "title", sample: "标题" },
-                  { name: "body", sample: "正文内容" },
+                  { name: "title", sample: t("sources.pasteTitle") },
+                  { name: "body", sample: t("render.sampleBody") },
                 ],
                 builtin: false,
               };
@@ -197,7 +204,7 @@ function TemplateEditor({
         <span className="flex-1" />
         <Button size="sm" variant="ghost" onClick={onFork}>
           <Copy />
-          {readOnly ? "复制为自定义模板" : "复制"}
+          {readOnly ? t("render.forkTemplate") : t("common.copy")}
         </Button>
         {!readOnly ? (
           <Button size="icon-sm" variant="ghost" onClick={onDelete} aria-label={t("common.delete")}>
@@ -243,7 +250,9 @@ function TemplateEditor({
           <div>
             <span className="mb-1 block text-xs font-medium text-fg-subtle">
               {t("render.slots")}{" "}
-              <span className="font-normal">（模板中检测到：{detected.join("、") || "无"}）</span>
+              <span className="font-normal">
+                {t("render.detectedVars", { vars: detected.join(t("common.listSep")) || t("common.none") })}
+              </span>
             </span>
             <div className="space-y-1.5">
               {draft.slots.map((s, i) => (
@@ -279,15 +288,23 @@ function TemplateEditor({
                   }
                 >
                   <Plus />
-                  添加变量
+                  {t("render.addVariable")}
                 </Button>
               ) : null}
             </div>
           </div>
           <p className="text-[11.5px] leading-relaxed text-fg-subtle">
-            语法：<code>{"{{var}}"}</code> 转义输出，<code>{"{{var|默认}}"}</code>，
-            <code>{"{{#if var}}…{{/if}}"}</code>，<code>{"{{#each list}}{{.}}{{/each}}"}</code>（列表用 ||
-            分隔）。颜色请使用 <code>var(--card-*)</code> 主题变量以跟随深浅色。
+            {t("render.syntax")}
+            <code>{"{{var}}"}</code>
+            {t("render.syntaxEscaped")}
+            <code>{`{{var|${t("render.syntaxDefault")}}}`}</code>
+            {t("render.syntaxSep")}
+            <code>{"{{#if var}}…{{/if}}"}</code>
+            {t("render.syntaxSep")}
+            <code>{"{{#each list}}{{.}}{{/each}}"}</code>
+            {t("render.syntaxList")}
+            <code>var(--card-*)</code>
+            {t("render.syntaxTheme")}
           </p>
         </div>
       </div>

@@ -18,6 +18,7 @@ import {
 } from "@quirenote/plugin-sillytavern";
 import type { AppContext } from "../context";
 import { ApiError, badRequest, notFound } from "../errors";
+import { msg } from "../messages";
 import { requirePlugin } from "../plugins";
 
 const KEY = "presets";
@@ -37,16 +38,16 @@ export async function getPreset(ctx: AppContext, id: string, lang?: string): Pro
 export async function createPreset(ctx: AppContext, input: ChatPresetInput): Promise<ChatPreset> {
   const preset: ChatPreset = { ...ChatPresetFields.parse(input), id: newId("preset"), builtin: false };
   const list = await custom(ctx);
-  if (list.length >= 200) throw badRequest("自定义预设最多 200 个");
+  if (list.length >= 200) throw badRequest(msg().presetLimit);
   await ctx.store.settings.set(KEY, [...list, preset]);
   return preset;
 }
 
 export async function updatePreset(ctx: AppContext, id: string, patch: ChatPresetPatch): Promise<ChatPreset> {
-  if (id.startsWith("builtin.")) throw badRequest("内置预设不能修改，可以复制一份再改");
+  if (id.startsWith("builtin.")) throw badRequest(msg().builtinPresetReadOnly);
   const list = await custom(ctx);
   const cur = list.find((p) => p.id === id);
-  if (!cur) throw notFound("预设");
+  if (!cur) throw notFound("preset");
   const next: ChatPreset = { ...cur, ...patch, id, builtin: false };
   await ctx.store.settings.set(
     KEY,
@@ -56,9 +57,9 @@ export async function updatePreset(ctx: AppContext, id: string, patch: ChatPrese
 }
 
 export async function deletePreset(ctx: AppContext, id: string): Promise<void> {
-  if (id.startsWith("builtin.")) throw badRequest("内置预设不能删除");
+  if (id.startsWith("builtin.")) throw badRequest(msg().builtinPresetDelete);
   const list = await custom(ctx);
-  if (!list.some((p) => p.id === id)) throw notFound("预设");
+  if (!list.some((p) => p.id === id)) throw notFound("preset");
   await ctx.store.settings.set(
     KEY,
     list.filter((p) => p.id !== id),
@@ -89,7 +90,7 @@ export async function importPresetFile(
   try {
     value = JSON.parse(new TextDecoder().decode(bytes).replace(/^﻿/, ""));
   } catch {
-    throw badRequest("文件不是有效的 JSON", "invalid_json");
+    throw badRequest(msg().fileNotJson, "invalid_json");
   }
   const own = PresetFile.safeParse(value);
   if (own.success) return { preset: await createPreset(ctx, own.data.preset), warnings: [] };
@@ -98,7 +99,7 @@ export async function importPresetFile(
     const { preset, warnings } = stPresetToPreset(value, { filename, lang });
     return { preset: await createPreset(ctx, preset), warnings };
   }
-  throw new ApiError(400, "unknown_format", "认不出这个预设文件");
+  throw new ApiError(400, "unknown_format", msg().unknownPresetFile);
 }
 
 export async function exportPreset(
@@ -108,7 +109,7 @@ export async function exportPreset(
   lang?: string,
 ): Promise<{ json: unknown; name: string }> {
   const p = await getPreset(ctx, id, lang);
-  if (!p) throw notFound("预设");
+  if (!p) throw notFound("preset");
   const { id: _id, builtin: _b, ...fields } = p;
   if (format === "sillytavern") {
     await requirePlugin(ctx, ST, lang);

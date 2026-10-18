@@ -17,6 +17,7 @@ import type { AppContext } from "../context";
 import { badRequest } from "../errors";
 import { mimeFromName } from "../files";
 import { deleteSourceCascade, sourceFile } from "../ingest/pipeline";
+import { msg } from "../messages";
 import { retrieve } from "../retrieval";
 import { createNotebook, deleteNotebook, withStats } from "../services/notebooks";
 import { exportNotebook, importNotebook } from "../services/portability";
@@ -62,7 +63,7 @@ const NotePatch = NoteInput.partial();
 
 export function notebookRoutes(api: Hono, ctx: AppContext): void {
   const { store } = ctx;
-  const getNotebook = async (id: string) => must(await store.notebooks.get(id), "Notebook");
+  const getNotebook = async (id: string) => must(await store.notebooks.get(id), "notebook");
 
   // ───── Notebook ─────
   api.get("/notebooks", async (c) => {
@@ -82,12 +83,12 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
   api.patch("/notebooks/:nb", async (c) => {
     await getNotebook(c.req.param("nb"));
     const patch = await readJson(c, NotebookPatch);
-    const updated = must(await store.notebooks.update(c.req.param("nb"), patch), "Notebook");
+    const updated = must(await store.notebooks.update(c.req.param("nb"), patch), "notebook");
     return c.json(await withStats(ctx, updated));
   });
 
   api.delete("/notebooks/:nb", async (c) => {
-    must((await deleteNotebook(ctx, c.req.param("nb"))) || null, "Notebook");
+    must((await deleteNotebook(ctx, c.req.param("nb"))) || null, "notebook");
     return c.json({ ok: true });
   });
 
@@ -121,25 +122,25 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
     return c.json(src, 201);
   });
 
-  api.get("/sources/:id", async (c) => c.json(must(await store.sources.get(c.req.param("id")), "资料")));
+  api.get("/sources/:id", async (c) => c.json(must(await store.sources.get(c.req.param("id")), "source")));
 
   api.patch("/sources/:id", async (c) => {
-    must(await store.sources.get(c.req.param("id")), "资料");
+    must(await store.sources.get(c.req.param("id")), "source");
     const patch = await readJson(c, SourcePatch);
-    const updated = must(await store.sources.update(c.req.param("id"), patch), "资料");
+    const updated = must(await store.sources.update(c.req.param("id"), patch), "source");
     ctx.events.emit("source", updated);
     return c.json(updated);
   });
 
   api.delete("/sources/:id", async (c) => {
-    must(await store.sources.get(c.req.param("id")), "资料");
+    must(await store.sources.get(c.req.param("id")), "source");
     await deleteSourceCascade(ctx, c.req.param("id"));
     return c.json({ ok: true });
   });
 
   api.get("/sources/:id/content", async (c) => {
     const id = c.req.param("id");
-    const src = must(await store.sources.get(id), "资料");
+    const src = must(await store.sources.get(id), "source");
     const content = await store.contents.get(id);
     const highlights = await store.highlights.list({ refId: id });
     const body: SourceContent = {
@@ -159,8 +160,8 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.get("/sources/:id/file", async (c) => {
-    const src = must(await store.sources.get(c.req.param("id")), "资料");
-    const f = must(await sourceFile(ctx, src.id), "原始文件");
+    const src = must(await store.sources.get(c.req.param("id")), "source");
+    const f = must(await sourceFile(ctx, src.id), "sourceFile");
     const name = f.path.split("/").pop() ?? "file";
     return download(
       f.data,
@@ -171,17 +172,17 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.get("/sources/:id/chunks", async (c) => {
-    must(await store.sources.get(c.req.param("id")), "资料");
+    must(await store.sources.get(c.req.param("id")), "source");
     return c.json(await store.chunks.listBySource(c.req.param("id")));
   });
 
   api.post("/sources/:id/highlights", async (c) => {
     const id = c.req.param("id");
-    const src = must(await store.sources.get(id), "资料");
+    const src = must(await store.sources.get(id), "source");
     const input = await readJson(c, HighlightInput);
-    if (input.end <= input.start) throw badRequest("end 必须大于 start");
+    if (input.end <= input.start) throw badRequest(msg().highlightRange);
     const content = await store.contents.get(id);
-    if (content && input.end > content.text.length) throw badRequest("高亮范围超出全文长度");
+    if (content && input.end > content.text.length) throw badRequest(msg().highlightOutOfRange);
     // 与已有的用户高亮重叠时合并成一条（取并集、用新颜色、保留批注），不叠加重复的高亮。
     const overlapping = (await store.highlights.list({ refId: id })).filter(
       (h) => h.by === "user" && h.start < input.end && h.end > input.start,
@@ -228,8 +229,8 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
   );
 
   api.patch("/sources/:id/highlights/:hid", async (c) => {
-    const h = must(await store.highlights.get(c.req.param("hid")), "高亮");
-    if (h.sourceId !== c.req.param("id")) throw badRequest("高亮不属于该资料");
+    const h = must(await store.highlights.get(c.req.param("hid")), "highlight");
+    if (h.sourceId !== c.req.param("id")) throw badRequest(msg().highlightWrongSource);
     const patch = await readJson(
       c,
       z.object({ color: z.string().min(1).optional(), note: z.string().optional() }),
@@ -246,30 +247,30 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
   });
 
   api.delete("/sources/:id/highlights/:hid", async (c) => {
-    const h = must(await store.highlights.get(c.req.param("hid")), "高亮");
-    if (h.sourceId !== c.req.param("id")) throw badRequest("高亮不属于该资料");
+    const h = must(await store.highlights.get(c.req.param("hid")), "highlight");
+    if (h.sourceId !== c.req.param("id")) throw badRequest(msg().highlightWrongSource);
     await store.highlights.delete(h.id);
     return c.json({ ok: true });
   });
 
   api.post("/sources/:id/auto-highlight", async (c) => {
-    const src = must(await store.sources.get(c.req.param("id")), "资料");
-    if (src.status !== "ready") throw badRequest("资料尚未解析完成");
+    const src = must(await store.sources.get(c.req.param("id")), "source");
+    if (src.status !== "ready") throw badRequest(msg().sourceNotReady);
     const job = await ctx.jobs.enqueue(
       "auto_highlight",
       { sourceId: src.id },
-      { notebookId: src.notebookId, refId: src.id, message: "AI 标注重点" },
+      { notebookId: src.notebookId, refId: src.id, message: msg().job.autoHighlight },
     );
     return c.json(job, 202);
   });
 
   /** 补充：重新解析资料（解析失败后重试，或更换模型后重建）。 */
   api.post("/sources/:id/reprocess", async (c) => {
-    const src = must(await store.sources.get(c.req.param("id")), "资料");
+    const src = must(await store.sources.get(c.req.param("id")), "source");
     const job = await ctx.jobs.enqueue(
       "ingest",
       { sourceId: src.id },
-      { notebookId: src.notebookId, refId: src.id, message: `重新解析「${src.title}」` },
+      { notebookId: src.notebookId, refId: src.id, message: msg().job.reparse(src.title) },
     );
     return c.json(job, 202);
   });
@@ -319,16 +320,16 @@ export function notebookRoutes(api: Hono, ctx: AppContext): void {
     return c.json(note, 201);
   });
 
-  api.get("/notes/:id", async (c) => c.json(must(await store.notes.get(c.req.param("id")), "笔记")));
+  api.get("/notes/:id", async (c) => c.json(must(await store.notes.get(c.req.param("id")), "note")));
 
   api.patch("/notes/:id", async (c) => {
-    must(await store.notes.get(c.req.param("id")), "笔记");
+    must(await store.notes.get(c.req.param("id")), "note");
     const patch = await readJson(c, NotePatch);
-    return c.json(must(await store.notes.update(c.req.param("id"), patch as Partial<Note>), "笔记"));
+    return c.json(must(await store.notes.update(c.req.param("id"), patch as Partial<Note>), "note"));
   });
 
   api.delete("/notes/:id", async (c) => {
-    must((await store.notes.delete(c.req.param("id"))) || null, "笔记");
+    must((await store.notes.delete(c.req.param("id"))) || null, "note");
     await store.shares.deleteWhere({ refId: c.req.param("id") });
     return c.json({ ok: true });
   });

@@ -1,6 +1,7 @@
 import { generateSpeech, transcribe } from "ai";
 import { PROVIDER_CATALOG } from "./catalog";
 import { requestBytes } from "./http";
+import { aiText } from "./messages";
 import { baseUrlOf, errorMessage, requireKey, speechModel, transcriptionModel } from "./sdk";
 import { AiError, type BinaryResult, type ModelRef, UnsupportedError } from "./types";
 
@@ -26,7 +27,7 @@ export async function synthesizeSpeech(ref: ModelRef, text: string, voice?: stri
         });
         return { data: res.audio.uint8Array, mediaType: res.audio.mediaType };
       } catch (err) {
-        throw new AiError(`TTS 失败：${errorMessage(err)}`);
+        throw new AiError(aiText().ttsFailed(errorMessage(err)));
       }
     }
     case "elevenlabs": {
@@ -40,11 +41,9 @@ export async function synthesizeSpeech(ref: ModelRef, text: string, voice?: stri
       return { data: res.data, mediaType: res.mediaType.startsWith("audio/") ? res.mediaType : "audio/mpeg" };
     }
     case "edge-tts":
-      throw new UnsupportedError(
-        `Edge TTS 暂不支持。${PROVIDER_CATALOG["edge-tts"].notes.replace(/^暂不支持：/, "")}`,
-      );
+      throw new UnsupportedError(aiText().edgeTts());
     default:
-      throw new UnsupportedError(`provider 类型 ${p.kind} 不支持 TTS`);
+      throw new UnsupportedError(aiText().noTts(p.kind));
   }
 }
 
@@ -58,9 +57,7 @@ export interface TranscriptResult {
 export async function transcribeAudio(ref: ModelRef, audio: Uint8Array): Promise<TranscriptResult> {
   const p = ref.provider;
   if (p.kind !== "openai" && p.kind !== "openai-compatible" && p.kind !== "google") {
-    throw new UnsupportedError(
-      `provider 类型 ${p.kind} 不支持语音转写，请使用 OpenAI、OpenAI 兼容接口或 Gemini`,
-    );
+    throw new UnsupportedError(aiText().noSttHint(p.kind));
   }
   try {
     const res = await transcribe({ model: transcriptionModel(p, ref.model), audio, maxRetries: 1 });
@@ -70,6 +67,6 @@ export async function transcribeAudio(ref: ModelRef, audio: Uint8Array): Promise
       ...(res.language ? { language: res.language } : {}),
     };
   } catch (err) {
-    throw new AiError(`转写失败：${errorMessage(err)}`);
+    throw new AiError(aiText().sttFailed(errorMessage(err)));
   }
 }

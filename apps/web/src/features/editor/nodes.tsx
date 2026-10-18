@@ -5,6 +5,7 @@ import { type NodeViewProps, NodeViewWrapper, ReactNodeViewRenderer } from "@tip
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { RenderedSegments, withInline } from "@/features/render/RenderedSegments";
+import i18n, { useTranslation } from "@/i18n";
 import { useWorkspace } from "@/stores/workspace";
 
 declare module "@tiptap/core" {
@@ -52,6 +53,7 @@ export const CardEmbed = Node.create({
 });
 
 function CardView({ node, updateAttributes, selected, editor }: NodeViewProps) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const raw = node.attrs.raw as string;
   return (
@@ -89,7 +91,7 @@ function CardView({ node, updateAttributes, selected, editor }: NodeViewProps) {
               contentEditable={false}
               onClick={() => setEditing(true)}
               className="absolute top-2 right-2 grid size-7 place-items-center rounded-md border border-border bg-surface-raised text-fg-subtle opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-fg"
-              aria-label="编辑卡片"
+              aria-label={t("editor.editCard")}
             >
               <Pencil className="size-3.5" />
             </button>
@@ -142,7 +144,7 @@ function CitationView({ node }: NodeViewProps) {
       <button
         type="button"
         className="cite"
-        title={`${a.sourceTitle}：${a.quote.slice(0, 120)}`}
+        title={`${a.sourceTitle}${i18n.t("common.colon")}${a.quote.slice(0, 120)}`}
         onClick={() => a.sourceId && useWorkspace.getState().jumpTo(a.sourceId, a.start, a.end)}
       >
         {a.n}
@@ -192,7 +194,9 @@ function ElementTagView({ node }: NodeViewProps) {
         color={meta.color}
         className="cursor-pointer align-baseline"
         onClick={() =>
-          useWorkspace.getState().open({ kind: "elements", title: "元素", extra: { focus: node.attrs.name } })
+          useWorkspace
+            .getState()
+            .open({ kind: "elements", title: i18n.t("nav.elements"), extra: { focus: node.attrs.name } })
         }
       >
         {node.attrs.name as string}
@@ -203,13 +207,6 @@ function ElementTagView({ node }: NodeViewProps) {
 
 const CALLOUT_KINDS = ["tip", "note", "important", "warning", "caution"] as const;
 type CalloutKind = (typeof CALLOUT_KINDS)[number];
-const CALLOUT_LABEL: Record<CalloutKind, string> = {
-  tip: "提示",
-  note: "备注",
-  important: "重要",
-  warning: "注意",
-  caution: "警告",
-};
 
 /**
  * 提示块。Markdown 写作 `> [!tip] 内容`（另有 note / important / warning / caution），
@@ -237,7 +234,11 @@ export const Callout = Node.create({
     return [
       "div",
       mergeAttributes(HTMLAttributes, { "data-callout": "", class: "callout" }),
-      ["span", { contenteditable: "false", class: "callout-label" }, CALLOUT_LABEL[kind] ?? "提示"],
+      [
+        "span",
+        { contenteditable: "false", class: "callout-label" },
+        i18n.t(`editor.callout_${CALLOUT_KINDS.includes(kind) ? kind : "tip"}`),
+      ],
       ["div", 0],
     ];
   },

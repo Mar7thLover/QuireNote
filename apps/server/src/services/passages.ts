@@ -3,6 +3,7 @@ import type { Passage } from "@quirenote/ai";
 import type { Chunk, Note, Source } from "@quirenote/core";
 import type { CitablePassage } from "../citations";
 import type { AppContext } from "../context";
+import { msg } from "../messages";
 import { retrieve } from "../retrieval";
 
 /** 参与生成的资料：指定的，否则为已勾选且就绪的。 */
@@ -84,7 +85,7 @@ export async function gatherNotes(
   const citable: CitablePassage[] = [];
   chosen.forEach(({ note, text }, i) => {
     const n = opts.startAt + i;
-    const title = note.title.trim() || "未命名笔记";
+    const title = note.title.trim() || msg().untitledNote;
     passages.push({ n, text, title: `笔记：${title}`, heading: null });
     citable.push({
       n,

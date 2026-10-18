@@ -295,7 +295,7 @@ function withFootnotes(m: Message): string {
   const notes = m.citations
     .map(
       (c) =>
-        `[${c.n}] ${c.sourceTitle}${c.page ? `, p.${c.page}` : ""}：“${c.quote.slice(0, 80)}${c.quote.length > 80 ? "…" : ""}”`,
+        `[${c.n}] ${c.sourceTitle}${c.page ? `, p.${c.page}` : ""}${i18n.t("common.colon")}“${c.quote.slice(0, 80)}${c.quote.length > 80 ? "…" : ""}”`,
     )
     .join("\n");
   return `${m.content}\n\n---\n${notes}`;
@@ -317,7 +317,7 @@ async function saveAs(nb: string, m: Message, kind: "card" | "note") {
     },
     kind === "note",
   );
-  toast.success(kind === "card" ? "已存为卡片" : "已存为笔记");
+  toast.success(i18n.t(kind === "card" ? "chat.savedCard" : "chat.savedNote"));
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -422,7 +422,7 @@ function CitationList({ citations }: { citations: Citation[] }) {
       >
         {t("chat.citations")} · {citations.length}
         <span className="text-fg-subtle">
-          {[...bySource.keys()].slice(0, 2).join("、")}
+          {[...bySource.keys()].slice(0, 2).join(t("common.listSep"))}
           {bySource.size > 2 ? "…" : ""}
         </span>
       </button>
@@ -469,10 +469,10 @@ export function ChatEmpty({ notebookId, onAsk }: { notebookId: string; onAsk: (q
   const lore = useNotebookBackground(notebookId) && !ready.length;
   const suggestions = ready.length
     ? [
-        "用三句话概括这些资料的核心观点",
-        "梳理其中的关键时间线",
-        `「${ready[0]!.title}」的主要论点是什么？`,
-        "资料之间有哪些不一致或相互矛盾的说法？",
+        t("chat.suggestSummary"),
+        t("chat.suggestTimeline"),
+        t("chat.suggestArgument", { title: ready[0]!.title }),
+        t("chat.suggestConflicts"),
       ]
     : [];
   return (

@@ -6,6 +6,7 @@ import { useSources } from "@/features/sources/hooks";
 import { useTranslation } from "@/i18n";
 import { useChatDraft } from "@/lib/ai";
 import { api } from "@/lib/api";
+import { metaLabel } from "@/lib/meta";
 import { qk, queryClient, removeFromList, upsertInList } from "@/lib/query";
 import { useWorkspace } from "@/stores/workspace";
 import { MasteryBar } from "./ElementsPanel";
@@ -50,7 +51,7 @@ export function ElementDetail({
   });
 
   const ask = () => {
-    useChatDraft.getState().send({ text: `关于「${el.name}」，请进一步解释：` });
+    useChatDraft.getState().send({ text: t("menu.askAboutElementPrompt", { name: el.name }) });
     useWorkspace.getState().open({ kind: "chat", title: t("nav.chat") });
   };
 
@@ -58,7 +59,7 @@ export function ElementDetail({
     <aside className="flex w-80 shrink-0 flex-col border-l border-border bg-bg-subtle/50 animate-fade">
       <div className="flex items-start gap-2 border-b border-border p-3.5">
         <div className="min-w-0 flex-1">
-          <Tag color={meta.color}>{meta.label}</Tag>
+          <Tag color={meta.color}>{metaLabel(meta)}</Tag>
           <h3 className="mt-1.5 text-[17px] font-semibold leading-snug">{el.name}</h3>
           {el.aliases.length ? (
             <p className="mt-0.5 text-xs text-fg-subtle">{el.aliases.join(" · ")}</p>
@@ -131,7 +132,7 @@ export function ElementDetail({
                 >
                   <span className="flex items-center gap-1 text-[11px] text-fg-subtle">
                     <FileText className="size-3" />
-                    {src?.title ?? "对话 / 笔记"}
+                    {src?.title ?? t("elements.refFromChat")}
                   </span>
                   <span className="mt-1 line-clamp-3 block font-serif text-[13px] leading-relaxed">
                     {r.quote}
@@ -159,7 +160,7 @@ export function ElementDetail({
           size="sm"
           variant="ghost"
           className="text-danger"
-          onClick={() => confirm(`删除「${el.name}」？`) && remove.mutate()}
+          onClick={() => confirm(t("elements.deleteConfirm", { name: el.name })) && remove.mutate()}
         >
           <Trash2 />
           {t("common.delete")}

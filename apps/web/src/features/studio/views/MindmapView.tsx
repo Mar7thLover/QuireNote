@@ -16,6 +16,7 @@ import {
 } from "@xyflow/react";
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
 import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/i18n";
 import { dagreLayout, estimateWidth } from "@/lib/graphLayout";
 import type { ArtifactViewProps } from "../ArtifactPanel";
 
@@ -34,6 +35,7 @@ const DEPTH_HUE = [272, 300, 200, 152, 40, 10];
 type MindNodeData = { node: MindmapNode; depth: number };
 
 const MindNode = memo(function MindNode({ data, selected }: NodeProps<Node<MindNodeData>>) {
+  const { t } = useTranslation();
   const ctx = useContext(MindCtx)!;
   const { node, depth } = data;
   const hue = DEPTH_HUE[depth % DEPTH_HUE.length]!;
@@ -91,7 +93,7 @@ const MindNode = memo(function MindNode({ data, selected }: NodeProps<Node<MindN
       ) : null}
       {selected && !editing ? (
         <div className="nodrag absolute -top-9 left-1/2 flex -translate-x-1/2 gap-0.5 rounded-md border border-border bg-surface-raised p-0.5 shadow-md">
-          <Tooltip content="添加子节点 (Tab)">
+          <Tooltip content={`${t("studio.addNode")} (Tab)`}>
             <Button
               size="icon-xs"
               variant="ghost"
@@ -102,7 +104,7 @@ const MindNode = memo(function MindNode({ data, selected }: NodeProps<Node<MindN
             </Button>
           </Tooltip>
           {depth > 0 ? (
-            <Tooltip content="删除 (Delete)">
+            <Tooltip content={`${t("common.delete")} (Delete)`}>
               <Button size="icon-xs" variant="ghost" onClick={() => ctx.remove(node.id)} aria-label="delete">
                 <Trash2 />
               </Button>
@@ -125,6 +127,7 @@ export function MindmapView(props: ArtifactViewProps<"mindmap">) {
 }
 
 function Mindmap({ data, onChange }: ArtifactViewProps<"mindmap">) {
+  const { t } = useTranslation();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const flow = useReactFlow();
@@ -180,7 +183,7 @@ function Mindmap({ data, onChange }: ArtifactViewProps<"mindmap">) {
     addChild: (id) => {
       const child: MindmapNode = {
         id: newId("mn"),
-        label: "新节点",
+        label: t("studio.newNode"),
         note: "",
         parentId: id,
         collapsed: false,
@@ -245,7 +248,7 @@ function Mindmap({ data, onChange }: ArtifactViewProps<"mindmap">) {
           />
         </ReactFlow>
         <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-surface/80 px-3 py-1 text-[11px] text-fg-subtle backdrop-blur">
-          双击编辑 · Tab 添加子节点 · Delete 删除 · 底部输入框可让 AI 扩展分支
+          {t("studio.mindmapHint")}
         </p>
       </div>
     </MindCtx.Provider>

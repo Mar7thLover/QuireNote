@@ -9,6 +9,7 @@ import { contextMenu } from "@/lib/contextMenu";
 import { formatCount } from "@/lib/format";
 import { SHORTCUTS } from "@/lib/hotkeys";
 import { Icon } from "@/lib/icons";
+import { metaLabel } from "@/lib/meta";
 import { DND_SOURCE, useUi } from "@/stores/ui";
 import { useWorkspace } from "@/stores/workspace";
 import { uploadFiles, useSources, useUpdateSource } from "./hooks";
@@ -216,7 +217,7 @@ function SourceRow({ source: s, notebookId }: { source: Source; notebookId: stri
               : s.status === "error"
                 ? s.error || t("sources.status_error")
                 : [
-                    meta.label,
+                    metaLabel(meta),
                     s.pageCount ? t("sources.pages", { count: s.pageCount }) : null,
                     s.charCount ? t("sources.chars", { n: formatCount(s.charCount) }) : null,
                   ]

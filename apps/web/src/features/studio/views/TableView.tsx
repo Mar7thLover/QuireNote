@@ -70,7 +70,7 @@ export function TableView({ data, onChange }: ArtifactViewProps<"table">) {
                   }
                 >
                   <Columns3 />
-                  {c.type === "number" ? "改为文本列" : "改为数字列"}
+                  {t(c.type === "number" ? "studio.toTextColumn" : "studio.toNumberColumn")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   danger
@@ -98,7 +98,10 @@ export function TableView({ data, onChange }: ArtifactViewProps<"table">) {
               variant="ghost"
               onClick={() =>
                 commit({
-                  columns: [...columns, { id: newId("col"), name: `列 ${columns.length + 1}`, type: "text" }],
+                  columns: [
+                    ...columns,
+                    { id: newId("col"), name: t("studio.columnN", { n: columns.length + 1 }), type: "text" },
+                  ],
                 })
               }
             >

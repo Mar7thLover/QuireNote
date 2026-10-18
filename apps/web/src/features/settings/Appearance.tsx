@@ -54,7 +54,7 @@ export function AppearanceSettings() {
               type="button"
               onClick={() => theme.set({ accent: id })}
               className="flex flex-col items-center gap-1.5 focus-ring rounded-lg p-1"
-              aria-label={a.label}
+              aria-label={t(`settings.accent_${id}`)}
               aria-pressed={theme.accent === id}
             >
               <span
@@ -69,7 +69,7 @@ export function AppearanceSettings() {
               >
                 {theme.accent === id ? <Check className="size-4 text-white" /> : null}
               </span>
-              <span className="text-[11px] text-fg-muted">{a.label}</span>
+              <span className="text-[11px] text-fg-muted">{t(`settings.accent_${id}`)}</span>
             </button>
           ))}
         </div>
@@ -81,19 +81,19 @@ export function AppearanceSettings() {
             <Select
               value={theme.fontSans}
               onValueChange={(v) => theme.set({ fontSans: v })}
-              options={FONT_PRESETS.sans.map((f) => ({ value: f.value, label: f.label }))}
+              options={FONT_PRESETS.sans.map((f) => ({ value: f.value, label: t(`settings.font_${f.id}`) }))}
             />
           </Field>
           <Field label={t("settings.fontSerif")}>
             <Select
               value={theme.fontSerif}
               onValueChange={(v) => theme.set({ fontSerif: v })}
-              options={FONT_PRESETS.serif.map((f) => ({ value: f.value, label: f.label }))}
+              options={FONT_PRESETS.serif.map((f) => ({ value: f.value, label: t(`settings.font_${f.id}`) }))}
             />
           </Field>
         </div>
         <p className="mt-4 rounded-lg border border-border bg-surface p-4 font-serif text-[16px] leading-relaxed">
-          阅读字体预览：知识就是力量。The quick brown fox jumps over the lazy dog.
+          {t("settings.fontPreview")}
         </p>
       </SettingsSection>
 
@@ -150,15 +150,15 @@ export function AppearanceSettings() {
               }}
             >
               <span className="m-2 inline-block rounded-md bg-surface/80 px-2 py-0.5 text-xs font-medium backdrop-blur">
-                {b.label}
+                {t(`settings.bg_${b.id}`)}
               </span>
             </button>
           ))}
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="自定义背景图片 URL">
+          <Field label={t("settings.bgImage")}>
             <Input
-              placeholder="https://… 或 data:image/…"
+              placeholder={t("settings.bgImagePlaceholder")}
               defaultValue={theme.background.type === "image" ? theme.background.value : ""}
               onBlur={(e) =>
                 e.target.value.trim() &&

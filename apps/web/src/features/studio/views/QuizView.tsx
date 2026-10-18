@@ -104,7 +104,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
                 <textarea
                   defaultValue={q.explanation}
                   onBlur={(e) => setQ(q.id, { explanation: e.target.value })}
-                  placeholder="解析"
+                  placeholder={t("studio.explanation")}
                   rows={2}
                   className="ml-5 block w-[calc(100%-1.25rem)] resize-none rounded-md bg-surface-sunken p-2 text-[13px] text-fg-muted outline-none"
                 />
@@ -151,7 +151,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
                     ) : (
                       <CircleX className="size-4 shrink-0 text-danger" />
                     )}
-                    <span>{q.explanation || `正确答案：${q.options[q.answer]}`}</span>
+                    <span>{q.explanation || t("studio.correctAnswer", { answer: q.options[q.answer] })}</span>
                   </div>
                 ) : null}
               </>
@@ -170,8 +170,8 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
                   ...qs,
                   {
                     id: newId("q"),
-                    question: "新题目",
-                    options: ["选项 A", "选项 B", "选项 C", "选项 D"],
+                    question: t("studio.newQuizQuestion"),
+                    options: ["A", "B", "C", "D"].map((x) => t("studio.option", { x })),
                     answer: 0,
                     explanation: "",
                   },
@@ -180,7 +180,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
             }
           >
             <Plus />
-            添加题目
+            {t("studio.addQuestion")}
           </Button>
         ) : submitted ? (
           <Button
@@ -191,7 +191,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
             }}
           >
             <RotateCcw />
-            再做一次
+            {t("studio.retake")}
           </Button>
         ) : (
           <Button
@@ -199,7 +199,7 @@ export function QuizView({ artifact, data, onChange, notebookId }: ArtifactViewP
             disabled={Object.keys(answers).length < qs.length}
             onClick={() => setSubmitted(true)}
           >
-            提交答案
+            {t("studio.submit")}
           </Button>
         )}
       </div>

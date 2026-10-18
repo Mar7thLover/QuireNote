@@ -1,5 +1,6 @@
 import { generateText, Output, streamText } from "ai";
 import type { z } from "zod";
+import { aiText } from "./messages";
 import { errorMessage, languageModel } from "./sdk";
 import { AiError, type ChatTurn, type ModelRef } from "./types";
 import { reportUsage } from "./usage";
@@ -113,7 +114,7 @@ export async function generateStructured<S extends z.ZodType>(
     reportUsage(ref, "chat", result.usage);
     return req.schema.parse(result.output);
   } catch (err) {
-    throw new AiError(`结构化生成失败：${errorMessage(err)}`);
+    throw new AiError(aiText().structuredFailed(errorMessage(err)));
   }
 }
 
@@ -139,6 +140,6 @@ export async function describeImage(
     reportUsage(ref, "chat", result.usage);
     return result.text;
   } catch (err) {
-    throw new AiError(`图片识别失败：${errorMessage(err)}`);
+    throw new AiError(aiText().visionFailed(errorMessage(err)));
   }
 }

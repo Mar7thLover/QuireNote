@@ -7,6 +7,7 @@ import { badRequest } from "../errors";
 import type { BusEvent } from "../events";
 import { mimeFromName, safeName } from "../files";
 import { publicJob } from "../jobs";
+import { msg } from "../messages";
 import { overview, recordNoteOpened, usageSummary } from "../services/insights";
 import { backupAll, restoreAll } from "../services/portability";
 import { MEDIA_DIR } from "../services/studio";
@@ -32,7 +33,7 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
   });
 
   /** 补充：单个任务。 */
-  api.get("/jobs/:id", async (c) => c.json(publicJob(must(await store.jobs.get(c.req.param("id")), "任务"))));
+  api.get("/jobs/:id", async (c) => c.json(publicJob(must(await store.jobs.get(c.req.param("id")), "job"))));
 
   // ───── SSE 事件 ─────
   api.get("/events", (c) =>
@@ -71,18 +72,18 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
   // ───── Settings ─────
   api.get("/settings/:key", async (c) => {
     const key = c.req.param("key");
-    if (!SETTING_KEY.test(key)) throw badRequest("非法的设置键");
+    if (!SETTING_KEY.test(key)) throw badRequest(msg().invalidSettingKey);
     return c.json(await store.settings.get(key));
   });
 
   api.put("/settings/:key", async (c) => {
     const key = c.req.param("key");
-    if (!SETTING_KEY.test(key)) throw badRequest("非法的设置键");
+    if (!SETTING_KEY.test(key)) throw badRequest(msg().invalidSettingKey);
     let value: unknown;
     try {
       value = JSON.parse((await c.req.text()) || "null");
     } catch {
-      throw badRequest("请求体不是合法 JSON", "invalid_json");
+      throw badRequest(msg().invalidJson, "invalid_json");
     }
     await store.settings.set(key, value);
     return c.json(value);
@@ -94,7 +95,7 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
   api.get("/overview", async (c) => c.json(await overview(ctx)));
 
   api.post("/notes/:id/opened", async (c) => {
-    must(await store.notes.get(c.req.param("id")), "笔记");
+    must(await store.notes.get(c.req.param("id")), "note");
     await recordNoteOpened(ctx, c.req.param("id"));
     return c.json({ ok: true });
   });
@@ -148,13 +149,13 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
         ? (z.object({ notebookId: z.string().optional() }).parse(JSON.parse(text)) as typeof body)
         : {};
     } catch {
-      throw badRequest("请求体无效");
+      throw badRequest(msg().invalidBody);
     }
-    if (body.notebookId) must(await store.notebooks.get(body.notebookId), "Notebook");
+    if (body.notebookId) must(await store.notebooks.get(body.notebookId), "notebook");
     const job = await ctx.jobs.enqueue(
       "reindex",
       { ...(body.notebookId ? { notebookId: body.notebookId } : {}), clear: true },
-      { notebookId: body.notebookId ?? null, message: "重建 Embedding 索引" },
+      { notebookId: body.notebookId ?? null, message: msg().job.reindex },
     );
     return c.json(job, 202);
   });
@@ -172,7 +173,7 @@ export function systemRoutes(api: Hono, ctx: AppContext): void {
   // ───── 生成的媒体 ─────
   api.get("/files/:name", async (c) => {
     const name = safeName(c.req.param("name"));
-    const data = must(await ctx.files.get(`${MEDIA_DIR}/${name}`), "文件");
+    const data = must(await ctx.files.get(`${MEDIA_DIR}/${name}`), "file");
     return fileResponse(c, data, mimeFromName(name));
   });
 }

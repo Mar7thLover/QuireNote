@@ -7,6 +7,7 @@ import { sanitizeSvg } from "@quirenote/ai";
 import { type Asset, newId, nowIso } from "@quirenote/core";
 import type { AppContext } from "../context";
 import { badRequest } from "../errors";
+import { msg } from "../messages";
 
 export const ASSET_DIR = "assets";
 export const ASSET_MAX_BYTES = 50 * 1024 * 1024;
@@ -68,13 +69,13 @@ export async function saveAsset(
   input: Uint8Array,
   name: string,
 ): Promise<Asset> {
-  if (input.byteLength > ASSET_MAX_BYTES) throw badRequest("资源超过 50 MB");
+  if (input.byteLength > ASSET_MAX_BYTES) throw badRequest(msg().assetTooBig);
   const ext = sniffAsset(input, name);
-  if (!ext) throw badRequest("不支持的文件类型：只接受图片、mp4 / webm / mov 视频、常见音频和 woff2 字体");
+  if (!ext) throw badRequest(msg().assetType);
   let data = input;
   if (ext === "svg") {
     const clean = sanitizeSvg(new TextDecoder().decode(input));
-    if (!clean) throw badRequest("SVG 内容无效");
+    if (!clean) throw badRequest(msg().svgInvalid);
     data = new TextEncoder().encode(clean);
   }
   const sha256 = createHash("sha256").update(data).digest("hex");

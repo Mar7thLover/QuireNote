@@ -38,6 +38,8 @@ import { badRequest, notFound } from "../errors";
 import { mimeFromName, safeName } from "../files";
 import { fetchWithTimeout, UA } from "../ingest/parsers";
 import { rechunk, sourceFile, sourceFileDir } from "../ingest/pipeline";
+import { currentLang, parseLang } from "../lang";
+import { msg } from "../messages";
 import { ASSET_MAX_BYTES, assetIdsIn, readAsset, saveAsset } from "./assets";
 import { exportLorebook, importLorebook, updateLorebookSettings } from "./lorebook";
 import { createNotebook } from "./notebooks";
@@ -292,7 +294,7 @@ export async function exportNoteCard(
   opts: ExportOptions,
 ): Promise<ExportedCard> {
   const note = await ctx.store.notes.get(noteId);
-  if (!note) throw notFound("笔记");
+  if (!note) throw notFound("note");
   const notes = [toCardNote(note)];
   const { assets, files } = await collectAssets(ctx, notes, opts);
   const render =
@@ -302,7 +304,7 @@ export async function exportNoteCard(
   return {
     card: wrap({
       kind: "note",
-      name: note.title || "未命名笔记",
+      name: note.title || msg().untitledNote,
       summary: markdownExcerpt(note.markdown, 140),
       creator: opts.creator ?? "",
       creator_notes: "",
@@ -331,7 +333,7 @@ export async function exportNotebookCard(
   opts: ExportOptions,
 ): Promise<ExportedCard> {
   const nb = await ctx.store.notebooks.get(notebookId);
-  if (!nb) throw notFound("Notebook");
+  if (!nb) throw notFound("notebook");
   const notes = (await ctx.store.notes.list({ notebookId }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     .map(toCardNote);
@@ -446,7 +448,7 @@ const IMPORT_TEXT = {
   },
 };
 const importText = (lang?: string) =>
-  lang?.toLowerCase().startsWith("en") ? IMPORT_TEXT.en : IMPORT_TEXT.zh;
+  (parseLang(lang) ?? currentLang()) === "en" ? IMPORT_TEXT.en : IMPORT_TEXT.zh;
 
 export interface CardPreview {
   format: ParsedCard["format"];
@@ -724,7 +726,7 @@ export async function importCard(
   let notebookId = opts.notebookId ?? null;
   let created = false;
   if (notebookId) {
-    if (!(await ctx.store.notebooks.get(notebookId))) throw notFound("Notebook");
+    if (!(await ctx.store.notebooks.get(notebookId))) throw notFound("notebook");
   } else {
     const meta = d.notebook ?? { title: d.name, description: d.summary, icon: "📓", color: "indigo" };
     notebookId = (
@@ -819,7 +821,7 @@ export async function importCard(
     await ctx.jobs.enqueue(
       "reindex",
       { notebookId, clear: false },
-      { notebookId, refId: notebookId, message: "为导入的资料建立索引" },
+      { notebookId, refId: notebookId, message: msg().job.indexImportedSources },
     );
 
   // Studio 生成物
@@ -988,6 +990,5 @@ export async function importCard(
 
 /** 卡片 JSON 体积检查（PNG / JSON 内联资源时）。 */
 export function assertJsonSize(json: string): void {
-  if (json.length > 20 * 1024 * 1024)
-    throw badRequest("卡片太大（资源内联后超过 20 MB），请导出为 .quire 压缩包");
+  if (json.length > 20 * 1024 * 1024) throw badRequest(msg().cardTooBig);
 }

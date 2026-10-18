@@ -1,6 +1,7 @@
 /** 文件存储：原始资料文件与生成的媒体。接口与磁盘实现分离，便于以后换成对象存储。 */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize, sep } from "node:path";
+import { msg } from "./messages";
 
 export interface FileStore {
   put(path: string, data: Uint8Array): Promise<void>;
@@ -24,7 +25,7 @@ export class DiskFileStore implements FileStore {
 
   localPath(path: string): string {
     const clean = normalize(path).replace(/^([/\\])+/, "");
-    if (clean.split(/[/\\]/).includes("..")) throw new Error("非法文件路径");
+    if (clean.split(/[/\\]/).includes("..")) throw new Error(msg().illegalPath);
     return join(this.root, clean);
   }
 
