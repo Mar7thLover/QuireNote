@@ -1,6 +1,7 @@
 {
   "name": "quirenote",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.8.0",
   "engines": {
