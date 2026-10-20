@@ -1,0 +1,21 @@
+{
+  "name": "@quirenote/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "QuireNote desktop app (macOS): Electron shell running the embedded server and web build",
+  "main": "src/main.mjs",
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs",
+    "natives": "node scripts/natives.mjs",
+    "setup": "pnpm natives && pnpm bundle",
+    "dev": "pnpm setup && electron .",
+    "pack": "pnpm setup && electron-builder --dir",
+    "dist": "pnpm setup && electron-builder --mac zip"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.25.10"
+  }
+}

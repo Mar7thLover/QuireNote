@@ -1,0 +1,9 @@
+{
+  "name": "quirenote-desktop-natives",
+  "private": true,
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "sqlite-vec": "0.1.9",
+    "sqlite-vec-darwin-arm64": "0.1.9"
+  }
+}

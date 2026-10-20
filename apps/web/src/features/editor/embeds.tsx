@@ -16,6 +16,7 @@ import { useCallback, useMemo, useState } from "react";
 import { autoHeight, useCardThemeVars } from "@/features/render/RenderedSegments";
 import i18n, { useTranslation } from "@/i18n";
 import { api, apiBase } from "@/lib/api";
+import { modKey } from "@/lib/hotkeys";
 import { videoEmbedUrl } from "@/lib/video";
 
 /** asset://id → 服务端地址；其他地址原样。 */
@@ -194,7 +195,7 @@ function HtmlBlockView({ node, updateAttributes, selected, editor }: NodeViewPro
       <NodeViewWrapper className="my-3" data-drag-handle>
         <div className="mb-1 flex items-center gap-1.5 text-[12px] text-fg-subtle">
           <Code2 className="size-3.5" />
-          {t("editor.htmlEditing")}
+          {t("editor.htmlEditing", { mod: modKey })}
         </div>
         <textarea
           autoFocus

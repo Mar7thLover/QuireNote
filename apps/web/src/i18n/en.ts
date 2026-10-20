@@ -738,7 +738,7 @@ export const en: Messages = {
     htmlSampleTitle: "Title",
     htmlSampleBody:
       "Write HTML here. Theme variables such as var(--card-accent) work for colors; scripts don't run.",
-    htmlEditing: "HTML (Ctrl + Enter to finish)",
+    htmlEditing: "HTML ({{mod}} + Enter to finish)",
     editHtml: "Edit HTML",
     lang_en: "English",
     lang_zh: "Chinese",
@@ -1298,7 +1298,7 @@ export const en: Messages = {
     pastePlain: "Paste as plain text",
     selectAll: "Select all",
     copyFailed: "Couldn't copy",
-    pasteBlocked: "The browser didn't allow reading the clipboard — press Ctrl+V to paste",
+    pasteBlocked: "The browser didn't allow reading the clipboard — press {{mod}}+V to paste",
     explainPrompt: "Explain this passage.",
     askSource: "Ask about this source only",
     useSource: "Use in answers",

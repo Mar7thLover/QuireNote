@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/Mar7thLover/QuireNote/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Mar7thLover/QuireNote/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-C06240?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522.12-5A5A55?style=flat-square)](https://nodejs.org)
-[![Platforms](https://img.shields.io/badge/platforms-web%20%C2%B7%20iOS%20%C2%B7%20Android-5A5A55?style=flat-square)](docs/mobile.md)
+[![Platforms](https://img.shields.io/badge/platforms-web%20%C2%B7%20macOS%20%C2%B7%20iOS%20%C2%B7%20Android-5A5A55?style=flat-square)](docs/mobile.md)
 [![Docker](https://img.shields.io/badge/deploy-Docker-5A5A55?style=flat-square)](#docker-一键部署)
 
 [English](README.md) · **简体中文**

@@ -1,5 +1,5 @@
 import type { Notebook } from "@quirenote/core";
-import { cn, Kbd, Tooltip } from "@quirenote/ui";
+import { cn, Shortcut, Tooltip } from "@quirenote/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -29,6 +29,7 @@ import { type ReactNode, useEffect } from "react";
 import { currentLang, setLang, useTranslation } from "@/i18n";
 import { api } from "@/lib/api";
 import { contextMenu } from "@/lib/contextMenu";
+import { SHORTCUTS } from "@/lib/hotkeys";
 import { qk } from "@/lib/query";
 import { resolvedMode, useTheme } from "@/stores/theme";
 import { useUi } from "@/stores/ui";
@@ -260,10 +261,7 @@ export function AppSidebar({
         >
           <Search className="size-4 shrink-0" strokeWidth={1.6} />
           <span className="flex-1 truncate text-left">{t("nav.searchCommand")}</span>
-          <span className="flex gap-0.5">
-            <Kbd>Ctrl</Kbd>
-            <Kbd>K</Kbd>
-          </span>
+          <Shortcut keys={SHORTCUTS.palette} />
         </button>
       )}
 

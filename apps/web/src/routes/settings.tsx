@@ -1,4 +1,4 @@
-import { cn } from "@quirenote/ui";
+import { cn, Shortcut } from "@quirenote/ui";
 import { Link } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
@@ -117,7 +117,7 @@ function About() {
         <p>{t("settings.aboutData")}</p>
         <p>
           {t("settings.aboutName")}
-          <kbd>Ctrl</kbd>+<kbd>/</kbd>
+          <Shortcut keys="Mod+/" />
           {t("settings.aboutShortcuts")}
         </p>
       </div>

@@ -29,6 +29,20 @@ cd apps/mobile/android
 ./gradlew assembleDebug                 # 产物：app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### iOS（本机）
+
+需要 Xcode（含 iOS Simulator）。模拟器调试构建无需签名：
+
+```bash
+cd apps/mobile
+xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
+xcrun simctl install booted <DerivedData>/Build/Products/Debug-iphonesimulator/App.app
+xcrun simctl launch booted app.quirenote.notebook
+```
+
+模拟器可直接访问宿主机的 `http://127.0.0.1:8787`（`Info.plist` 已声明 `NSAllowsArbitraryLoads`，允许连接 http 自托管服务器；真机同样适用）。
+
 ### iOS（云构建）
 
 本仓库提供 `.github/workflows/mobile.yml`，在 GitHub Actions 的 macOS runner 上构建模拟器版本，并在 ubuntu runner 上构建 Android debug APK。正式签名需要在仓库 Secrets 中配置证书和描述文件（或改用 Codemagic / Ionic Appflow）。
