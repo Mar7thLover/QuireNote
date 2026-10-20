@@ -86,6 +86,14 @@ export function createApp(
       await next();
       if (c.res.ok) c.header("Cache-Control", "public, max-age=31536000, immutable");
     });
+    // index.html 不能长缓存：它引用带 hash 的 assets，升级后旧入口会指向已删除的 chunk，
+    // 导致动态导入失败白屏（Electron webview 的磁盘缓存尤其明显）。
+    app.use("*", async (c, next) => {
+      await next();
+      const ct = c.res.headers.get("content-type") ?? "";
+      if (ct.includes("text/html") && !c.res.headers.get("cache-control"))
+        c.header("Cache-Control", "no-cache");
+    });
     // 分享链接的只读页：标题和介绍写进 meta（聊天软件贴链接时显示），不进搜索引擎、不带 Referer
     app.get("/share/:token", async (c) => {
       const meta = await shareMeta(ctx, c.req.param("token"));
@@ -95,7 +103,9 @@ export function createApp(
       return c.html(shareHtml(indexHtml, meta), meta ? 200 : 404);
     });
     app.use("*", serveStatic({ root: dist }));
-    app.get("*", (c) => (c.req.path.startsWith("/api/") ? c.notFound() : c.html(indexHtml)));
+    app.get("*", (c) =>
+      c.req.path.startsWith("/api/") || c.req.path.startsWith("/assets/") ? c.notFound() : c.html(indexHtml),
+    );
   } else {
     app.get("/", (c) => c.json({ name: "quirenote-server", api: "/api", health: "/api/health" }));
   }

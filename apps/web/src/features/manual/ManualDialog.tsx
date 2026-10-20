@@ -81,7 +81,9 @@ export function ManualDialog() {
           <div ref={body} className="min-h-0 flex-1 overflow-y-auto">
             <article className="mx-auto max-w-[640px] px-6 pt-8 pb-16 sm:px-10">
               <h1 className="font-serif text-[28px] leading-tight">{current.title}</h1>
-              <p className="mt-2 text-[15px] leading-relaxed text-fg-muted">{current.summary}</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-fg-muted">
+                {isMac ? current.summary.replace(/\bCtrl /g, "⌘ ") : current.summary}
+              </p>
               <Markdown
                 text={isMac ? current.body.replace(/\bCtrl /g, "⌘ ") : current.body}
                 serif
