@@ -1,0 +1,18 @@
+appId: app.quirenote.notebook
+productName: QuireNote
+asar: false
+directories:
+  output: release
+files:
+  - src/main.mjs
+  - package.json
+  - from: dist
+    to: server
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.png
+  identity: null
+  target:
+    - dir
+    - zip
+npmRebuild: false

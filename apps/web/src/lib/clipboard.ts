@@ -1,5 +1,6 @@
 import { toast } from "@quirenote/ui";
 import i18n from "@/i18n";
+import { modKey } from "@/lib/hotkeys";
 
 /** 写入剪贴板：优先异步接口，不可用时退回 execCommand。 */
 export async function copyText(text: string, notify = false): Promise<boolean> {
@@ -26,7 +27,7 @@ export async function readClipboardText(): Promise<string | null> {
   try {
     return await navigator.clipboard.readText();
   } catch {
-    toast.error(i18n.t("menu.pasteBlocked"));
+    toast.error(i18n.t("menu.pasteBlocked", { mod: modKey }));
     return null;
   }
 }

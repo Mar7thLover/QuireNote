@@ -173,13 +173,28 @@ function migrate(db: DB): void {
   }
 }
 
+/**
+ * 桌面端打包时原生二进制没有 node_modules 可解析，由外壳通过
+ * QUIREENOTE_SQLITE3_BINDING / QUIREENOTE_SQLITE_VEC_EXT 直接给出文件路径。
+ */
+function openDatabase(path: string | Buffer): DB {
+  const binding = process.env.QUIRENOTE_SQLITE3_BINDING?.trim();
+  return binding ? new Database(path, { nativeBinding: binding }) : new Database(path);
+}
+
+function loadVec(db: DB): void {
+  const ext = process.env.QUIRENOTE_SQLITE_VEC_EXT?.trim();
+  if (ext) db.loadExtension(ext);
+  else sqliteVec.load(db);
+}
+
 function openDb(path: string): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path);
+  const db = openDatabase(path);
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
   db.pragma("synchronous = NORMAL");
-  sqliteVec.load(db);
+  loadVec(db);
   migrate(db);
   return db;
 }
@@ -884,7 +899,7 @@ export class SqliteStore implements Store {
 
   async restore(bytes: Uint8Array): Promise<void> {
     // 先校验快照可以打开，并且是 QuireNote 的库。
-    const probe = new Database(inMemoryImage(bytes));
+    const probe = openDatabase(inMemoryImage(bytes));
     try {
       probe.prepare("SELECT COUNT(*) FROM notebooks").get();
     } catch {
@@ -895,8 +910,8 @@ export class SqliteStore implements Store {
     this.db.close();
     this.vecTables.clear();
     if (this.path === ":memory:") {
-      this.db = new Database(inMemoryImage(bytes));
-      sqliteVec.load(this.db);
+      this.db = openDatabase(inMemoryImage(bytes));
+      loadVec(this.db);
       migrate(this.db);
       return;
     }

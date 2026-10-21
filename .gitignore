@@ -22,3 +22,5 @@ apps/mobile/android/app/src/main/assets/public/
 apps/mobile/android/capacitor-cordova-android-plugins/
 apps/mobile/ios/App/App/public/
 apps/mobile/ios/DerivedData/
+apps/desktop/release/
+apps/desktop/native/bin/

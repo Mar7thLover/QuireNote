@@ -53,6 +53,20 @@ function langHeaders(): Record<string, string> {
   return { "accept-language": i18n.language === "en" ? "en" : "zh-CN" };
 }
 
+/**
+ * 原生壳里还没填服务器地址时，请求会打到壳自带的本地资源服务上，
+ * 拿到的是 index.html（按 blob 返回）。这里直接判失败，让界面停在「填写服务器」弹层。
+ */
+function nativeWithoutServer(): boolean {
+  const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  if (!cap?.isNativePlatform?.()) return false;
+  try {
+    return !localStorage.getItem("quirenote.server");
+  } catch {
+    return false;
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -67,6 +81,7 @@ export class ApiError extends Error {
 
 async function request<T>(method: string, path: string, body?: unknown, init?: RequestInit): Promise<T> {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (nativeWithoutServer()) throw new ApiError(0, "no-server", i18n.t("common.networkError"));
   let res: Response;
   try {
     res = await fetch(apiBase() + path, {

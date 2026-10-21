@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 
-const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** 平台对应的修饰键符号，用于界面文案（⌘ / Ctrl）。 */
+export const modKey = isMac ? "⌘" : "Ctrl";
 
 /** 判断键盘事件是否匹配 "Mod+Shift+K" 这样的组合。Mod 在 Mac 上是 ⌘，其他平台是 Ctrl。 */
 export function matchHotkey(e: KeyboardEvent, combo: string): boolean {
